@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HOP / DISTANCE — 発射ゲーム</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/config.js"></script>
+  <script defer src="js/physics.js"></script>
+  <script defer src="js/game.js"></script>
+  <script defer src="js/ui.js"></script>
+  <script defer src="js/input.js"></script>
+  <script defer src="js/main.js"></script>
+</head>
+<body>
+  <main>
+    <header><div class="brand">HOP <span>/</span> DISTANCE</div><span class="edition">LAUNCH EXPERIMENT · 02</span></header>
+    <section class="readouts" aria-label="フライトデータ">
+      <div><span>STATE / 状態</span><strong id="state">READY</strong></div>
+      <div><span>ANGLE / 発射角</span><strong id="angle">—</strong></div>
+      <div><span>POWER / パワー</span><strong id="power">—</strong></div>
+      <div><span>DISTANCE / 現在飛距離</span><strong id="distance">0.0 m</strong></div>
+      <div><span>PEAK / 最高高度</span><strong id="height">0.0 m</strong></div>
+      <div><span>SPEED / 最高速度</span><strong id="speed">0.0 m/s</strong></div>
+    </section>
+    <div class="aerial-status">
+      <strong id="up-status">AERIAL UP × 3</strong>
+      <span id="down-status">DOWN / 空中で使用可能</span>
+      <span id="contact-status" aria-live="polite">CONTACT / —</span>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="canvas" width="1280" height="720" aria-label="図形キャラクターを発射するゲーム。下のボタンでも操作できます。"></canvas>
+      <div class="overlay" id="overlay">
+        <p class="eyebrow" id="overlay-label">ONE LAUNCH. HOW FAR?</p>
+        <h1 id="overlay-title">遠くへ、もう一跳び。</h1>
+        <p id="overlay-detail">角度とパワーを決めて、飛距離に挑戦。</p>
+        <button id="overlay-action" type="button">START →</button>
+      </div>
+      <div class="flight-tag" id="flight-tag" hidden>IN FLIGHT</div>
+      <div class="contact-tag" id="contact-tag" hidden></div>
+    </div>
+    <footer>
+      <div><p id="hint" aria-live="polite">START または画面をタップして開始</p><small>飛行中：CLICK / TAP = UP · SPACE / DOWNボタン = DOWN</small></div>
+      <button id="down-action" type="button" hidden>DOWN ↓</button>
+      <button id="action" type="button">START →</button>
+    </footer>
+    <p class="final-line">FINAL / 最終飛距離 <strong id="final">—</strong></p>
+  </main>
+</body>
+</html>
