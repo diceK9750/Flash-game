@@ -19,6 +19,16 @@ Hop.UI = class {
     set("speed", `${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s`);
     set("final", g.finalDistance === null ? "—" : `${g.finalDistance.toFixed(1)} m`);
     const airborne = g.airborne();
+    document.getElementById("guard-status").textContent = `GUARD × ${g.guard}`;
+    document.getElementById("debug-status").hidden = !g.debug;
+    document.getElementById("history").textContent = `CONTACT / ${g.history.slice(-8).map(entry => entry.label).join(" → ") || "—"}`;
+    const specialPanel = document.getElementById("special-panel");
+    specialPanel.hidden = !g.special && !g.specialMessage;
+    document.getElementById("special-title").textContent = g.special ? "SPECIAL!" : g.specialMessage?.label || "";
+    document.getElementById("special-detail").textContent = g.special ? `${g.special.type} · CLICK / TAP / ENTER` : "";
+    document.getElementById("special-track").hidden = !g.special;
+    document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
+    document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒 / STOPPER：接触速度 ${c.specials.STOPPER.min / c.pixelsPerMeter} m/s以上 / BOUNCE：飛距離 ${c.specials.BOUNCE.min} m以上 / DASH：水平速度 ${c.specials.DASH.max / c.pixelsPerMeter} m/s以下`;
     const cooldownText = (Math.ceil(g.downCooldown * 10) / 10).toFixed(1);
     set("up-status", `AERIAL UP × ${g.upRemaining}`);
     set("down-status", g.state === s.RESULT ? "DOWN / 終了" : g.downCooldown > 0 ? `DOWN / ${cooldownText} s` : airborne ? "DOWN / READY" : "DOWN / 空中で使用可能");
@@ -28,9 +38,10 @@ Hop.UI = class {
     contactTag.textContent = g.contact?.label || "";
     contactTag.style.color = this.objectColor(g.contact?.label);
     this.downAction.hidden = g.state !== s.FLYING;
-    this.downAction.disabled = !airborne || g.downCooldown > 0;
+    this.downAction.disabled = !!g.special || !airborne || g.downCooldown > 0;
     this.downAction.textContent = g.downCooldown > 0 ? `DOWN ${cooldownText} s` : "DOWN ↓";
-    this.action.disabled = g.state === s.FLYING && (!airborne || g.upRemaining === 0);
+    this.action.disabled = g.state === s.FLYING && !g.special && (!airborne || g.upRemaining === 0);
+    if (g.state === s.FLYING) this.action.textContent = g.special ? "SPECIAL!" : "AERIAL UP ↑";
     if (g.state === this.lastState) return;
     this.lastState = g.state;
     const labels = {
@@ -48,8 +59,20 @@ Hop.UI = class {
     document.getElementById("overlay-title").textContent = g.state === s.RESULT ? `${g.finalDistance.toFixed(1)} m` : "遠くへ、もう一跳び。";
     document.getElementById("overlay-detail").textContent = g.state === s.RESULT ? `${g.body.bounces} 回の地面接触 · 角度 ${g.angle.toFixed(1)}° · パワー ${Math.round(g.power * 100)}%` : "角度とパワーを決めて、飛距離に挑戦。";
     this.overlayAction.textContent = g.state === s.RESULT ? "RETRY ↗" : "START →";
+    document.getElementById("result-stats").hidden = g.state !== s.RESULT;
+    if (g.state === s.RESULT) {
+      document.getElementById("record-status").textContent = g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : "FLIGHT RECORD";
+      document.getElementById("contact-totals").textContent = `接触総数 ${g.history.length} / SPECIAL発生 ${g.specialCount} / 成功 ${g.specialSuccesses}`;
+      document.getElementById("type-counts").textContent = Object.entries(g.counts).map(([type, count]) => `${type} ${count}`).join(" · ");
+      document.getElementById("best-comparison").textContent = [
+        `DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`,
+        `HEIGHT 今回 ${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m / BEST ${g.best.height.toFixed(1)} m`,
+        `SPEED 今回 ${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s / BEST ${g.best.speed.toFixed(1)} m/s`
+      ].join("\n");
+      document.getElementById("storage-status").textContent = g.debugUsed ? "このDEBUGプレイは自己ベストを更新・保存していません。" : g.storageAvailable ? "自己ベストはこのブラウザに保存されます。" : "保存領域を使用できません。自己ベストは今回の起動中のみ保持します。";
+    }
   }
-  objectColor(type) { return ({ BOOST: "#ccf873", BOUNCE: "#8dd7ff", BRAKE: "#ff8585" })[type] || "#edf3f4"; }
+  objectColor(type) { return ({ BOOST: "#ccf873", BOUNCE: "#8dd7ff", BRAKE: "#ff8585", ANGLE: "#ffe381", DASH: "#ffab54", GUARD: "#ce9bff", STOPPER: "#bd3d54" })[type] || "#edf3f4"; }
   draw() {
     const g = this.game, c = Hop.CONFIG, ctx = this.ctx;
     const ground = c.groundY + g.cameraY;
@@ -87,10 +110,11 @@ Hop.UI = class {
     }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
     g.trail.forEach((point, i) => {
-      ctx.globalAlpha = (i / g.trail.length) * 0.3;
+      ctx.globalAlpha = (i / g.trail.length) * (g.specialTrail > 0 ? 0.8 : 0.3);
       ctx.fillStyle = "#ccf873"; ctx.beginPath(); ctx.arc(sx(point.x), sy(point.y), 4 + i / 4, 0, Math.PI * 2); ctx.fill();
     });
     ctx.globalAlpha = 1;
+    if (g.flash > 0) { ctx.fillStyle = `rgba(255,240,180,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
     const x = sx(g.body.x), y = sy(g.body.y);
     if (g.effect) {
       const progress = 1 - g.effect.remaining / c.effectDuration;

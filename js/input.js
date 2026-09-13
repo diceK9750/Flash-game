@@ -14,7 +14,16 @@ Hop.bindInput = function (game, ui) {
     game.aerial("DOWN"); ui.update();
   });
   document.addEventListener("keydown", event => {
+    if (event.code === "KeyD") {
+      if (!event.repeat) { game.toggleDebug(); ui.update(); }
+      return;
+    }
     if (event.code !== "Space" && event.code !== "Enter") return;
+    if (event.code === "Enter" && game.state === Hop.STATES.FLYING) {
+      event.preventDefault();
+      if (!event.repeat) activate();
+      return;
+    }
     if (event.code === "Space" && game.state === Hop.STATES.FLYING) {
       event.preventDefault(); // Overrides native Space activation even on UP buttons.
       if (!event.repeat) { game.aerial("DOWN"); ui.update(); }

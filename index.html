@@ -14,7 +14,7 @@
 </head>
 <body>
   <main>
-    <header><div class="brand">HOP <span>/</span> DISTANCE</div><span class="edition">LAUNCH EXPERIMENT · 02</span></header>
+    <header><div class="brand">HOP <span>/</span> DISTANCE</div><span class="edition">LAUNCH EXPERIMENT · 03</span></header>
     <section class="readouts" aria-label="フライトデータ">
       <div><span>STATE / 状態</span><strong id="state">READY</strong></div>
       <div><span>ANGLE / 発射角</span><strong id="angle">—</strong></div>
@@ -27,6 +27,8 @@
       <strong id="up-status">AERIAL UP × 3</strong>
       <span id="down-status">DOWN / 空中で使用可能</span>
       <span id="contact-status" aria-live="polite">CONTACT / —</span>
+      <strong id="guard-status">GUARD × 0</strong>
+      <span id="debug-status" hidden>DEBUG</span>
     </div>
     <div class="stage" id="stage">
       <canvas id="canvas" width="1280" height="720" aria-label="図形キャラクターを発射するゲーム。下のボタンでも操作できます。"></canvas>
@@ -38,6 +40,11 @@
       </div>
       <div class="flight-tag" id="flight-tag" hidden>IN FLIGHT</div>
       <div class="contact-tag" id="contact-tag" hidden></div>
+      <div class="special-panel" id="special-panel" hidden>
+        <strong id="special-title">SPECIAL!</strong>
+        <span id="special-detail"></span>
+        <div class="special-track" id="special-track"><div id="special-fill"></div></div>
+      </div>
     </div>
     <footer>
       <div><p id="hint" aria-live="polite">START または画面をタップして開始</p><small>飛行中：CLICK / TAP = UP · SPACE / DOWNボタン = DOWN</small></div>
@@ -45,6 +52,20 @@
       <button id="action" type="button">START →</button>
     </footer>
     <p class="final-line">FINAL / 最終飛距離 <strong id="final">—</strong></p>
+    <p class="history" id="history">CONTACT / —</p>
+    <section id="result-stats" class="result-stats" hidden aria-label="今回の記録と自己ベスト">
+      <strong id="record-status"></strong>
+      <p id="contact-totals"></p>
+      <p id="type-counts"></p>
+      <p id="best-comparison"></p>
+      <p id="storage-status"></p>
+    </section>
+    <details class="rules"><summary>接触タイプ・SPECIAL条件 / Dキー：DEBUG切替</summary>
+      <p>緑 BOOST：前進加速 / 青 BOUNCE：打ち上げ / 赤 BRAKE：減速 / 黄 ANGLE：軌道変更 / 橙 DASH：強加速 / 紫 GUARD：悪影響を1回防ぐ / 濃赤 STOPPER：強減速</p>
+      <p id="special-rules"></p>
+      <p>SPECIAL中は接触地点で一時停止。クリック・タップ・Enterで成功、時間切れで通常効果。UP・DOWNは受付中に使用できません。GUARDはBRAKE・STOPPERを優先して無効化します。</p>
+      <p>DEBUGは7種を一定間隔で順に配置します。一度でもDEBUGを使ったプレイは記録対象外。OFFに戻してRETRYすると通常の記録対象に戻ります。</p>
+    </details>
   </main>
 </body>
 </html>

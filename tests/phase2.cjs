@@ -66,7 +66,7 @@ for (let x = 0; x < 100000; x += 300) {
   assert(generated.objects.length < 12);
   for (const o of generated.objects) { assert(o.x >= x - c.objectBehind); types.add(o.type); }
 }
-assert.equal(types.size, 3);
+assert.equal(types.size, 7); // Phase 3 extends the same generator; retain all regression checks.
 
 let runs = 0, longest = 0, maxDistance = 0;
 for (let seed = 1; seed <= 80; seed++) {
@@ -121,3 +121,4 @@ assert.equal(input.state, 'AIM_ANGLE'); assert.equal(element('final').textConten
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const [, file] of html.matchAll(/(?:src|href)="([^"]+)"/g)) assert(fs.existsSync(path.join(root, file)));
 console.log(JSON.stringify({ runs, longestPassiveSeconds: longest, maxPassiveMeters: maxDistance, fpsAgreement: true, effects: '3 types; swept collision; single use', input: 'UP limit; DOWN cooldown; touch click; Space focus and repeat', retry: 'pass', pathsAndScripts: 'pass' }, null, 2));
+module.exports = { scope, element, document, launch, random };
