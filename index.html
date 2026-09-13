@@ -3,18 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HOP / DISTANCE — 発射ゲーム</title>
+  <title>勇者のホップ街道 | HOP / DISTANCE</title>
+  <meta name="description" content="角度とパワーを決めて勇者をひとっ飛び。街道の仲間とSPECIALで飛距離に挑戦する軽量ブラウザゲーム。">
   <link rel="stylesheet" href="css/style.css">
   <script defer src="js/config.js"></script>
   <script defer src="js/physics.js"></script>
   <script defer src="js/game.js"></script>
+  <script defer src="js/graphics.js"></script>
   <script defer src="js/ui.js"></script>
   <script defer src="js/input.js"></script>
   <script defer src="js/main.js"></script>
 </head>
 <body>
   <main>
-    <header><div class="brand">HOP <span>/</span> DISTANCE</div><span class="edition">LAUNCH EXPERIMENT · 03</span></header>
+    <header><div><div class="brand">勇者のホップ街道</div><p class="subtitle">角度を決めて、仲間の力で、どこまでも。</p></div><div class="header-meta"><span class="edition">公開版 v0.1 · HOP / DISTANCE</span><strong id="best-summary">BEST 0.0 m</strong></div></header>
     <section class="readouts" aria-label="フライトデータ">
       <div><span>STATE / 状態</span><strong id="state">READY</strong></div>
       <div><span>ANGLE / 発射角</span><strong id="angle">—</strong></div>
@@ -31,10 +33,11 @@
       <span id="debug-status" hidden>DEBUG</span>
     </div>
     <div class="stage" id="stage">
-      <canvas id="canvas" width="1280" height="720" aria-label="図形キャラクターを発射するゲーム。下のボタンでも操作できます。"></canvas>
+      <canvas id="canvas" width="1280" height="720" aria-label="勇者が草原の街道を飛ぶゲーム。画面タップまたは下のボタンで操作できます。"></canvas>
+      <div id="aim-display" class="aim-display" hidden><strong id="aim-title"></strong><div class="aim-track"><div id="aim-fill"></div></div></div>
       <div class="overlay" id="overlay">
         <p class="eyebrow" id="overlay-label">ONE LAUNCH. HOW FAR?</p>
-        <h1 id="overlay-title">遠くへ、もう一跳び。</h1>
+        <h1 id="overlay-title">勇者、空の旅へ！</h1>
         <p id="overlay-detail">角度とパワーを決めて、飛距離に挑戦。</p>
         <button id="overlay-action" type="button">START →</button>
       </div>
@@ -47,7 +50,7 @@
       </div>
     </div>
     <footer>
-      <div><p id="hint" aria-live="polite">START または画面をタップして開始</p><small>飛行中：CLICK / TAP = UP · SPACE / DOWNボタン = DOWN</small></div>
+      <div class="control-hint"><p id="hint" aria-live="polite">START または画面をタップして開始</p><small>空中：タップでUP ／ SpaceでDOWN<br>SPECIAL!が出たら、1秒以内にタップかEnter！</small></div>
       <button id="down-action" type="button" hidden>DOWN ↓</button>
       <button id="action" type="button">START →</button>
     </footer>
@@ -55,16 +58,23 @@
     <p class="history" id="history">CONTACT / —</p>
     <section id="result-stats" class="result-stats" hidden aria-label="今回の記録と自己ベスト">
       <strong id="record-status"></strong>
+      <div class="result-grid">
+        <div><span>FINAL DISTANCE / 飛距離</span><strong id="result-distance"></strong></div>
+        <div><span>BEST DISTANCE / 自己ベスト</span><strong id="result-best"></strong></div>
+        <div><span>MAX HEIGHT / 最高高度</span><strong id="result-height"></strong></div>
+        <div><span>MAX SPEED / 最高速度</span><strong id="result-speed"></strong></div>
+      </div>
       <p id="contact-totals"></p>
       <p id="type-counts"></p>
       <p id="best-comparison"></p>
       <p id="storage-status"></p>
     </section>
-    <details class="rules"><summary>接触タイプ・SPECIAL条件 / Dキー：DEBUG切替</summary>
-      <p>緑 BOOST：前進加速 / 青 BOUNCE：打ち上げ / 赤 BRAKE：減速 / 黄 ANGLE：軌道変更 / 橙 DASH：強加速 / 紫 GUARD：悪影響を1回防ぐ / 濃赤 STOPPER：強減速</p>
+    <details class="rules"><summary>遊び方・仲間の効果・SPECIAL条件</summary>
+      <ol><li>STARTで出発。往復する角度をタップで決定。</li><li>パワーをタップで決定すると、架空のトラックが勇者をコミカルにひとっ飛び。</li><li>空中のタップかUPボタンで上昇（3回まで）。SpaceかDOWNボタンで急降下（クールダウンあり）。</li><li>SPECIAL!が出たらタップかEnter。停止したら記録を確認してRETRY！</li></ol>
+      <p>魔法使い（BOOST）：爆風で前進 / 武闘家（BOUNCE）：蹴り上げ / 遊び人（BRAKE）：大ボケで減速 / 盗賊（ANGLE）：フックで軌道変更 / 戦士（DASH）：猛突進 / 賢者（GUARD）：結界を付与 / 僧侶（STOPPER）：聖なる制止</p>
       <p id="special-rules"></p>
       <p>SPECIAL中は接触地点で一時停止。クリック・タップ・Enterで成功、時間切れで通常効果。UP・DOWNは受付中に使用できません。GUARDはBRAKE・STOPPERを優先して無効化します。</p>
-      <p>DEBUGは7種を一定間隔で順に配置します。一度でもDEBUGを使ったプレイは記録対象外。OFFに戻してRETRYすると通常の記録対象に戻ります。</p>
+      <details><summary>開発用：DキーでDEBUG切替</summary><p>DEBUGは7種を一定間隔で順に配置します。一度でもDEBUGを使ったプレイは記録対象外。OFFに戻してRETRYすると通常の記録対象に戻ります。商人（SPECIAL ONLY）は描画定義のみ準備済みで、通常出現しません。</p></details>
     </details>
   </main>
 </body>
