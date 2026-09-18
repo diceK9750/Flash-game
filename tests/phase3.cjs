@@ -4,9 +4,14 @@ const { scope, element, document, launch, random } = require('./phase2.cjs');
 const { Game, CONFIG: c } = scope.Hop;
 let writes = 0, saved = null;
 scope.localStorage = { getItem() { return saved; }, setItem(key, value) { assert.equal(key, c.storageKey); writes++; saved = value; } };
-function contact(game, type, vx = 500, vy = -100, x = 500) {
+function contact(game, type, vx = 500, vy = -100, x = 500, eligible = false) {
   Object.assign(game.body, { x, y: 10, vx, vy, grounded: false, stopped: false });
-  game.objects = [{ x, type, used: false }]; game.nextObjectX = Infinity;
+  game.objects = [{ x, type, used: false }]; game.nextObjectX = Infinity; game.nextBoundaryX = Infinity;
+  if (eligible) {
+    const rule = c.specials[type];
+    if (rule.partner) game.objects.push({ x: x + 300, type: rule.partner, used: false });
+    else game.specialArmed[rule.trigger] = true;
+  }
   game.contactObjects({ x: x - 70, y: 10, vx, vy });
 }
 assert(Math.abs(Object.values(c.objectWeights).reduce((a, b) => a + b, 0) - 1) < 1e-10);
@@ -34,7 +39,7 @@ for (const harmful of ['BRAKE', 'STOPPER']) {
   assert.equal(game.special, null); assert.equal(game.specialCount, 0);
   assert(game.history.at(-1).label.includes('GUARDED'));
 }
-const scenarios = { STOPPER: [800, -100, 500], BOUNCE: [500, -100, 2000], DASH: [300, -100, 500] };
+const scenarios = { BOOST: [500, -100, 500, true], STOPPER: [800, -100, 500, true], BOUNCE: [500, -100, 2000, true], DASH: [300, -100, 500, true] };
 let specialChecks = 0;
 for (const [type, args] of Object.entries(scenarios)) {
   for (const fps of [30, 60, 120, 144]) {
@@ -46,7 +51,8 @@ for (const [type, args] of Object.entries(scenarios)) {
       game.update(1 / fps); assert.equal(game.body.x, pos); assert.equal(game.body.vx, vx);
       if (success) {
         game.act(); assert.equal(game.specialSuccesses, 1); assert.equal(game.upRemaining, remaining);
-        assert(game.body.vx >= c.specials[type].vx); assert(game.body.vy >= c.specials[type].vy);
+        assert(Math.abs(Math.hypot(game.body.vx, game.body.vy) - c.specials[type].speed) < 1e-9);
+        assert(Math.abs(Math.atan2(game.body.vy, game.body.vx) * 180 / Math.PI - c.specials[type].angle) < 1e-9);
         assert.equal(game.history[0].label, type + ' SPECIAL'); assert(game.flash > 0); assert(game.specialTrail > 0);
       } else {
         for (let frame = 1; frame < Math.ceil(c.specialWindow * fps); frame++) game.update(1 / fps);
@@ -55,6 +61,7 @@ for (const [type, args] of Object.entries(scenarios)) {
         if (type === 'STOPPER') assert(game.body.vx <= vx * c.stopperRetention + 1e-6);
       }
       assert.equal(game.resolveSpecial(true), false);
+      game.objects = []; // Isolate the already-checked source from subsequent ordinary partner contact.
       for (let i = 0; i < 14400 && game.state === 'FLYING'; i++) game.update(c.physicsStep);
       assert.equal(game.state, 'RESULT'); assert.equal(game.history.length, 1);
       assert.equal(game.counts[type], 1); assert.equal(game.specialCount, 1);
@@ -62,12 +69,10 @@ for (const [type, args] of Object.entries(scenarios)) {
     }
   }
 }
-// Thresholds are inclusive and deterministic; below/above thresholds stays ordinary.
-for (const [type, vx, vy, x, expected] of [
-  ['STOPPER', 700, 0, 500, true], ['STOPPER', 699, 0, 500, false],
-  ['BOUNCE', 500, 0, 1600, true], ['BOUNCE', 500, 0, 1599, false],
-  ['DASH', 400, 0, 500, true], ['DASH', 401, 0, 500, false]
-]) { const game = launch(); contact(game, type, vx, vy, x); assert.equal(!!game.special, expected); }
+// Old speed/distance thresholds alone no longer start SPECIAL.
+for (const [type, vx, vy, x] of [
+  ['STOPPER', 1500, 0, 500], ['BOUNCE', 500, 0, 16000], ['DASH', 1, 0, 500]
+]) { const game = launch(); contact(game, type, vx, vy, x); assert.equal(game.special, null); }
 
 const input = launch(); contact(input, 'STOPPER', ...scenarios.STOPPER);
 const ui = new scope.Hop.UI(input, element('canvas')); scope.Hop.bindInput(input, ui); ui.update(); ui.draw();

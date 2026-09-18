@@ -35,12 +35,20 @@ Hop.CONFIG = Object.freeze({
   dashHorizontal: 900, dashVertical: 90, stopperRetention: 0.06,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
   specialTrailDuration: 1.2,
-  // Conditions use px/s or meters. Success effects set minimum velocities.
+  // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({
-    STOPPER: Object.freeze({ metric: "speed", min: 700, vx: 1900, vy: 900 }),
-    BOUNCE: Object.freeze({ metric: "distance", min: 200, vx: 1150, vy: 1450 }),
-    DASH: Object.freeze({ metric: "horizontal", max: 400, vx: 1650, vy: 220 })
+    BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),
+    BOUNCE: Object.freeze({ trigger: "adjacent", partner: "BOOST", speed: 1700, angle: 60, name: "連天蹴り" }),
+    DASH: Object.freeze({ trigger: "dash", speed: 2000, angle: 25, name: "戦陣突破" }),
+    STOPPER: Object.freeze({ trigger: "stopper", speed: 2300, angle: 35, name: "聖光反転" })
   }),
+  boundaryMeters: 100, boundaryClearance: 140, merchantZoneMeters: 10,
+  merchantTypes: Object.freeze({ STOPPER: "A", DASH: "B", BOOST: "C", BOUNCE: "D" }),
+  merchantNames: Object.freeze({ A: "倍化の秘薬", B: "蓄光の護符", C: "浮遊の絨毯", D: "弾跳の靴" }),
+  typeAUses: 3, typeAMultiplier: 2,
+  typeBMaxCharge: 10, typeBBaseSpeed: 650, typeBChargeBonus: 115, typeBAngle: 40,
+  typeCCount: 100, typeCSpeed: 1600, typeCHeight: 190,
+  typeDBounces: 5, typeDMultiplier: 1.2, typeDMinVertical: 450,
   debugGap: 600, debugFirst: 400,
   storageKey: "hop-distance-best-v1"
 });

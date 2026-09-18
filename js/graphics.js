@@ -167,6 +167,19 @@ Hop.Graphics = {
     if (g.state === "FLYING" && !visual.reducedMotion) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)));
     this.character(ctx, "HERO", 0, c.playerRadius, 0.936); ctx.restore();
     if (g.guard) { ctx.strokeStyle = "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, 39, 0, Math.PI * 2); ctx.stroke(); }
+    if (g.merchantVisual) {
+      // Merchant is an overlay participant, never a generated collision object.
+      const mx = Math.max(90, Math.min(c.width - 100, x + 105));
+      this.character(ctx, "SPECIAL_ONLY", mx, y + 20, 1.25);
+      const lift = visual.reducedMotion ? 25 : 25 + (1 - Math.min(1, g.merchantVisual.remaining / c.specialMessageDuration)) * 20;
+      this.circle(ctx, mx + 35, y - lift, 12, "#ffd867");
+      ctx.font = "bold 23px system-ui"; ctx.fillStyle = "#654417";
+      ctx.fillText(`Type ${g.merchantVisual.type}`, mx - 30, y - 110);
+    }
+    if (g.merchant?.type === "C") this.line(ctx, [[x - 45, y + 23], [x + 40, y + 23]], "#bc7641", 8);
+    if (g.effect?.label === "BOUND BOOST") {
+      ctx.strokeStyle = "#e4a542"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(x, y, 47, 0, Math.PI * 2); ctx.stroke();
+    }
     if (prelaunch) {
       const a = -g.angle * Math.PI / 180;
       ctx.save(); ctx.translate(x, y - 25); ctx.rotate(a);

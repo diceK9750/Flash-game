@@ -15,6 +15,7 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .readouts strong { font-size: clamp(14px, 1.7vw, 22px); font-variant-numeric: tabular-nums; white-space: nowrap; }
 #distance { color: #287548; }
 .aerial-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 12px; margin: 0 0 12px; }
+.special-state { font-size: 12px; color: #73521b; margin: -4px 0 10px; overflow-wrap: anywhere; }
 #up-status { color: #28623e; }
 #guard-status { color: #744299; }
 #debug-status { color: #833b30; margin-left: auto; font-size: 11px; border: 1px dashed; padding: 2px 6px; }

@@ -16,11 +16,15 @@ Hop.Game = class {
     this.upRemaining = Hop.CONFIG.aerialUpUses;
     this.downCooldown = 0; this.effect = null; this.contact = null;
     this.guard = 0; this.special = null; this.specialMessage = null;
+    this.specialArmed = { dash: false, stopper: false };
+    this.merchant = null; this.merchantVisual = null;
+    this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
     this.history = []; this.counts = Object.fromEntries(Object.keys(Hop.CONFIG.objectWeights).map(type => [type, 0]));
     this.specialCount = 0; this.specialSuccesses = 0;
     this.debugUsed = this.debug; this.newRecords = []; this.debugIndex = 0;
     this.objects = [];
+    this.nextBoundaryX = Hop.CONFIG.boundaryMeters * Hop.CONFIG.pixelsPerMeter;
     this.nextObjectX = this.debug ? Hop.CONFIG.debugFirst : this.randomBetween(Hop.CONFIG.objectFirstMin, Hop.CONFIG.objectFirstMax);
     this.generateObjects();
   }
@@ -50,6 +54,8 @@ Hop.Game = class {
     if (this.state !== Hop.STATES.RESULT) this.debugUsed = true;
     // Rebuild only future objects; switching OFF cannot make this run eligible.
     this.objects = []; this.debugIndex = 0;
+    const boundary = Hop.CONFIG.boundaryMeters * Hop.CONFIG.pixelsPerMeter;
+    this.nextBoundaryX = (Math.floor(this.body.x / boundary) + 1) * boundary;
     this.nextObjectX = this.body.x + (this.debug ? Hop.CONFIG.debugFirst : this.randomBetween(Hop.CONFIG.objectFirstMin, Hop.CONFIG.objectFirstMax));
     this.generateObjects();
   }
@@ -62,7 +68,7 @@ Hop.Game = class {
     this.maxSpeed = Math.max(this.maxSpeed, Math.hypot(b.vx, b.vy));
   }
   aerial(direction) {
-    if (this.special || !this.airborne()) return false;
+    if (this.special || this.merchant?.type === "C" || !this.airborne()) return false;
     const c = Hop.CONFIG;
     if (direction === "UP") {
       if (this.upRemaining <= 0) return false;
@@ -81,13 +87,26 @@ Hop.Game = class {
     const c = Hop.CONFIG;
     const entries = Object.entries(c.objectWeights);
     const total = entries.reduce((sum, entry) => sum + entry[1], 0);
-    while (this.nextObjectX < this.body.x + c.objectAhead) {
+    const pickType = () => {
       let choice = this.random() * total;
-      const type = this.debug ? entries[this.debugIndex++ % entries.length][0] : entries.find(([, weight]) => (choice -= weight) < 0)?.[0] || entries[entries.length - 1][0];
-      this.objects.push({ x: this.nextObjectX, type, used: false });
+      return entries.find(([, weight]) => (choice -= weight) < 0)?.[0] || entries[entries.length - 1][0];
+    };
+    const boundary = c.boundaryMeters * c.pixelsPerMeter;
+    if (!this.debug) {
+      while (this.nextBoundaryX < this.body.x + c.objectAhead) {
+        this.objects.push({ x: this.nextBoundaryX, type: pickType(), used: false, boundary: true });
+        this.nextBoundaryX += boundary;
+      }
+    }
+    while (this.nextObjectX < this.body.x + c.objectAhead) {
+      const nearestBoundary = Math.max(1, Math.round(this.nextObjectX / boundary)) * boundary;
+      if (this.debug || Math.abs(this.nextObjectX - nearestBoundary) >= c.boundaryClearance) {
+        const type = this.debug ? entries[this.debugIndex++ % entries.length][0] : pickType();
+        this.objects.push({ x: this.nextObjectX, type, used: false });
+      }
       this.nextObjectX += Math.max(1, this.debug ? c.debugGap : this.randomBetween(c.objectGapMin, c.objectGapMax));
     }
-    this.objects = this.objects.filter(object => object.x >= this.body.x - c.objectBehind);
+    this.objects = this.objects.filter(object => object.x >= this.body.x - c.objectBehind).sort((a, b) => a.x - b.x);
   }
   // Sweep the player's centre against an expanded box. This detects crossings
   // even when a fast player traverses the whole object in one physics step.
@@ -110,7 +129,7 @@ Hop.Game = class {
   }
   contactObjects(previous) {
     const c = Hop.CONFIG, b = this.body;
-    if (this.special) return;
+    if (this.special || this.merchant?.type === "C") return;
     for (const object of this.objects) {
       if (object.used || !this.touches(object, previous)) continue;
       object.used = true; // Single use per run, including a later re-entry.
@@ -118,21 +137,54 @@ Hop.Game = class {
       const entry = { type: object.type, label: object.type };
       this.history.push(entry);
       this.contact = { label: object.type, remaining: c.contactDuration };
-      if (this.guard && (object.type === "BRAKE" || object.type === "STOPPER")) {
-        this.guard = 0; entry.label += " (GUARDED)";
-        this.contact.label = `${object.type} / GUARD BLOCK`; continue;
-      }
       const rule = c.specials[object.type];
-      const metrics = { speed: Math.hypot(previous.vx ?? b.vx, previous.vy ?? b.vy), horizontal: previous.vx ?? b.vx, distance: b.x / c.pixelsPerMeter };
-      if (rule && metrics[rule.metric] >= (rule.min ?? -Infinity) && metrics[rule.metric] <= (rule.max ?? Infinity)) {
-        this.special = { type: object.type, remaining: c.specialWindow, entry };
-        this.specialCount++; break;
+      const partner = this.objects.filter(o => !o.used && o.x > object.x).sort((a, z) => a.x - z.x)[0];
+      const eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner : this.specialArmed[rule.trigger]);
+      const spacing = c.boundaryMeters * c.pixelsPerMeter;
+      const atBoundary = object.x > 0 && Math.abs(object.x / spacing - Math.round(object.x / spacing)) < 1e-9;
+      const inZone = b.x >= object.x - c.merchantZoneMeters * c.pixelsPerMeter && previous.x <= object.x;
+      const merchantType = this.guard && atBoundary && inZone ? c.merchantTypes[object.type] : null;
+      this.updateSpecialArming(object.type);
+      if (merchantType || eligible) {
+        this.special = { type: object.type, merchantType, partner: eligible && rule.trigger === "adjacent" ? partner : null, remaining: c.specialWindow, entry };
+        this.specialArmed.dash = false;
+        if (merchantType) {
+          this.merchantStats.attempts++;
+          this.merchantVisual = { type: merchantType, remaining: c.specialWindow + c.specialMessageDuration };
+        } else this.specialCount++;
+        break;
       }
-      this.applyContact(object.type);
+      this.normalContact(object.type, entry);
+    }
+  }
+  updateSpecialArming(type) {
+    const armed = this.specialArmed;
+    if (["BOOST", "BOUNCE", "STOPPER"].includes(type)) armed.dash = false;
+    if (type === "DASH") armed.dash = true;
+    if (["BOOST", "BOUNCE", "DASH"].includes(type)) armed.stopper = true;
+    if (["GUARD", "STOPPER"].includes(type)) armed.stopper = false;
+  }
+  normalContact(type, entry) {
+    if (this.guard && ["BRAKE", "STOPPER"].includes(type)) {
+      this.guard = 0;
+      if (entry) entry.label += " (GUARDED)";
+      this.contact = { label: `${type} / GUARD BLOCK`, remaining: Hop.CONFIG.contactDuration };
+    } else this.applyContact(type);
+  }
+  // Boost the positive change, never multiply the whole current velocity.
+  characterAcceleration(before) {
+    const b = this.body, c = Hop.CONFIG;
+    if (this.merchant?.type === "A") {
+      b.vx += Math.max(0, b.vx - before.vx) * (c.typeAMultiplier - 1);
+      b.vy += Math.max(0, b.vy - before.vy) * (c.typeAMultiplier - 1);
+      if (--this.merchant.remaining === 0) this.merchant = null;
+    } else if (this.merchant?.type === "B") {
+      this.merchant.charge = Math.min(c.typeBMaxCharge, this.merchant.charge + 1);
     }
   }
   applyContact(type) {
     const c = Hop.CONFIG, b = this.body;
+    const before = { vx: b.vx, vy: b.vy };
     if (type === "BOOST") b.vx += c.boostHorizontal;
     if (type === "BOUNCE") { b.vx += c.bounceHorizontal; b.vy = Math.max(b.vy, c.bounceVertical); b.grounded = false; }
     if (type === "BRAKE") b.vx *= c.brakeRetention;
@@ -144,20 +196,82 @@ Hop.Game = class {
     }
     if (type === "DASH") { b.vx += c.dashHorizontal; b.vy = Math.max(b.vy, c.dashVertical); b.grounded = false; }
     if (type === "GUARD") this.guard = 1;
+    if (["BOOST", "BOUNCE", "DASH"].includes(type)) this.characterAcceleration(before);
     b.stopped = false; this.limitSpeed();
+    if (type === "STOPPER" && b.vx <= c.stopSpeed) this.revive();
+  }
+  launchVector(speed, angle) {
+    const radians = angle * Math.PI / 180;
+    this.body.vx = speed * Math.cos(radians); this.body.vy = speed * Math.sin(radians);
+    this.body.grounded = false; this.body.stopped = false;
+  }
+  acquireMerchant(type) {
+    const c = Hop.CONFIG;
+    // A single object ensures replacement discards every previous counter.
+    this.merchant = type === "A" ? { type, remaining: c.typeAUses } : type === "B" ? { type, charge: 0 } :
+      type === "C" ? { type, remaining: c.typeCCount, height: c.typeCHeight } : { type, remaining: c.typeDBounces };
+    this.merchantStats.lastType = type;
+    if (type === "C") {
+      Object.assign(this.body, { y: c.typeCHeight, vx: c.typeCSpeed, vy: 0, grounded: false, stopped: false });
+      this.limitSpeed(); this.maxHeight = Math.max(this.maxHeight, this.body.y);
+    }
+  }
+  revive() {
+    if (this.merchant?.type !== "B" || this.merchant.charge < 1) return false;
+    const c = Hop.CONFIG, charge = this.merchant.charge;
+    this.merchant = null; this.merchantStats.revives++;
+    this.launchVector(c.typeBBaseSpeed + charge * c.typeBChargeBonus, c.typeBAngle); this.limitSpeed();
+    this.specialMessage = { label: "TYPE B / 再出発！", remaining: c.specialMessageDuration };
+    return true;
+  }
+  groundImpact(impact) {
+    this.specialArmed.stopper = false;
+    if (this.merchant?.type !== "D") return;
+    const c = Hop.CONFIG;
+    this.body.vx = impact.vx * c.typeDMultiplier;
+    this.body.vy = Math.max(c.typeDMinVertical, -impact.vy * c.typeDMultiplier);
+    this.body.grounded = false; this.body.stopped = false; this.limitSpeed();
+    this.effect = { label: "BOUND BOOST", remaining: c.effectDuration };
+    if (--this.merchant.remaining === 0) this.merchant = null;
+  }
+  floatStep(dt) {
+    const c = Hop.CONFIG, b = this.body, effect = this.merchant, beforeX = b.x;
+    b.vx = Math.min(c.typeCSpeed, c.maxHorizontalSpeed); b.vy = 0; b.y = effect.height;
+    b.x += b.vx * dt;
+    for (const object of this.objects) {
+      if (object.x <= beforeX || object.x > b.x) continue;
+      object.used = true; effect.remaining--;
+      if (effect.remaining === 0) {
+        b.x = object.x; this.merchant = null;
+        this.applyContact("BOOST"); // One exit impulse; no contact/history/arming event.
+        break;
+      }
+    }
   }
   resolveSpecial(success) {
     if (!this.special) return false;
     const pending = this.special, c = Hop.CONFIG;
     this.special = null;
+    this.specialArmed.dash = false;
     if (success) {
-      const rule = c.specials[pending.type];
-      this.body.vx = Math.max(this.body.vx, rule.vx); this.body.vy = Math.max(this.body.vy, rule.vy);
-      this.body.grounded = false; this.body.stopped = false; this.limitSpeed();
-      this.specialSuccesses++; pending.entry.label = `${pending.type} SPECIAL`;
+      if (pending.merchantType) {
+        this.guard = 0; this.merchantStats.successes++;
+        this.acquireMerchant(pending.merchantType);
+        pending.entry.label = `${pending.type} / MERCHANT TYPE ${pending.merchantType}`;
+      } else {
+        const rule = c.specials[pending.type], before = { vx: this.body.vx, vy: this.body.vy };
+        this.launchVector(rule.speed, rule.angle); this.characterAcceleration(before); this.limitSpeed();
+        this.specialSuccesses++; pending.entry.label = `${pending.type} SPECIAL`;
+        if (pending.partner) pending.partner.used = true;
+      }
       this.flash = c.specialFlashDuration; this.specialTrail = c.specialTrailDuration;
-    } else this.applyContact(pending.type);
-    this.specialMessage = { label: success ? "SPECIAL SUCCESS" : "SPECIAL MISS", remaining: c.specialMessageDuration };
+      this.contact = { label: pending.type, remaining: c.contactDuration };
+    } else this.normalContact(pending.type, pending.entry);
+    this.specialMessage = {
+      label: success ? "SPECIAL SUCCESS" : "SPECIAL MISS",
+      detail: pending.merchantType ? `商人 Type ${pending.merchantType} / ${c.merchantNames[pending.merchantType]}` : c.specials[pending.type].name,
+      remaining: c.specialMessageDuration
+    };
     return true;
   }
   act() {
@@ -178,7 +292,7 @@ Hop.Game = class {
     const dt = Math.max(0, Math.min(deltaTime, c.maxFrameDelta));
     this.phaseTime += dt;
     this.flash = Math.max(0, this.flash - dt); this.specialTrail = Math.max(0, this.specialTrail - dt);
-    for (const key of ["effect", "contact", "specialMessage"]) {
+    for (const key of ["effect", "contact", "specialMessage", "merchantVisual"]) {
       if (this[key]) { this[key].remaining -= dt; if (this[key].remaining <= 0) this[key] = null; }
     }
     // Triangle waves: a full period includes both outbound and return sweeps.
@@ -200,13 +314,17 @@ Hop.Game = class {
       if (this.downCooldown < 1e-9) this.downCooldown = 0;
       this.generateObjects();
       const previous = { x: this.body.x, y: this.body.y, vx: this.body.vx, vy: this.body.vy };
-      Hop.Physics.step(this.body, c.physicsStep);
-      this.contactObjects(previous);
+      if (this.merchant?.type === "C") this.floatStep(c.physicsStep);
+      else {
+        const impact = Hop.Physics.step(this.body, c.physicsStep);
+        if (impact) this.groundImpact(impact);
+        this.contactObjects(previous);
+      }
       this.accumulator -= c.physicsStep;
       this.maxHeight = Math.max(this.maxHeight, this.body.y);
       this.maxSpeed = Math.max(this.maxSpeed, Math.hypot(this.body.vx, this.body.vy));
       if (this.body.stopped && !this.special) {
-        this.finish(); break;
+        if (!this.revive()) { this.finish(); break; }
       }
     }
     const follow = 1 - Math.exp(-c.cameraFollowRate * dt);

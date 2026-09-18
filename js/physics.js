@@ -24,11 +24,13 @@ Hop.Physics = {
     body.x += body.vx * dt;
     body.y += body.vy * dt;
     if (body.y <= 0 && body.vy < 0) {
+      const impact = { vx: body.vx, vy: body.vy };
       body.y = 0;
       body.vy = -body.vy * c.restitution;
       body.vx *= c.bounceHorizontalRetention;
       body.bounces += 1;
       if (body.vy < c.settleBounceSpeed) { body.vy = 0; body.grounded = true; }
+      return impact; // Exactly one event on entry, never repeated while rolling.
     }
   }
 };
