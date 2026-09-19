@@ -1,20 +1,10 @@
 // No dependencies. --serve provides an optional localhost/subpath QA preview.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-const hashes = {
-  'input.js': 'ea171fc2472efeb7e0199f7a00f6010a2e0402c6e9df7bc56dedc6881569364d'
-};
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 if (!process.argv.includes('--serve')) {
-  require('./specials.cjs');
+  require('./controls.cjs');
   const { scope, element, launch } = require('./phase2.cjs');
-  for (const [file, expected] of Object.entries(hashes)) {
-    // Input remains byte-for-byte unchanged. Formal SPECIAL intentionally changes
-    // config/game and adds a return event to physics; check retained values below.
-    const bytes = fs.readFileSync(path.join(root, 'js', file));
-    const digest = require('node:crypto').createHash('sha256').update(bytes).digest('hex');
-    assert.equal(digest, expected, `${file}: intentional logic changes require a new reviewed baseline`);
-  }
   assert.equal(scope.Hop.CONFIG.specialWindow, 1.0);
   const baseline = {
     launchSpeed: 1250, angleMin: 10, angleMax: 70, angleDefault: 40, anglePeriod: 2.4,
@@ -26,8 +16,6 @@ if (!process.argv.includes('--serve')) {
     maxHorizontalSpeed: 2000, maxVerticalSpeed: 1500,
     objectFirstMin: 400, objectFirstMax: 650, objectGapMin: 420, objectGapMax: 850,
     objectWidth: 54, objectHeight: 64, playerRadius: 18,
-    boostHorizontal: 460, bounceHorizontal: 140, bounceVertical: 780, brakeRetention: 0.25,
-    angleDegrees: 35, angleSpeedRetention: 1, dashHorizontal: 900, dashVertical: 90, stopperRetention: 0.06,
     storageKey: 'hop-distance-best-v1', debugGap: 600, debugFirst: 400
   };
   for (const [key, value] of Object.entries(baseline)) assert.equal(scope.Hop.CONFIG[key], value, key);
@@ -54,43 +42,11 @@ if (!process.argv.includes('--serve')) {
     game.acquireMerchant(type); game.merchantVisual = { type, remaining: 1 };
     ui.update(); const before = JSON.stringify(game); ui.draw(); assert.equal(JSON.stringify(game), before);
   }
-  console.log('Release PASS: retained physics/contact config, unchanged input hash, 1.0s, 9 silhouettes, merchant draw purity, states, relative paths.');
+  console.log('Release PASS: retained physics/contact config, pointer-only input, 1.0s, 9 silhouettes, merchant draw purity, states, relative paths.');
 } else {
   const http = require('node:http');
   const allowed = new Set(['index.html', 'css/style.css', ...fs.readdirSync(path.join(root, 'js')).map(f => 'js/' + f)]);
-  const qa = `<script>
-  const game = new Hop.Game(); game.debug = true; game.debugUsed = true;
-  const ui = new Hop.UI(game, document.getElementById('canvas')); Hop.bindInput(game, ui);
-  const panel = document.createElement('section'); panel.style='padding:12px;display:flex;gap:8px;flex-wrap:wrap';
-  document.querySelector('main').prepend(panel);
-  let paused = false;
-  const pause = document.createElement('button'); pause.textContent = 'QA 一時停止';
-  pause.onclick = () => { paused = !paused; pause.textContent = paused ? 'QA 再生' : 'QA 一時停止'; }; panel.append(pause);
-  for (const scenario of ['BOOST','BOUNCE','DASH','STOPPER','商人 A','商人 B','商人 C','商人 D']) {
-    const button = document.createElement('button'); button.textContent = 'QA ' + scenario;
-    button.onclick = () => {
-      paused = true; pause.textContent = 'QA 再生';
-      game.reset(); game.debugUsed = true; game.state = Hop.STATES.FLYING;
-      const merchant = scenario.startsWith('商人'), target = scenario.slice(-1);
-      const type = merchant ? {A:'STOPPER',B:'DASH',C:'BOOST',D:'BOUNCE'}[target] : scenario;
-      const x = merchant ? 800 : 500;
-      Object.assign(game.body,{x:x-20,y:10,vx:500,vy:-100,grounded:false});
-      game.objects=[{x,type,used:false}]; game.nextObjectX=x+600; game.nextBoundaryX=1600; game.cameraX=x-250;
-      const rule = Hop.CONFIG.specials[type];
-      if (merchant) game.guard = 1;
-      else if (rule.partner) game.objects.push({x:x+300,type:rule.partner,used:false});
-      else game.specialArmed[rule.trigger] = true;
-      game.contactObjects({x:x-70,y:10}); ui.update(); ui.draw();
-    }; panel.append(button);
-  }
-  const result = document.createElement('button'); result.textContent='QA RESULT';
-  result.onclick=()=>{game.special=null;game.finish();ui.update();ui.draw();};panel.append(result);
-  const gallery = document.createElement('canvas'); gallery.width=1080; gallery.height=180; gallery.style='width:100%;background:#fff9e9'; panel.append(gallery);
-  const ctx=gallery.getContext('2d');
-  Object.entries(Hop.CAST).forEach(([id,role],i)=>{Hop.Graphics.character(ctx,id,60+i*120,120);ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillStyle='#284356';ctx.fillText(role.name,60+i*120,150);});
-  let previous=null;
-  function frame(time){game.update(paused||previous===null?0:(time-previous)/1000);previous=time;ui.update();ui.draw();requestAnimationFrame(frame);} requestAnimationFrame(frame);
-  </script>`;
+  const qa = '<script>' + fs.readFileSync(path.join(__dirname, 'qa.js'), 'utf8') + '</script>';
   http.createServer((req, res) => {
     const prefix = '/NANACACRASH/';
     if (!req.url.startsWith(prefix)) { res.writeHead(404); res.end(); return; }

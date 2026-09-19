@@ -16,7 +16,7 @@ function element(id) {
 const document = { getElementById: element, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; } };
 const scope = { document, requestAnimationFrame() {} }; scope.window = scope;
 vm.createContext(scope);
-for (const name of ['config', 'physics', 'game', 'graphics', 'ui', 'input', 'main']) {
+for (const name of ['config', 'physics', 'game', 'graphics', 'ui', 'audio', 'input', 'main']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), scope, { filename: name });
 }
 const { Game, CONFIG: c } = scope.Hop;
@@ -46,8 +46,8 @@ for (const type of ['BOOST', 'BOUNCE', 'BRAKE']) {
   Object.assign(game.body, { x: 600, y: 10, vx: 500, vy: -100 });
   game.contactObjects({ x: 400, y: 10 }); // one segment crosses the whole box
   assert(game.objects[0].used); assert.equal(game.contact.label, type);
-  if (type === 'BOOST') assert.equal(game.body.vx, 500 + c.boostHorizontal);
-  if (type === 'BOUNCE') { assert.equal(game.body.vy, c.bounceVertical); assert.equal(game.body.grounded, false); }
+  if (type === 'BOOST') assert.equal(game.body.vx, 500 + c.boostImpulse * Math.cos(Math.PI / 4));
+  if (type === 'BOUNCE') { assert.equal(game.body.vy, -100 + c.boostImpulse * c.bounceImpulseRatio * Math.sin(Math.PI / 3)); assert.equal(game.body.grounded, false); }
   if (type === 'BRAKE') assert.equal(game.body.vx, 500 * c.brakeRetention);
   const velocity = [game.body.vx, game.body.vy];
   game.contactObjects({ x: 400, y: 10 }); assert.deepEqual([game.body.vx, game.body.vy], velocity);
@@ -101,24 +101,13 @@ for (let seed = 1; seed <= 80; seed++) {
 }
 const input = launch(); input.update(1 / 60);
 const ui = new scope.Hop.UI(input, element('canvas')); scope.Hop.bindInput(input, ui);
-const target = { closest: () => null };
-element('stage').listeners.click({ target, pointerType: 'touch' }); assert.equal(input.upRemaining, 2);
-let stoppedPropagation = false;
-element('down-action').listeners.click({ stopPropagation() { stoppedPropagation = true; } });
-assert(stoppedPropagation); assert.equal(input.upRemaining, 2); assert.equal(input.downCooldown, 1.5);
-input.downCooldown = 0;
-let prevented = false;
-document.listeners.keydown({ code: 'Space', repeat: false, target: { closest: () => ({}) }, preventDefault() { prevented = true; } });
-assert(prevented); assert.equal(input.upRemaining, 2); assert.equal(input.downCooldown, 1.5);
-input.downCooldown = 0;
-document.listeners.keydown({ code: 'Space', repeat: true, target, preventDefault() {} }); assert.equal(input.downCooldown, 0);
-ui.update(); ui.draw();
-assert.equal(element('up-status').textContent, 'AERIAL UP × 2');
-for (let i = 0; i < 14400 && input.state === 'FLYING'; i++) { input.update(c.physicsStep); ui.update(); ui.draw(); }
-assert.equal(input.state, 'RESULT');
-element('overlay-action').listeners.click(); ui.draw();
-assert.equal(input.state, 'AIM_ANGLE'); assert.equal(element('final').textContent, '—');
+const pointer = () => element('stage').listeners.pointerdown({button:0,isPrimary:true,preventDefault(){}});
+pointer(); assert.equal(input.upRemaining,3); assert.equal(input.downCooldown,1.5);
+input.body.vy=-100; pointer(); assert.equal(input.upRemaining,2);
+ui.update();ui.draw();
+for(let i=0;i<14400 && input.state==='FLYING';i++){input.update(c.physicsStep);ui.update();ui.draw();}
+assert.equal(input.state,'RESULT'); pointer(); assert.equal(input.state,'AIM_ANGLE');assert.equal(element('final').textContent,'—');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 for (const [, file] of html.matchAll(/(?:src|href)="([^"]+)"/g)) assert(fs.existsSync(path.join(root, file)));
-console.log(JSON.stringify({ runs, longestPassiveSeconds: longest, maxPassiveMeters: maxDistance, fpsAgreement: true, effects: '3 types; swept collision; single use', input: 'UP limit; DOWN cooldown; touch click; Space focus and repeat', retry: 'pass', pathsAndScripts: 'pass' }, null, 2));
+console.log(JSON.stringify({ runs, longestPassiveSeconds: longest, maxPassiveMeters: maxDistance, fpsAgreement: true, effects: '3 types; swept collision; single use', input: 'UP limit; DOWN cooldown; primary pointer; automatic direction', retry: 'pass', pathsAndScripts: 'pass' }, null, 2));
 module.exports = { scope, element, document, launch, random };

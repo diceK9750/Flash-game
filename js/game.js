@@ -15,8 +15,10 @@ Hop.Game = class {
     this.trail = [];
     this.upRemaining = Hop.CONFIG.aerialUpUses;
     this.downCooldown = 0; this.effect = null; this.contact = null;
-    this.guard = 0; this.special = null; this.specialMessage = null;
-    this.specialArmed = { dash: false, stopper: false };
+    this.normalGuard = 0; this.guardSpecial = { active: false, remaining: 0 };
+    this.special = null; this.specialMessage = null;
+    this.specialArmed = { dash: false, stopper: false, brake: false };
+    this.aerialMode = "DOWN"; this.successVisual = null; this.soundEvent = null;
     this.merchant = null; this.merchantVisual = null;
     this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
@@ -60,7 +62,13 @@ Hop.Game = class {
     this.generateObjects();
   }
   randomBetween(min, max) { return min + (max - min) * this.random(); }
-  airborne() { return this.state === Hop.STATES.FLYING && !this.body.grounded && this.body.y > 0; }
+  airborne() { return this.state === Hop.STATES.FLYING && !this.body.stopped && !this.body.grounded && this.body.y > 0; }
+  updateAerialMode() {
+    const threshold = Hop.CONFIG.aerialDirectionThreshold;
+    if (this.body.vy > threshold) this.aerialMode = "DOWN";
+    else if (this.body.vy < -threshold) this.aerialMode = "UP";
+    return this.aerialMode;
+  }
   limitSpeed() {
     const c = Hop.CONFIG, b = this.body;
     b.vx = Math.max(0, Math.min(c.maxHorizontalSpeed, b.vx));
@@ -73,13 +81,16 @@ Hop.Game = class {
     if (direction === "UP") {
       if (this.upRemaining <= 0) return false;
       this.upRemaining--;
+      this.specialArmed.brake = false;
       this.body.vy += c.aerialUpVertical; this.body.vx += c.aerialUpHorizontal;
     } else if (direction === "DOWN") {
       if (this.downCooldown > 0) return false;
       this.downCooldown = c.aerialDownCooldown;
+      this.specialArmed.brake = true;
       this.body.vy -= c.aerialDownVertical; this.body.vx += c.aerialDownHorizontal;
     } else return false;
     this.limitSpeed();
+    this.updateAerialMode();
     this.effect = { label: `AERIAL ${direction}`, remaining: c.effectDuration };
     return true;
   }
@@ -139,34 +150,43 @@ Hop.Game = class {
       this.contact = { label: object.type, remaining: c.contactDuration };
       const rule = c.specials[object.type];
       const partner = this.objects.filter(o => !o.used && o.x > object.x).sort((a, z) => a.x - z.x)[0];
-      const eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner : this.specialArmed[rule.trigger]);
+      const guardAtContact = this.normalGuard;
+      const eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner :
+        rule.trigger === "chance" ? this.random() < c.angleSpecialChance :
+        rule.trigger === "guard" ? guardAtContact && !this.guardSpecial.active : this.specialArmed[rule.trigger]);
       const spacing = c.boundaryMeters * c.pixelsPerMeter;
       const atBoundary = object.x > 0 && Math.abs(object.x / spacing - Math.round(object.x / spacing)) < 1e-9;
       const inZone = b.x >= object.x - c.merchantZoneMeters * c.pixelsPerMeter && previous.x <= object.x;
-      const merchantType = this.guard && atBoundary && inZone ? c.merchantTypes[object.type] : null;
+      const merchantType = (guardAtContact || this.guardSpecial.active) && atBoundary && inZone ? c.merchantTypes[object.type] : null;
+      this.normalGuard = 0; // One contact lifetime; snapshot belongs only to this event.
       this.updateSpecialArming(object.type);
       if (merchantType || eligible) {
-        this.special = { type: object.type, merchantType, partner: eligible && rule.trigger === "adjacent" ? partner : null, remaining: c.specialWindow, entry };
+        this.special = { type: object.type, merchantType, partner: eligible && rule.trigger === "adjacent" ? partner : null, remaining: c.specialWindow, entry, guardAtContact, velocity: { vx: b.vx, vy: b.vy } };
         this.specialArmed.dash = false;
+        this.specialArmed.brake = false;
         if (merchantType) {
           this.merchantStats.attempts++;
           this.merchantVisual = { type: merchantType, remaining: c.specialWindow + c.specialMessageDuration };
         } else this.specialCount++;
         break;
       }
-      this.normalContact(object.type, entry);
+      this.normalContact(object.type, entry, guardAtContact);
+      if (b.stopped) break;
     }
   }
   updateSpecialArming(type) {
     const armed = this.specialArmed;
+    if (type !== "BRAKE") armed.brake = false;
     if (["BOOST", "BOUNCE", "STOPPER"].includes(type)) armed.dash = false;
     if (type === "DASH") armed.dash = true;
     if (["BOOST", "BOUNCE", "DASH"].includes(type)) armed.stopper = true;
     if (["GUARD", "STOPPER"].includes(type)) armed.stopper = false;
   }
-  normalContact(type, entry) {
-    if (this.guard && ["BRAKE", "STOPPER"].includes(type)) {
-      this.guard = 0;
+  normalContact(type, entry, guardAtContact = 0) {
+    const normalBlock = guardAtContact && ["BOOST", "BOUNCE", "DASH", "STOPPER"].includes(type);
+    const specialBlock = !normalBlock && type === "STOPPER" && this.guardSpecial.active;
+    if (normalBlock || specialBlock) {
+      if (specialBlock) this.guardSpecial = { active: false, remaining: 0 };
       if (entry) entry.label += " (GUARDED)";
       this.contact = { label: `${type} / GUARD BLOCK`, remaining: Hop.CONFIG.contactDuration };
     } else this.applyContact(type);
@@ -185,20 +205,26 @@ Hop.Game = class {
   applyContact(type) {
     const c = Hop.CONFIG, b = this.body;
     const before = { vx: b.vx, vy: b.vy };
-    if (type === "BOOST") b.vx += c.boostHorizontal;
-    if (type === "BOUNCE") { b.vx += c.bounceHorizontal; b.vy = Math.max(b.vy, c.bounceVertical); b.grounded = false; }
-    if (type === "BRAKE") b.vx *= c.brakeRetention;
-    if (type === "STOPPER") b.vx *= c.stopperRetention;
-    if (type === "ANGLE") {
-      const speed = Math.hypot(b.vx, b.vy) * c.angleSpeedRetention;
-      const angle = c.angleDegrees * Math.PI / 180;
-      b.vx = speed * Math.cos(angle); b.vy = speed * Math.sin(angle); b.grounded = false;
+    const impulse = type === "BOOST" ? c.boostImpulse : type === "BOUNCE" ? c.boostImpulse * c.bounceImpulseRatio : type === "DASH" ? c.boostImpulse * c.dashImpulseRatio : 0;
+    if (impulse) {
+      const angle = c[type.toLowerCase() + "Angle"] * Math.PI / 180;
+      b.vx += impulse * Math.cos(angle); b.vy += impulse * Math.sin(angle); b.grounded = false;
     }
-    if (type === "DASH") { b.vx += c.dashHorizontal; b.vy = Math.max(b.vy, c.dashVertical); b.grounded = false; }
-    if (type === "GUARD") this.guard = 1;
+    if (type === "BRAKE") { b.vx *= c.brakeRetention; b.vy *= c.brakeRetention; }
+    if (type === "STOPPER") {
+      b.vx = 0; b.vy = 0; b.stopped = true;
+      this.revive(); return;
+    }
+    if (type === "ANGLE") {
+      // Complement of abs(atan2(vy,vx)): swapping magnitudes is exact and
+      // preserves speed even near the acceleration caps. Rotation adds no energy.
+      b.vx = Math.abs(before.vy); b.vy = Math.abs(before.vx); b.grounded = false;
+      this.updateAerialMode(); return;
+    }
+    if (type === "GUARD") this.normalGuard = 1;
     if (["BOOST", "BOUNCE", "DASH"].includes(type)) this.characterAcceleration(before);
-    b.stopped = false; this.limitSpeed();
-    if (type === "STOPPER" && b.vx <= c.stopSpeed) this.revive();
+    if (impulse) { b.stopped = false; this.limitSpeed(); }
+    this.updateAerialMode();
   }
   launchVector(speed, angle) {
     const radians = angle * Math.PI / 180;
@@ -226,6 +252,7 @@ Hop.Game = class {
   }
   groundImpact(impact) {
     this.specialArmed.stopper = false;
+    this.specialArmed.brake = false;
     if (this.merchant?.type !== "D") return;
     const c = Hop.CONFIG;
     this.body.vx = impact.vx * c.typeDMultiplier;
@@ -255,23 +282,38 @@ Hop.Game = class {
     this.specialArmed.dash = false;
     if (success) {
       if (pending.merchantType) {
-        this.guard = 0; this.merchantStats.successes++;
+        this.normalGuard = 0; this.merchantStats.successes++;
         this.acquireMerchant(pending.merchantType);
         pending.entry.label = `${pending.type} / MERCHANT TYPE ${pending.merchantType}`;
       } else {
         const rule = c.specials[pending.type], before = { vx: this.body.vx, vy: this.body.vy };
-        this.launchVector(rule.speed, rule.angle); this.characterAcceleration(before); this.limitSpeed();
+        if (rule.speed) {
+          this.launchVector(rule.speed, rule.angle); this.characterAcceleration(before); this.limitSpeed();
+        } else if (pending.type === "ANGLE") {
+          this.launchVector(Math.hypot(pending.velocity.vx, pending.velocity.vy), 0);
+        } else if (pending.type === "BRAKE") {
+          Object.assign(this.body, pending.velocity);
+        } else if (pending.type === "GUARD") {
+          this.normalGuard = 0;
+          this.guardSpecial = { active: true, remaining: c.guardSpecialDuration };
+        }
         this.specialSuccesses++; pending.entry.label = `${pending.type} SPECIAL`;
         if (pending.partner) pending.partner.used = true;
       }
       this.flash = c.specialFlashDuration; this.specialTrail = c.specialTrailDuration;
+      const strong = !pending.merchantType && pending.type === "STOPPER";
+      if (strong) { this.flash = c.stopperFlashDuration; this.specialTrail = c.stopperTrailDuration; }
+      this.successVisual = { type: strong ? "STOPPER" : pending.type, remaining: strong ? c.stopperTrailDuration : c.specialTrailDuration, strong };
+      this.soundEvent = strong ? "STOPPER" : pending.type === "GUARD" ? "GUARD" : "SPECIAL";
       this.contact = { label: pending.type, remaining: c.contactDuration };
-    } else this.normalContact(pending.type, pending.entry);
+    } else this.normalContact(pending.type, pending.entry, pending.guardAtContact);
+    this.updateAerialMode();
     this.specialMessage = {
       label: success ? "SPECIAL SUCCESS" : "SPECIAL MISS",
       detail: pending.merchantType ? `商人 Type ${pending.merchantType} / ${c.merchantNames[pending.merchantType]}` : c.specials[pending.type].name,
       remaining: c.specialMessageDuration
     };
+    if (this.body.stopped) this.finish();
     return true;
   }
   act() {
@@ -284,17 +326,13 @@ Hop.Game = class {
         this.maxSpeed = Math.hypot(this.body.vx, this.body.vy);
         this.state = s.FLYING; this.accumulator = 0; break;
       case s.RESULT: this.reset(); this.act(); break;
-      case s.FLYING: if (this.special) this.resolveSpecial(true); else this.aerial("UP"); break;
+      case s.FLYING: if (this.special) this.resolveSpecial(true); else this.aerial(this.updateAerialMode()); break;
     }
   }
   update(deltaTime) {
     const c = Hop.CONFIG;
     const dt = Math.max(0, Math.min(deltaTime, c.maxFrameDelta));
     this.phaseTime += dt;
-    this.flash = Math.max(0, this.flash - dt); this.specialTrail = Math.max(0, this.specialTrail - dt);
-    for (const key of ["effect", "contact", "specialMessage", "merchantVisual"]) {
-      if (this[key]) { this[key].remaining -= dt; if (this[key].remaining <= 0) this[key] = null; }
-    }
     // Triangle waves: a full period includes both outbound and return sweeps.
     const sweep = period => 1 - Math.abs(2 * ((this.phaseTime / period) % 1) - 1);
     if (this.state === Hop.STATES.AIM_ANGLE) this.angle = c.angleMin + (c.angleMax - c.angleMin) * sweep(c.anglePeriod);
@@ -302,6 +340,15 @@ Hop.Game = class {
     if (this.state !== Hop.STATES.FLYING) return;
     this.accumulator += dt;
     while (this.accumulator + 1e-10 >= c.physicsStep) {
+      const guardPaused = this.special || this.specialMessage || this.merchantVisual || this.merchant?.type === "C";
+      if (this.guardSpecial.active && !guardPaused) {
+        this.guardSpecial.remaining = Math.max(0, this.guardSpecial.remaining - c.physicsStep);
+        if (this.guardSpecial.remaining < 1e-9) this.guardSpecial = { active: false, remaining: 0 };
+      }
+      this.flash = Math.max(0, this.flash - c.physicsStep); this.specialTrail = Math.max(0, this.specialTrail - c.physicsStep);
+      for (const key of ["effect", "contact", "specialMessage", "merchantVisual", "successVisual"]) {
+        if (this[key]) { this[key].remaining -= c.physicsStep; if (this[key].remaining < 1e-9) this[key] = null; }
+      }
       // A short contact pause gives exactly one decision window. Normal effects
       // are deferred, so STOPPER's penalty is never applied before success.
       if (this.special) {
@@ -323,6 +370,7 @@ Hop.Game = class {
       this.accumulator -= c.physicsStep;
       this.maxHeight = Math.max(this.maxHeight, this.body.y);
       this.maxSpeed = Math.max(this.maxSpeed, Math.hypot(this.body.vx, this.body.vy));
+      this.updateAerialMode();
       if (this.body.stopped && !this.special) {
         if (!this.revive()) { this.finish(); break; }
       }

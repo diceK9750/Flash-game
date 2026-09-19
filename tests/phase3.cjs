@@ -16,26 +16,26 @@ function contact(game, type, vx = 500, vy = -100, x = 500, eligible = false) {
 }
 assert(Math.abs(Object.values(c.objectWeights).reduce((a, b) => a + b, 0) - 1) < 1e-10);
 for (const type of Object.keys(c.objectWeights)) {
-  const game = launch(); contact(game, type);
+  const game = launch(); game.random=()=>0.9; contact(game, type);
   assert.equal(game.history.length, 1); assert.equal(game.counts[type], 1);
   assert.equal(game.special, null);
-  if (type === 'BOOST') assert.equal(game.body.vx, 960);
-  if (type === 'BOUNCE') assert.equal(game.body.vy, 780);
-  if (type === 'BRAKE') assert.equal(game.body.vx, 125);
-  if (type === 'DASH') { assert.equal(game.body.vx, 1400); assert.equal(game.body.vy, 90); }
-  if (type === 'STOPPER') assert.equal(game.body.vx, 30);
-  if (type === 'GUARD') { assert.equal(game.guard, 1); contact(game, 'GUARD'); assert.equal(game.guard, 1); }
+  if (type === 'BOOST') assert.equal(game.body.vx, 500+c.boostImpulse*Math.cos(Math.PI/4));
+  if (type === 'BOUNCE') assert.equal(game.body.vy, -100+c.boostImpulse*c.bounceImpulseRatio*Math.sin(Math.PI/3));
+  if (type === 'BRAKE') assert.equal(game.body.vx, 250);
+  if (type === 'DASH') { assert.equal(game.body.vx, 500+(c.boostImpulse*c.dashImpulseRatio)*Math.cos(25*Math.PI/180)); assert.equal(game.body.vy,-100+(c.boostImpulse*c.dashImpulseRatio)*Math.sin(25*Math.PI/180)); }
+  if (type === 'STOPPER') assert.equal(game.body.vx, 0); if(type==='STOPPER') assert(game.body.stopped);
+  if (type === 'GUARD') { assert.equal(game.normalGuard, 1); contact(game, 'GUARD'); assert(game.special); game.resolveSpecial(false); assert.equal(game.normalGuard, 1); }
   if (type === 'ANGLE') {
     assert(Math.abs(Math.hypot(game.body.vx, game.body.vy) - Math.hypot(500, -100)) < 1e-9);
-    assert(Math.abs(Math.atan2(game.body.vy, game.body.vx) * 180 / Math.PI - c.angleDegrees) < 1e-9);
+    assert(Math.abs(Math.atan2(game.body.vy, game.body.vx) * 180 / Math.PI - (90-Math.atan2(100,500)*180/Math.PI)) < 1e-9);
   }
   const before = [game.body.vx, game.body.vy, game.history.length];
   game.contactObjects({ x: game.body.x - 70, y: 10 });
   assert.deepEqual([game.body.vx, game.body.vy, game.history.length], before);
 }
-for (const harmful of ['BRAKE', 'STOPPER']) {
+for (const harmful of ['BOOST', 'BOUNCE', 'DASH', 'STOPPER']) {
   const game = launch(); contact(game, 'GUARD'); contact(game, harmful, 1000, -100);
-  assert.equal(game.guard, 0); assert.equal(game.body.vx, 1000); assert.equal(game.body.vy, -100);
+  assert.equal(game.normalGuard, 0); assert.equal(game.body.vx, 1000); assert.equal(game.body.vy, -100);
   assert.equal(game.special, null); assert.equal(game.specialCount, 0);
   assert(game.history.at(-1).label.includes('GUARDED'));
 }
@@ -58,7 +58,7 @@ for (const [type, args] of Object.entries(scenarios)) {
         for (let frame = 1; frame < Math.ceil(c.specialWindow * fps); frame++) game.update(1 / fps);
         assert.equal(game.specialSuccesses, 0); assert.equal(game.special, null);
         assert.equal(game.specialMessage.label, 'SPECIAL MISS');
-        if (type === 'STOPPER') assert(game.body.vx <= vx * c.stopperRetention + 1e-6);
+        if (type === 'STOPPER') assert(game.body.vx <= 1e-6);
       }
       assert.equal(game.resolveSpecial(true), false);
       game.objects = []; // Isolate the already-checked source from subsequent ordinary partner contact.
@@ -74,24 +74,12 @@ for (const [type, vx, vy, x] of [
   ['STOPPER', 1500, 0, 500], ['BOUNCE', 500, 0, 16000], ['DASH', 1, 0, 500]
 ]) { const game = launch(); contact(game, type, vx, vy, x); assert.equal(game.special, null); }
 
-const input = launch(); contact(input, 'STOPPER', ...scenarios.STOPPER);
-const ui = new scope.Hop.UI(input, element('canvas')); scope.Hop.bindInput(input, ui); ui.update(); ui.draw();
-assert.equal(element('special-title').textContent, 'SPECIAL!'); assert.equal(element('down-action').disabled, true);
-element('down-action').listeners.click({ stopPropagation() {} }); assert(input.special); assert.equal(input.upRemaining, 3);
-element('stage').listeners.click({ target: { closest: () => null }, pointerType: 'touch' });
-assert.equal(input.special, null); assert.equal(input.upRemaining, 3); assert.equal(input.specialSuccesses, 1);
-contact(input, 'DASH', ...scenarios.DASH);
-let prevented = false;
-document.listeners.keydown({ code: 'Enter', repeat: false, target: { closest: () => ({}) }, preventDefault() { prevented = true; } });
-assert(prevented); assert.equal(input.specialSuccesses, 2); assert.equal(input.upRemaining, 3);
-ui.update(); assert.equal(element('special-title').textContent, 'SPECIAL SUCCESS'); ui.draw();
-document.listeners.keydown({ code: 'Enter', repeat: true, target: { closest: () => ({}) }, preventDefault() {} });
-assert.equal(input.upRemaining, 3); // Holding Enter after success must not trigger native UP clicks.
-input.finish(); ui.update();
-assert(element('contact-totals').textContent.includes('接触総数 2'));
-assert(element('contact-totals').textContent.includes('SPECIAL発生 2 / 成功 2'));
-assert(element('type-counts').textContent.includes('STOPPER 1'));
-
+const input = launch(); contact(input,'STOPPER',...scenarios.STOPPER);
+const ui=new scope.Hop.UI(input,element('canvas'));scope.Hop.bindInput(input,ui);ui.update();ui.draw();
+assert.equal(element('special-title').textContent,'SPECIAL!');
+element('stage').listeners.pointerdown({button:0,isPrimary:true,preventDefault(){}});
+assert.equal(input.special,null);assert.equal(input.upRemaining,3);assert.equal(input.specialSuccesses,1);
+input.finish();ui.update();assert(element('contact-totals').textContent.includes('接触総数 1'));
 saved = null; writes = 0;
 const score = new Game(random(1));
 score.body.x = 800; score.maxHeight = 400; score.maxSpeed = 1600; score.finish();
@@ -120,11 +108,11 @@ for (let i = 1; i < sequence.length; i++) assert.equal(sequence[i].x - sequence[
 debug.toggleDebug(); assert.equal(debug.debug, false); assert(debug.debugUsed);
 debug.body.x = 80000; debug.finish(); assert.equal(writes, beforeWrites); assert.equal(debug.newRecords.length, 0);
 assert.equal(debug.best.distance, 100);
-debug.guard = 1; debug.special = { remaining: 0.4 }; debug.downCooldown = 1;
+debug.normalGuard = 1; debug.special = { remaining: 0.4 }; debug.downCooldown = 1;
 debug.history.push({ type: 'STOPPER', label: 'STOPPER SPECIAL' }); debug.counts.STOPPER = 1;
 debug.specialCount = 4; debug.specialSuccesses = 3; debug.upRemaining = 0;
 debug.act();
-assert.equal(debug.state, 'AIM_ANGLE'); assert.equal(debug.guard, 0); assert.equal(debug.special, null);
+assert.equal(debug.state, 'AIM_ANGLE'); assert.equal(debug.normalGuard, 0); assert.equal(debug.special, null);
 assert.equal(debug.downCooldown, 0); assert.equal(debug.history.length, 0); assert.equal(debug.specialCount, 0);
 assert.equal(debug.specialSuccesses, 0); assert.equal(debug.upRemaining, 3); assert.equal(debug.debugUsed, false);
 assert(Object.values(debug.counts).every(n => n === 0)); assert(debug.objects.every(o => !o.used)); assert.equal(debug.best.distance, 100);
@@ -135,4 +123,4 @@ const blocked = launch(); blocked.body.x = 800; blocked.finish(); assert.equal(b
 assert.equal(blocked.best.distance, 100); blocked.act(); assert.equal(blocked.best.distance, 100);
 scope.localStorage = { getItem() { return '{bad json'; }, setItem() {} }; assert.equal(new Game().best.distance, 0);
 scope.localStorage = { getItem() { return '{"distance":-1,"height":"oops","speed":null}'; }, setItem() {} }; assert.equal(new Game().best.height, 0);
-console.log(JSON.stringify({ phase3: 'PASS', specialChecks, effects: 7, guard: 'both harmful types blocked', storage: 'save, reload, record, corruption, denial', debug: 'ordered, spaced, no saving even after OFF', input: 'touch priority, Enter priority, DOWN isolation', retry: 'all transient state reset' }, null, 2));
+console.log(JSON.stringify({ phase3: 'PASS', specialChecks, effects: 7, guard: 'four target types blocked', storage: 'save, reload, record, corruption, denial', debug: 'ordered, spaced, no saving even after OFF', input: 'primary pointer priority', retry: 'all transient state reset' }, null, 2));

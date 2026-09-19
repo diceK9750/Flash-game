@@ -6,7 +6,7 @@ const { CONFIG: c, Physics, Game, UI } = scope.Hop;
 let cases = 0;
 function test(name, fn) { try { fn(); cases++; } catch (error) { error.message = name + ': ' + error.message; throw error; } }
 function near(actual, expected) { assert(Math.abs(actual - expected) < 1e-7, `${actual} != ${expected}`); }
-function isolated() { const g = launch(); g.objects = []; g.nextObjectX = g.nextBoundaryX = Infinity; return g; }
+function isolated() { const g = launch(); g.objects = []; g.nextObjectX = g.nextBoundaryX = Infinity; g.random=()=>0.9; return g; }
 function hit(g, type, options = {}) {
   const { x = 500, vx = 500, vy = -100, next = [] } = options;
   Object.assign(g.body, { x: x - 20, y: 10, vx, vy, grounded: false, stopped: false });
@@ -16,10 +16,10 @@ function hit(g, type, options = {}) {
   return source;
 }
 function merchant(type) {
-  const g = isolated(); g.guard = 1;
+  const g = isolated(); g.normalGuard = 1;
   hit(g, type, { x: 800 });
   assert.equal(g.special.merchantType, c.merchantTypes[type]);
-  assert.equal(g.guard, 1); g.act(); assert.equal(g.guard, 0);
+  assert.equal(g.normalGuard, 0); g.act(); assert.equal(g.normalGuard, 0);
   return g;
 }
 function impact(g, vx = 500, vy = -400) {
@@ -44,7 +44,7 @@ for (const type of ['BOOST', 'BOUNCE']) {
     const g = isolated(), partner = { x: 900, type: c.specials[type].partner, used: false };
     hit(g, type, { next: [partner] }); g.resolveSpecial(false);
     assert.equal(partner.used, false); assert.equal(g.special, null);
-    near(g.body.vx, 500 + (type === 'BOOST' ? c.boostHorizontal : c.bounceHorizontal));
+    near(g.body.vx, 500 + (type === 'BOOST' ? (c.boostImpulse*Math.cos(Math.PI/4)) : (c.boostImpulse*c.bounceImpulseRatio*Math.cos(Math.PI/3))));
   });
 }
 test('DASH survives ground, BRAKE, ANGLE, GUARD, then starts once', () => {
@@ -73,38 +73,38 @@ for (const cancel of ['GROUND', 'GUARD']) test('STOPPER canceled by ' + cancel, 
   assert.equal(g.specialArmed.stopper, false); hit(g, 'STOPPER'); assert.equal(g.special, null);
 });
 test('ordinary SPECIAL before GUARD BLOCK, miss uses remaining shield', () => {
-  const g = isolated(); g.guard = 1; hit(g, 'BOOST'); hit(g, 'STOPPER');
-  assert(g.special); assert.equal(g.guard, 1); g.resolveSpecial(false);
-  assert.equal(g.guard, 0); near(g.body.vx, 500); assert.equal(g.special, null);
+  const g = isolated(); hit(g, 'BOOST'); g.normalGuard = 1; hit(g, 'STOPPER');
+  assert(g.special); assert.equal(g.normalGuard, 0); g.resolveSpecial(false);
+  assert.equal(g.normalGuard, 0); near(g.body.vx, 500); assert.equal(g.special, null);
 });
 for (const type of Object.keys(c.merchantTypes)) {
   for (const success of [true, false]) test(`merchant ${type} priority and ${success ? 'success' : 'miss'}`, () => {
-    const g = isolated(); g.guard = 1; g.specialArmed.dash = g.specialArmed.stopper = true;
+    const g = isolated(); g.normalGuard = 1; g.specialArmed.dash = g.specialArmed.stopper = true;
     const partner = { x: 1100, type: c.specials[type].partner || 'BRAKE', used: false };
     hit(g, type, { x: 800, next: [partner] });
     assert.equal(g.special.merchantType, c.merchantTypes[type]); assert.equal(g.specialCount, 0);
-    assert.equal(g.guard, 1); assert.equal(g.merchantStats.attempts, 1);
+    assert.equal(g.normalGuard, 0); assert.equal(g.merchantStats.attempts, 1);
     g.resolveSpecial(success); assert.equal(g.special, null); assert.equal(g.specialArmed.dash, false);
     assert.equal(g.merchantStats.successes, Number(success)); assert.equal(partner.used, false);
-    if (success) { assert.equal(g.guard, 0); assert.equal(g.merchant.type, c.merchantTypes[type]); }
+    if (success) { assert.equal(g.normalGuard, 0); assert.equal(g.merchant.type, c.merchantTypes[type]); }
     else {
-      assert.equal(g.merchant, null); assert.equal(g.guard, type === 'STOPPER' ? 0 : 1);
-      near(g.body.vx, type === 'STOPPER' ? 500 : 500 + ({ BOOST: c.boostHorizontal, BOUNCE: c.bounceHorizontal, DASH: c.dashHorizontal })[type]);
+      assert.equal(g.merchant, null); assert.equal(g.normalGuard, 0);
+      near(g.body.vx,500);
     }
     assert.equal(g.resolveSpecial(true), false);
   });
 }
 test('merchant requires guard, supported type, and exact positive boundary', () => {
   for (const [guard, type, x] of [[0, 'BOOST', 800], [1, 'BOOST', 760], [1, 'BOOST', 801], [1, 'BRAKE', 800], [1, 'GUARD', 800], [1, 'ANGLE', 800], [1, 'STOPPER', 0]]) {
-    const g = isolated(); g.guard = guard; hit(g, type, { x }); assert.equal(g.special, null);
+    const g = isolated(); g.normalGuard = guard; hit(g, type, { x }); assert(!g.special?.merchantType);
   }
-  for (const x of [800, 1600, 6400, 80000]) { const g = isolated(); g.guard = 1; hit(g, 'BOOST', { x }); assert.equal(g.special.merchantType, 'C'); }
+  for (const x of [800, 1600, 6400, 80000]) { const g = isolated(); g.normalGuard = 1; hit(g, 'BOOST', { x }); assert.equal(g.special.merchantType, 'C'); }
 });
 test('A doubles incremental acceleration for exactly three events', () => {
   const g = merchant('STOPPER');
   for (let i = 0; i < 4; i++) {
     Object.assign(g.body, { vx: 100, vy: 0 }); g.applyContact('BOOST');
-    near(g.body.vx, 100 + c.boostHorizontal * (i < 3 ? 2 : 1));
+    near(g.body.vx, 100 + (c.boostImpulse*Math.cos(Math.PI/4)) * (i < 3 ? 2 : 1));
     assert.equal(g.merchant?.remaining ?? 0, Math.max(0, 2 - i));
   }
 });
@@ -121,7 +121,7 @@ for (const type of ['BOUNCE', 'DASH', 'SPECIAL']) test('A covers ' + type, () =>
     near(g.body.vx, Math.min(c.maxHorizontalSpeed, 2 * c.specials.BOOST.speed * Math.cos(Math.PI / 4) - 100));
   } else {
     g.applyContact(type);
-    near(g.body.vx, Math.min(c.maxHorizontalSpeed, 100 + 2 * (type === 'DASH' ? c.dashHorizontal : c.bounceHorizontal)));
+    near(g.body.vx, Math.min(c.maxHorizontalSpeed, 100 + 2 * (type === 'DASH' ? (c.boostImpulse*c.dashImpulseRatio*Math.cos(25*Math.PI/180)) : (c.boostImpulse*c.bounceImpulseRatio*Math.cos(Math.PI/3)))));
   }
   assert.equal(g.merchant.remaining, 2);
 });
@@ -158,8 +158,8 @@ test('C counts actual overtaken characters, ignores collision/aerial, applies ex
   near(g.body.y, c.typeCHeight); near(g.body.vy, 0); near(g.body.vx, c.typeCSpeed);
   g.contactObjects({ x: start, y: 10 }); assert.equal(g.history.length, before);
   g.floatStep(2); assert.equal(g.merchant, null); assert.equal(g.objects.filter(o => o.used).length, 100);
-  near(g.body.x, start + 1990); near(g.body.vx, Math.min(c.maxHorizontalSpeed, c.typeCSpeed + c.boostHorizontal));
-  g.objects = []; g.update(c.physicsStep); assert(g.body.vx < c.maxHorizontalSpeed); assert(g.body.y < c.typeCHeight);
+  near(g.body.x, start + 1990); near(g.body.vx, Math.min(c.maxHorizontalSpeed, c.typeCSpeed + (c.boostImpulse*Math.cos(Math.PI/4))));
+  g.objects = []; g.update(c.physicsStep); assert(g.body.vx < c.maxHorizontalSpeed); assert(g.body.y > c.typeCHeight);
 });
 for (const fps of [30, 60, 120, 144]) test('C streams full 100 with fixed physics at ' + fps + 'fps', () => {
   const g = launch(39); g.acquireMerchant('C'); let frames = 0;
@@ -210,10 +210,10 @@ test('retry clears all new state and preserves BEST', () => {
   for (const type of ['A', 'B', 'C', 'D']) {
     const g = isolated(); g.debug = g.debugUsed = true; g.best.distance = 999; g.acquireMerchant(type);
     g.specialArmed = { dash: true, stopper: true }; g.special = { remaining: 0.8 };
-    g.guard = 1; g.upRemaining = 0; g.downCooldown = 1; g.merchantStats.attempts = 5;
+    g.normalGuard = 1; g.upRemaining = 0; g.downCooldown = 1; g.merchantStats.attempts = 5;
     g.merchantVisual = { type, remaining: 1 }; g.finish(); g.act();
     assert.equal(g.state, 'AIM_ANGLE'); assert.equal(g.best.distance, 999); assert.equal(g.merchant, null);
-    assert.equal(g.special, null); assert.equal(g.merchantVisual, null); assert.equal(g.guard, 0);
+    assert.equal(g.special, null); assert.equal(g.merchantVisual, null); assert.equal(g.normalGuard, 0);
     assert.equal(g.specialArmed.dash, false); assert.equal(g.specialArmed.stopper, false);
     assert.equal(g.merchantStats.attempts, 0); assert.equal(g.merchantStats.lastType, null);
     assert.equal(g.upRemaining, 3); assert.equal(g.downCooldown, 0); assert.equal(g.history.length, 0);
@@ -221,27 +221,25 @@ test('retry clears all new state and preserves BEST', () => {
   }
 });
 for (const fps of [30, 60, 120, 144]) test('merchant window, input isolation at ' + fps + 'fps', () => {
-  const g = isolated(); g.guard = 1; hit(g, 'STOPPER', { x: 800 });
+  const g = isolated(); g.normalGuard = 1; hit(g, 'STOPPER', { x: 800 });
   const x = g.body.x;
   for (let i = 0; i < fps - 1; i++) g.update(1 / fps);
   assert(g.special); near(g.body.x, x); g.update(1 / fps);
-  assert.equal(g.special, null); assert.equal(g.specialMessage.label, 'SPECIAL MISS'); assert.equal(g.guard, 0);
+  assert.equal(g.special, null); assert.equal(g.specialMessage.label, 'SPECIAL MISS'); assert.equal(g.normalGuard, 0);
 });
-test('merchant touch, Enter, DOWN isolation, HUD, result', () => {
+test('merchant pointer priority, HUD, result', () => {
   const g = isolated(), ui = new UI(g, element('canvas')); scope.Hop.bindInput(g, ui);
   for (const type of ['DASH', 'BOUNCE']) {
-    g.guard = 1; hit(g, type, { x: 800 }); ui.update(); ui.draw();
+    g.normalGuard = 1; hit(g, type, { x: 800 }); ui.update(); ui.draw();
     assert.equal(element('special-title').textContent, 'MERCHANT SPECIAL!');
-    element('down-action').listeners.click({ stopPropagation() {} }); assert(g.special); assert.equal(g.downCooldown, 0);
-    if (type === 'DASH') element('stage').listeners.click({ target: { closest: () => null }, pointerType: 'touch' });
-    else document.listeners.keydown({ code: 'Enter', repeat: false, target: { closest: () => null }, preventDefault() {} });
+    element('stage').listeners.pointerdown({button:0,isPrimary:true,preventDefault(){}});
     assert.equal(g.special, null); assert.equal(g.upRemaining, 3);
   }
   ui.update(); assert(element('special-state').textContent.includes('BOUND BOOST ×5'));
   g.debugUsed = true; g.finish(); ui.update(); ui.draw();
   assert.equal(element('special-panel').hidden, true); assert.equal(element('contact-tag').hidden, true);
-  assert(element('merchant-totals').textContent.includes('発生 2 / 成功 2')); assert.equal(element('action').hidden, true);
-  element('overlay-action').listeners.click(); assert.equal(g.state, 'AIM_ANGLE');
+  assert(element('merchant-totals').textContent.includes('発生 2 / 成功 2'));
+  element('stage').listeners.pointerdown({button:0,isPrimary:true,preventDefault(){}}); assert.equal(g.state, 'AIM_ANGLE');
 });
 test('bounded active SPECIAL/merchant runs terminate after releasing controls', () => {
   for (let seed = 1; seed <= 40; seed++) {
@@ -259,3 +257,5 @@ test('bounded active SPECIAL/merchant runs terminate after releasing controls', 
   }
 });
 console.log(JSON.stringify({ formalSpecials: 'PASS', cases, activeRuns: 40, fps: [30, 60, 120, 144], coverage: '4 specials; arming; priorities; merchant A-D; generation; input; reset; termination' }, null, 2));
+
+module.exports={test,near,isolated,hit,impact,merchant};

@@ -5,8 +5,8 @@ Hop.CAST = Object.freeze({
   HERO: { name: "勇者", gender: "男", color: "#2467ac", shape: "hero", effect: "いざ、空の旅！", asset: null },
   BOOST: { name: "魔法使い", gender: "女", color: "#287548", shape: "witch", effect: "爆風でひとっ飛び！", asset: null },
   BOUNCE: { name: "武闘家", gender: "女", color: "#246abd", shape: "fighter", effect: "空まで蹴り上げ！", asset: null },
-  BRAKE: { name: "遊び人", gender: "男", color: "#c63f4f", shape: "jester", effect: "ちょっと待った！", asset: null },
-  ANGLE: { name: "盗賊", gender: "女", color: "#9b730a", shape: "thief", effect: "フックで方向転換！", asset: null },
+  BRAKE: { name: "盗賊", gender: "男", color: "#c63f4f", shape: "thief", effect: "推進力を半分いただき！", asset: null },
+  ANGLE: { name: "遊び人", gender: "男", color: "#9b730a", shape: "jester", effect: "くるりと方向転換！", asset: null },
   DASH: { name: "戦士", gender: "女", color: "#bd5b13", shape: "warrior", effect: "猛突進！", asset: null },
   GUARD: { name: "賢者", gender: "女", color: "#7852ad", shape: "sage", effect: "結界をどうぞ！", asset: null },
   STOPPER: { name: "僧侶", gender: "女", color: "#942840", shape: "cleric", effect: "ここでひと休み！", asset: null },
@@ -102,10 +102,10 @@ Hop.Graphics = {
     if (type === "BOOST") {
       const rays = Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8; const r = i % 2 ? 25 : 58; return [Math.cos(a) * r, Math.sin(a) * r]; });
       this.polygon(ctx, rays, "#ffd05d");
-    } else if (type === "ANGLE") this.line(ctx, [[-70, 30], [0, 0], [70, -55]], color, 5);
+    } else if (type === "BRAKE") this.line(ctx, [[-70, 30], [0, 0], [70, -55]], color, 5);
     else if (type === "GUARD" || type === "STOPPER") {
       ctx.strokeStyle = color; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, 40 + age * 40, 0, Math.PI * 2); ctx.stroke();
-    } else if (type === "BRAKE") {
+    } else if (type === "ANGLE") {
       ctx.font = "bold 65px system-ui"; ctx.fillStyle = color; ctx.fillText("?!", -22, 0);
     } else {
       const up = type === "BOUNCE";
@@ -154,7 +154,7 @@ Hop.Graphics = {
       ctx.restore();
     }
     g.trail.forEach((point, i) => {
-      ctx.globalAlpha = i / g.trail.length * (g.specialTrail > 0 ? 0.75 : 0.25);
+      ctx.globalAlpha = i / g.trail.length * (g.successVisual?.strong ? 0.95 : g.specialTrail > 0 ? 0.75 : 0.25);
       this.circle(ctx, sx(point.x), sy(point.y), 4 + i / 4, "#e99c40");
     }); ctx.globalAlpha = 1;
     const x = sx(g.body.x), y = sy(g.body.y);
@@ -166,7 +166,13 @@ Hop.Graphics = {
     ctx.save(); ctx.translate(x, y);
     if (g.state === "FLYING" && !visual.reducedMotion) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)));
     this.character(ctx, "HERO", 0, c.playerRadius, 0.936); ctx.restore();
-    if (g.guard) { ctx.strokeStyle = "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, 39, 0, Math.PI * 2); ctx.stroke(); }
+    if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }
+    if (g.successVisual?.strong && !visual.reducedMotion) {
+      const age = c.stopperTrailDuration - g.successVisual.remaining;
+      ctx.save(); ctx.globalAlpha = g.successVisual.remaining / c.stopperTrailDuration;
+      ctx.strokeStyle = "#fff6c0"; ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.arc(x, y, 55 + age * 110, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
     if (g.merchantVisual) {
       // Merchant is an overlay participant, never a generated collision object.
       const mx = Math.max(90, Math.min(c.width - 100, x + 105));
@@ -190,7 +196,7 @@ Hop.Graphics = {
       ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - launchAge / 0.18)})`; ctx.fillRect(0, 0, c.width, c.height);
       this.contactEffect(ctx, "BOOST", sx(0), sy(0), launchAge);
     }
-    if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
+    if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
   },
   objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; }
 };

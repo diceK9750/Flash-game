@@ -11,6 +11,7 @@
   <script defer src="js/game.js"></script>
   <script defer src="js/graphics.js"></script>
   <script defer src="js/ui.js"></script>
+  <script defer src="js/audio.js"></script>
   <script defer src="js/input.js"></script>
   <script defer src="js/main.js"></script>
 </head>
@@ -34,13 +35,13 @@
     </div>
     <p id="special-state" class="special-state" hidden></p>
     <div class="stage" id="stage">
-      <canvas id="canvas" width="1280" height="720" aria-label="勇者が草原の街道を飛ぶゲーム。画面タップまたは下のボタンで操作できます。"></canvas>
+      <canvas id="canvas" width="1280" height="720" aria-label="勇者が草原の街道を飛ぶゲーム。画面タップまたは左クリックだけで操作できます。"></canvas>
       <div id="aim-display" class="aim-display" hidden><strong id="aim-title"></strong><div class="aim-track"><div id="aim-fill"></div></div></div>
       <div class="overlay" id="overlay">
         <p class="eyebrow" id="overlay-label">ONE LAUNCH. HOW FAR?</p>
         <h1 id="overlay-title">勇者、空の旅へ！</h1>
         <p id="overlay-detail">角度とパワーを決めて、飛距離に挑戦。</p>
-        <button id="overlay-action" type="button">START →</button>
+        <p id="overlay-prompt">画面をタップ / クリック</p>
       </div>
       <div class="flight-tag" id="flight-tag" hidden>IN FLIGHT</div>
       <div class="contact-tag" id="contact-tag" hidden></div>
@@ -50,11 +51,7 @@
         <div class="special-track" id="special-track"><div id="special-fill"></div></div>
       </div>
     </div>
-    <footer>
-      <div class="control-hint"><p id="hint" aria-live="polite">START または画面をタップして開始</p><small>空中：タップでUP ／ SpaceでDOWN<br>SPECIAL!が出たら、1秒以内にタップかEnter！</small></div>
-      <button id="down-action" type="button" hidden>DOWN ↓</button>
-      <button id="action" type="button">START →</button>
-    </footer>
+    <footer><p id="hint" aria-live="polite">画面をタップ / クリック</p></footer>
     <p class="final-line">FINAL / 最終飛距離 <strong id="final">—</strong></p>
     <p class="history" id="history">CONTACT / —</p>
     <section id="result-stats" class="result-stats" hidden aria-label="今回の記録と自己ベスト">
@@ -72,11 +69,12 @@
       <p id="storage-status"></p>
     </section>
     <details class="rules"><summary>遊び方・仲間の効果・SPECIAL条件</summary>
-      <ol><li>STARTで出発。往復する角度をタップで決定。</li><li>パワーをタップで決定すると、架空のトラックが勇者をコミカルにひとっ飛び。</li><li>空中のタップかUPボタンで上昇（3回まで）。SpaceかDOWNボタンで急降下（クールダウンあり）。</li><li>SPECIAL!が出たらタップかEnter。停止したら記録を確認してRETRY！</li></ol>
-      <p>魔法使い（BOOST）：爆風で前進 / 武闘家（BOUNCE）：蹴り上げ / 遊び人（BRAKE）：大ボケで減速 / 盗賊（ANGLE）：フックで軌道変更 / 戦士（DASH）：猛突進 / 賢者（GUARD）：結界を付与 / 僧侶（STOPPER）：聖なる制止</p>
+      <p>画面をタップ / 左クリックするだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。DOWNは1.5秒待って再使用。SPECIALは1秒以内にタップ。RESULTも画面タップでRETRY。</p>
+      <p>魔法使い（BOOST）：45°へ800px/s加算 / 武闘家（BOUNCE）：60°へ880px/s加算 / 盗賊（BRAKE）：速度全体を半減 / 遊び人（ANGLE）：速さを保ち90°−角度の絶対値へ変更 / 戦士（DASH）：25°へ880px/s加算 / 賢者（GUARD）：次の1接触まで結界 / 僧侶（STOPPER）：強制停止</p>
       <p id="special-rules"></p>
-      <p>SPECIAL中は接触地点で一時停止。クリック・タップ・Enterで成功、時間切れで通常効果（残っているGUARDは有効）。UP・DOWNは受付中に使用できません。接触時は商人SPECIAL → 通常SPECIAL → GUARD防御 → 通常効果の順で判定します。ペアSPECIAL成功時は相方も使用済みになります。</p>
-      <p>商人は通常出現しません。GUARDは商人SPECIAL成功時に消費し、対象に応じて1種類の効果を獲得します。STOPPER→Type A：次のキャラ由来の加速3回の追加量2倍（発射・AERIAL・ANGLE等は対象外）。DASH→Type B：有利なキャラ効果ごとにCHARGE（最大10）、停止時に一度復活。BOOST→Type C：地上キャラ100体を通過する水平浮遊、終了時に前進加速。BOUNCE→Type D：次の地面バウンド5回が加速に変化。新しいTypeを獲得すると前の効果・残数を上書きします。</p>
+      <p>BRAKE SPECIAL成功は速度・角度を維持。ANGLE SPECIAL成功は速度を保ち水平へ。GUARD SPECIAL成功はSTOPPER専用防御10秒。通常GUARDは次の接触で消滅し、BOOST・BOUNCE・DASH・STOPPERを防ぎます（BRAKE・ANGLEは防ぎません）。</p>
+      <p>接触判定は商人SPECIAL → 通常SPECIAL → 通常GUARD → GUARD SPECIAL → 通常効果。GUARD SPECIALは受付・成功失敗表示・商人登場・浮遊中に残り時間が止まり、再GUARD接触でも時間は更新せず通常GUARDだけ追加します。商人成功でもGUARD SPECIALは消費しません。</p>
+      <p>商人：STOPPER→A（キャラ加速3回の正の追加量2倍）、DASH→B（加速で最大10CHARGE、停止時に復活）、BOOST→C（100体通過する水平浮遊）、BOUNCE→D（地面反発5回加速）。同時保持は1種類、獲得時に上書き。A/BはBRAKE・ANGLE・GUARD SPECIALを対象にしません。</p>
       <details><summary>開発用：DキーでDEBUG切替</summary><p>DEBUGは7種を一定間隔で順に配置します（通常の100m境界枠は追加しません）。一度でもDEBUGを使ったプレイは記録対象外。OFFに戻してRETRYすると通常の記録対象に戻ります。</p></details>
     </details>
   </main>

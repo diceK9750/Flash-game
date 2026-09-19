@@ -29,10 +29,13 @@ Hop.CONFIG = Object.freeze({
   objectWidth: 54, objectHeight: 64,
   // Relative spawn weights. Distances and speeds use pixels and seconds.
   objectWeights: Object.freeze({ BOOST: 0.28, BOUNCE: 0.22, BRAKE: 0.18, ANGLE: 0.12, DASH: 0.08, GUARD: 0.07, STOPPER: 0.05 }),
-  boostHorizontal: 460, bounceHorizontal: 140, bounceVertical: 780,
-  brakeRetention: 0.25,
-  angleDegrees: 35, angleSpeedRetention: 1,
-  dashHorizontal: 900, dashVertical: 90, stopperRetention: 0.06,
+  boostImpulse: 800, boostAngle: 45,
+  bounceImpulseRatio: 1.10, bounceAngle: 60,
+  dashImpulseRatio: 1.10, dashAngle: 25,
+  brakeRetention: 0.5,
+  aerialDirectionThreshold: 40,
+  angleSpecialChance: 0.10, guardSpecialDuration: 10.0,
+  stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
   specialTrailDuration: 1.2,
   // State-based conditions; success sets a launch vector (px/s, degrees).
@@ -40,7 +43,10 @@ Hop.CONFIG = Object.freeze({
     BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),
     BOUNCE: Object.freeze({ trigger: "adjacent", partner: "BOOST", speed: 1700, angle: 60, name: "連天蹴り" }),
     DASH: Object.freeze({ trigger: "dash", speed: 2000, angle: 25, name: "戦陣突破" }),
-    STOPPER: Object.freeze({ trigger: "stopper", speed: 2300, angle: 35, name: "聖光反転" })
+    STOPPER: Object.freeze({ trigger: "stopper", speed: 2300, angle: 35, name: "聖光反転" }),
+    BRAKE: Object.freeze({ trigger: "brake", name: "影すり抜け" }),
+    ANGLE: Object.freeze({ trigger: "chance", name: "水平曲芸" }),
+    GUARD: Object.freeze({ trigger: "guard", name: "聖護結界" })
   }),
   boundaryMeters: 100, boundaryClearance: 140, merchantZoneMeters: 10,
   merchantTypes: Object.freeze({ STOPPER: "A", DASH: "B", BOOST: "C", BOUNCE: "D" }),

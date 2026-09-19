@@ -26,12 +26,6 @@ canvas { display: block; width: 100%; height: 100%; }
 .eyebrow { color: #466941; font-size: clamp(10px, 1.2vw, 14px); letter-spacing: 2px; margin: 0 0 10px; }
 h1 { font-size: clamp(22px, 4vw, 48px); margin: 0; color: #244e43; }
 #overlay-detail { font-size: clamp(14px, 1.65vw, 19px); margin: 10px 0 20px; }
-button { border: 1px solid #226245; border-radius: 10px; min-height: 52px; padding: 12px 23px; background: #2c774f; color: #fffdf2; font-weight: 800; font-size: 16px; cursor: pointer; touch-action: manipulation; }
-button:hover { background: #226140; }
-button:focus-visible, summary:focus-visible { outline: 3px solid #2376ae; outline-offset: 3px; }
-button:disabled { background: #e1e6dc; color: #687663; border-color: #cbd4c5; cursor: default; }
-#down-action { background: #e0f0fa; border-color: #6fa4c0; color: #255374; }
-#down-action:disabled { background: #e6e9e4; color: #6b766c; border-color: #cad3c8; }
 .flight-tag { position: absolute; top: 5%; left: 4%; color: #305f66; letter-spacing: 3px; font-size: 12px; pointer-events: none; }
 .contact-tag { position: absolute; top: 15%; left: 0; right: 0; text-align: center; font-size: clamp(13px, 2vw, 25px); font-weight: 900; pointer-events: none; text-shadow: 0 1px 3px white, 0 -1px 3px white; }
 .special-panel { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; pointer-events: none; background: #fff5cfbb; }
@@ -43,7 +37,7 @@ button:disabled { background: #e1e6dc; color: #687663; border-color: #cbd4c5; cu
 .aim-display strong { font-size: clamp(15px, 2vw, 24px); }
 .aim-track { height: 9px; margin-top: 7px; background: #dce7cc; border-radius: 5px; overflow: hidden; }
 #aim-fill { height: 100%; background: #3f8a5a; }
-footer { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 14px 0; }
+footer { padding: 14px 0; }
 footer p { margin: 0 0 5px; font-size: 16px; }
 small { color: #40594d; font-size: 14px; line-height: 1.6; }
 .final-line { border-top: 1px solid #cbd6c2; padding-top: 14px; margin: 0; font-size: 15px; }
@@ -76,16 +70,15 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
   .readouts div:nth-child(3) { border-right: 0; }
   .readouts span { font-size: 10px; }
   .aerial-status { font-size: 12px; gap: 5px 12px; }
-  footer { grid-template-columns: 1fr 1fr; }
-  .control-hint { grid-column: 1 / -1; }
-  #action { grid-column: 2; }
-  #down-action[hidden] + #action { grid-column: 1 / -1; }
-  footer button { min-height: 56px; padding: 12px 8px; font-size: 15px; }
+
+
   .eyebrow { margin-bottom: 4px; font-size: 10px; }
   #overlay-detail { margin: 5px 0 8px; font-size: 14px; }
-  .overlay button { min-height: 44px; padding: 9px 20px; }
   .aim-display { width: 48%; padding: 6px; top: 5%; }
   .flight-tag { font-size: 10px; }
   .result-grid { grid-template-columns: 1fr 1fr; }
   .result-stats { padding: 12px; }
 }
+
+#overlay-prompt { font-weight: 800; color: #245d40; font-size: clamp(14px, 2vw, 23px); }
+.stage { cursor: pointer; user-select: none; touch-action: none; }

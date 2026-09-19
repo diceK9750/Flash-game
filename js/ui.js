@@ -3,15 +3,13 @@ Hop.UI = class {
   constructor(game, canvas) {
     this.game = game; this.canvas = canvas; this.ctx = canvas.getContext("2d");
     this.fields = Object.fromEntries(["state", "angle", "power", "distance", "height", "speed", "final", "hint", "up-status", "down-status", "contact-status"].map(id => [id, document.getElementById(id)]));
-    this.action = document.getElementById("action");
-    this.downAction = document.getElementById("down-action");
     this.overlay = document.getElementById("overlay");
-    this.overlayAction = document.getElementById("overlay-action");
     this.lastState = null;
     this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || false };
   }
   update() {
     const g = this.game, c = Hop.CONFIG, s = Hop.STATES;
+    if (g.soundEvent) { Hop.Audio?.play(g.soundEvent); g.soundEvent = null; }
     if (g.state === s.FLYING && this.lastState === s.AIM_POWER) this.visual.launchAt = g.phaseTime;
     if (g.state === s.READY || g.state === s.AIM_ANGLE) this.visual.launchAt = -Infinity;
     if (g.contact !== this.visual.lastContact) { this.visual.lastContact = g.contact; this.visual.contactAt = g.phaseTime; }
@@ -28,21 +26,21 @@ Hop.UI = class {
     set("final", g.finalDistance === null ? "—" : `${g.finalDistance.toFixed(1)} m`);
     const airborne = g.airborne();
     const floating = g.merchant?.type === "C";
-    const armed = [g.specialArmed.dash ? "DASH SPECIAL READY" : "", g.specialArmed.stopper ? "STOPPER SPECIAL READY" : ""].filter(Boolean);
+    const armed = [g.specialArmed.dash ? "DASH SPECIAL READY" : "", g.specialArmed.stopper ? "STOPPER SPECIAL READY" : "", g.specialArmed.brake ? "BRAKE SPECIAL READY" : "", g.guardSpecial.active ? `GUARD SPECIAL ${g.guardSpecial.remaining.toFixed(1)}s` : ""].filter(Boolean);
     const merchant = g.merchant;
     const merchantStatus = !merchant ? "" : merchant.type === "A" ? `TYPE A ×${merchant.remaining}` : merchant.type === "B" ? `CHARGE ${merchant.charge}/${c.typeBMaxCharge}` : merchant.type === "C" ? `FLOAT ${merchant.remaining}` : `BOUND BOOST ×${merchant.remaining}`;
     document.getElementById("special-state").textContent = [...armed, merchantStatus].filter(Boolean).join(" · ");
     document.getElementById("special-state").hidden = !armed.length && !merchant;
-    document.getElementById("guard-status").textContent = `GUARD × ${g.guard}`;
+    document.getElementById("guard-status").textContent = `GUARD × ${g.normalGuard}`;
     document.getElementById("debug-status").hidden = !g.debug;
     document.getElementById("history").textContent = `CONTACT / ${g.history.slice(-8).map(entry => `${Hop.CAST[entry.type]?.name || entry.type} (${entry.label})`).join(" → ") || "—"}`;
     const specialPanel = document.getElementById("special-panel");
     specialPanel.hidden = g.state !== s.FLYING || (!g.special && !g.specialMessage);
     document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : g.specialMessage?.label || "";
-    document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / Enter" : g.specialMessage?.detail || "";
+    document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : g.specialMessage?.detail || "";
     document.getElementById("special-track").hidden = !g.special;
     document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
-    document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL、BOUNCE→BOOST隣接でBOUNCE SPECIAL（未使用キャラのx順）。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL。GUARD中、各${c.boundaryMeters}m区間の最後${c.merchantZoneMeters}mから、その境界ちょうどのBOOST・BOUNCE・DASH・STOPPERに当たると商人SPECIAL。`;
+    document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL、BOUNCE→BOOST隣接でBOUNCE SPECIAL（未使用キャラのx順）。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL。通常GUARDまたはGUARD SPECIAL中、各${c.boundaryMeters}m区間の最後${c.merchantZoneMeters}mから、その境界ちょうどのBOOST・BOUNCE・DASH・STOPPERに当たると商人SPECIAL。BRAKE：AERIAL DOWN成功後、地面・他キャラ・UPなしで接触。ANGLE：接触時10%抽選。GUARD：通常GUARDを持って再GUARD。`;
     const cooldownText = (Math.ceil(g.downCooldown * 10) / 10).toFixed(1);
     set("up-status", `AERIAL UP × ${g.upRemaining}`);
     set("down-status", floating ? "AERIAL / 浮遊中は使用不可" : g.special ? "DOWN / SPECIAL受付中" : g.state === s.RESULT ? "DOWN / 終了" : g.downCooldown > 0 ? `DOWN / ${cooldownText} s` : airborne ? "DOWN / READY" : "DOWN / 空中で使用可能");
@@ -52,29 +50,18 @@ Hop.UI = class {
     const contactType = g.contact?.label.split(" ")[0];
     contactTag.textContent = g.contact ? `${Hop.CAST[contactType]?.name || contactType} · ${g.contact.label.includes("GUARD BLOCK") ? "結界でガード！" : Hop.CAST[contactType]?.effect || g.contact.label}` : "";
     contactTag.style.color = this.objectColor(g.contact?.label);
-    this.downAction.hidden = g.state !== s.FLYING;
-    this.downAction.disabled = floating || !!g.special || !airborne || g.downCooldown > 0;
-    this.downAction.textContent = g.downCooldown > 0 ? `DOWN ${cooldownText} s` : "DOWN ↓";
-    this.action.disabled = g.state === s.FLYING && !g.special && (floating || !airborne || g.upRemaining === 0);
-    this.action.hidden = g.state === s.RESULT;
-    if (g.state === s.FLYING) this.action.textContent = g.special ? "SPECIAL!" : "AERIAL UP ↑";
+    const labels = { READY: "画面をタップ / クリック", AIM_ANGLE: "タップで角度決定", AIM_POWER: "タップで発射", RESULT: "画面をタップしてRETRY" };
+    const mode = g.aerialMode;
+    const flightHint = g.special ? "TAP → SPECIAL!" : floating ? "FLOAT / 浮遊中" : !airborne ? "AERIAL / 空中で使用可能" : mode === "DOWN" ? (g.downCooldown > 0 ? `AERIAL DOWN ${cooldownText}s` : "TAP → AERIAL DOWN") : `TAP → AERIAL UP ×${g.upRemaining}`;
+    set("hint", labels[g.state] || flightHint);
     if (g.state === this.lastState) return;
     this.lastState = g.state;
-    const labels = {
-      READY: ["START →", "START または画面をタップして開始"],
-      AIM_ANGLE: ["角度を決定", "01 / 矢印が往復します。タップで角度を固定"],
-      AIM_POWER: ["発射！", "02 / メーターが往復します。タップでパワーを決定・発射"],
-      FLYING: ["AERIAL UP ↑", "03 / タップでUP。Space / DOWNで地上オブジェクトを狙おう"],
-      RESULT: ["RETRY ↗", "04 / 記録確定。RETRYで角度選びから再挑戦"]
-    };
-    this.action.textContent = labels[g.state][0];
-    set("hint", labels[g.state][1]);
     this.overlay.hidden = g.state !== s.READY && g.state !== s.RESULT;
     document.getElementById("flight-tag").hidden = g.state !== s.FLYING;
     document.getElementById("overlay-label").textContent = g.state === s.RESULT ? "FINAL DISTANCE / 最終飛距離" : "ONE LAUNCH. HOW FAR?";
     document.getElementById("overlay-title").textContent = g.state === s.RESULT ? `${g.finalDistance.toFixed(1)} m` : "勇者、空の旅へ！";
     document.getElementById("overlay-detail").textContent = g.state === s.RESULT ? `${g.body.bounces} 回の地面接触 · 角度 ${g.angle.toFixed(1)}° · パワー ${Math.round(g.power * 100)}%` : "角度とパワーを決めて、飛距離に挑戦。";
-    this.overlayAction.textContent = g.state === s.RESULT ? "RETRY ↗" : "START →";
+    document.getElementById("overlay-prompt").textContent = g.state === s.RESULT ? "画面をタップしてRETRY" : "画面をタップ / クリック";
     document.getElementById("result-stats").hidden = g.state !== s.RESULT;
     if (g.state === s.RESULT) {
       document.getElementById("record-status").textContent = g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : "FLIGHT RECORD";
