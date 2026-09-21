@@ -35,7 +35,7 @@ test('STOPPER SPECIAL initial vector remains strongest of four after acceleratio
  assert(speeds[3]>Math.max(...speeds.slice(0,3)));near(speeds[3],2300);
 });
 test('BRAKE ready from successful automatic DOWN, no wall-clock expiry',()=>{
- const g=isolated();high(g);g.body.vy=500;g.act();assert(g.specialArmed.brake);assert.equal(g.downCooldown,1.5);
+ const g=isolated();high(g);g.body.vy=500;g.act();assert(g.specialArmed.brake);assert.equal(g.downCharge,0);
  advance(g,3);assert(g.specialArmed.brake);hit(g,'BRAKE');assert.equal(g.special.type,'BRAKE');assert(!g.specialArmed.brake);
  g.act();near(g.body.vx,500);near(g.body.vy,-100);assert.equal(g.upRemaining,3);
 });
@@ -44,8 +44,8 @@ for(const cancel of ['BOOST','BOUNCE','ANGLE','DASH','GUARD','STOPPER','GROUND',
  if(cancel==='GROUND')impact(g);else if(cancel==='UP'){g.body.y=100;g.body.vy=-100;g.act();}else hit(g,cancel);
  assert(!g.specialArmed.brake);
 });
-test('BRAKE miss vector half, not consumed by failed DOWN cooldown',()=>{
- const g=isolated();g.body.y=100;g.body.vy=100;g.downCooldown=1;g.act();assert(!g.specialArmed.brake);
+test('BRAKE miss vector half, not consumed by failed DOWN charge',()=>{
+ const g=isolated();g.body.y=100;g.body.vy=100;g.downCharge=0.5;g.act();assert(!g.specialArmed.brake);
  g.specialArmed.brake=true;hit(g,'BRAKE');g.resolveSpecial(false);near(g.body.vx,250);near(g.body.vy,-50);
 });
 test('ANGLE deterministic draw exactly once per contact; success and miss',()=>{

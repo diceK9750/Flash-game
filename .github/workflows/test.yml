@@ -1,0 +1,24 @@
+name: Game regression tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      # release discovers every tests/*.cjs suite. CommonJS caching runs shared
+      # prerequisites only once, then the release-specific checks run last.
+      - name: Run all regression suites and final release checks
+        run: node tests/release.cjs

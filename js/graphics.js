@@ -151,6 +151,13 @@ Hop.Graphics = {
       ctx.textAlign = "center"; ctx.font = "bold 25px system-ui";
       ctx.fillStyle = "#fff9e9"; ctx.fillRect(ox - 59, ground - 173, 118, 32);
       ctx.fillStyle = this.objectColor(object.type); ctx.fillText(Hop.CAST[object.type].name, ox, ground - 148);
+      const ready = visual.readyTargets?.find(target => target.object === object);
+      if (ready) {
+        ctx.font = "bold 27px system-ui";
+        ctx.fillStyle = ready.label === "MERCHANT" ? "#754615" : "#674488";
+        ctx.fillRect(ox - 85, ground - 211, 170, 34);
+        ctx.fillStyle = "#fffdf2"; ctx.fillText(ready.label, ox, ground - 185);
+      }
       ctx.restore();
     }
     g.trail.forEach((point, i) => {

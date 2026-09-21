@@ -5,14 +5,14 @@ const {isolated,hit,near}=require('./specials.cjs');
 let cases=0;function test(name,fn){try{fn();cases++;}catch(e){e.message=name+': '+e.message;throw e;}}
 function bind(g){const ui=new scope.Hop.UI(g,element('canvas'));scope.Hop.bindInput(g,ui);return ui;}
 function tap(extra={}){element('stage').listeners.pointerdown({button:0,isPrimary:true,preventDefault(){},...extra});}
-test('stage has exactly one pointer listener, no game buttons; full state loop',()=>{
- const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');assert(!/<button\b/i.test(html));
+test('stage has exactly one pointer listener, only external SE button; full state loop',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');assert.equal((html.match(/<button\b/g)||[]).length,1);assert(html.includes('id="se-toggle"'));
  const g=new scope.Hop.Game();const ui=bind(g);assert.deepEqual(Object.keys(element('stage').listeners),['pointerdown']);
  for(const state of ['AIM_ANGLE','AIM_POWER','FLYING']){tap();assert.equal(g.state,state);}
  g.finish();tap();assert.equal(g.state,'AIM_ANGLE');ui.draw();
 });
-test('one tap ascending DOWN, descending UP, cooldown/no charges are no-ops',()=>{
- const g=isolated();bind(g);Object.assign(g.body,{y:100,vy:300});tap();assert.equal(g.upRemaining,3);near(g.downCooldown,1.5);assert(g.specialArmed.brake);
+test('one tap ascending DOWN, descending UP, charge/no charges are no-ops',()=>{
+ const g=isolated();bind(g);Object.assign(g.body,{y:100,vy:300});tap();assert.equal(g.upRemaining,3);near(g.downCharge,0);assert(g.specialArmed.brake);
  g.body.vy=200;const vx=g.body.vx;tap();near(g.body.vx,vx);assert.equal(g.upRemaining,3);
  g.body.vy=-100;tap();assert.equal(g.upRemaining,2);assert(!g.specialArmed.brake);
  g.upRemaining=0;g.body.vy=-200;const vy=g.body.vy;tap();near(g.body.vy,vy);
@@ -31,7 +31,7 @@ test('all seven special taps only resolve, never trigger AERIAL',()=>{
   if(type==='GUARD')g.normalGuard=1;else g.specialArmed[rule.trigger]=true;
   hit(g,type,{next:rule.partner?[{x:900,type:rule.partner}]:[]});assert(g.special);
   for(const code of ['Space','Enter'])document.listeners.keydown({code,repeat:false});assert(g.special);
-  tap();assert.equal(g.special,null);assert.equal(g.upRemaining,3);near(g.downCooldown,0);
+  tap();assert.equal(g.special,null);assert.equal(g.upRemaining,3);near(g.downCharge,1);
  }
 });
 test('audio absent, denied, or suspended never breaks controls',()=>{
@@ -52,4 +52,42 @@ test('twenty bounded one-input integration runs eventually stop',()=>{
   assert.equal(g.state,'RESULT','seed '+seed);
  }
 });
+
+function chargeFlight(){const g=isolated();Object.assign(g.body,{y:100000,vy:500,grounded:false,stopped:false});return g;}
+function advanceCharge(g,seconds,fps=120){for(let i=0;i<Math.round(seconds*fps);i++)g.update(1/fps);}
+test('initial/full, DOWN zero, failed DOWN leaves BRAKE unarmed, UP preserves charge',()=>{
+ const g=chargeFlight();bind(g);assert.equal(g.downCharge,1);tap();assert.equal(g.downCharge,0);assert(g.specialArmed.brake);
+ g.specialArmed.brake=false;g.body.vy=500;tap();assert.equal(g.downCharge,0);assert(!g.specialArmed.brake);
+ g.downCharge=0.5;tap();assert.equal(g.downCharge,0.5);assert(!g.specialArmed.brake);
+ g.body.vy=-500;tap();assert.equal(g.downCharge,0.5);assert.equal(g.upRemaining,2);
+ g.finish();tap();assert.equal(g.downCharge,1);assert(!g.specialArmed.brake);
+});
+for(const fps of [30,60,120,144])test('charge timing, cap, reuse and pause expiry at '+fps+'fps',()=>{
+ const g=chargeFlight();g.downCharge=0;advanceCharge(g,0.75,120);near(g.downCharge,0.5);
+ g.downCharge=0;g.accumulator=0;advanceCharge(g,1.5,fps);assert.equal(g.downCharge,1);
+ advanceCharge(g,1,fps);assert.equal(g.downCharge,1);g.body.vy=500;g.act();assert.equal(g.downCharge,0);
+ g.specialMessage={remaining:0.5};advanceCharge(g,1,fps);near(g.downCharge,1/3);
+});
+for(const pause of ['special','merchantSpecial','SUCCESS','MISS','merchantVisual','C'])test('charge pauses and resumes for '+pause,()=>{
+ const g=chargeFlight();g.downCharge=0.25;g.guardSpecial={active:true,remaining:7};
+ if(pause==='special'||pause==='merchantSpecial'){g.specialArmed.brake=true;if(pause==='merchantSpecial')g.normalGuard=1;hit(g,pause==='special'?'BRAKE':'DASH',{x:800});assert(g.special);}
+ else if(pause==='C')g.acquireMerchant('C');
+ else if(pause==='merchantVisual')g.merchantVisual={remaining:1};
+ else g.specialMessage={label:'SPECIAL '+pause,remaining:1};
+ advanceCharge(g,0.5);near(g.downCharge,0.25);near(g.guardSpecial.remaining,7);
+ if(g.special){bind(g);const up=g.upRemaining;tap();near(g.downCharge,0.25);assert.equal(g.upRemaining,up);}
+ g.special=null;g.specialMessage=null;g.merchantVisual=null;g.merchant=null;
+ Object.assign(g.body,{y:100000,vy:500,stopped:false,grounded:false});advanceCharge(g,0.75);near(g.downCharge,0.75);
+});
+for(const state of ['READY','AIM_ANGLE','AIM_POWER','RESULT'])test('no charge in '+state,()=>{
+ const g=chargeFlight();g.downCharge=0.25;g.state=state;advanceCharge(g,2);near(g.downCharge,0.25);
+});
+test('charge UI percentage, bar and hysteresis hint agree without early READY',()=>{
+ const g=chargeFlight(),ui=bind(g);g.downCharge=0.635;ui.update();assert.equal(element('down-status').textContent,'AERIAL ↓ 63%');near(element('down-charge').value,0.635);
+ g.downCharge=0.9999999999;ui.update();assert.equal(element('down-status').textContent,'AERIAL ↓ 99%');
+ g.downCharge=1;ui.update();assert.equal(element('hint').textContent,'AERIAL ↓ READY');
+ g.body.vy=-41;g.updateAerialMode();ui.update();assert.equal(element('hint').textContent,'AERIAL ↑ ×3');
+ g.body.vy=40;g.updateAerialMode();ui.update();assert.equal(element('hint').textContent,'AERIAL ↑ ×3');
+});
+
 console.log(JSON.stringify({controlsAndAudio:'PASS',cases}));

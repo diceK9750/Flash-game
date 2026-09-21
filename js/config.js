@@ -20,7 +20,7 @@ Hop.CONFIG = Object.freeze({
   cameraAnchorX: 420, cameraFollowRate: 7,
   markerMeters: 50, trailLength: 22,
   aerialUpUses: 3, aerialUpVertical: 620, aerialUpHorizontal: 85,
-  aerialDownVertical: 760, aerialDownHorizontal: 35, aerialDownCooldown: 1.5,
+  aerialDownVertical: 760, aerialDownHorizontal: 35, aerialDownRechargeTime: 1.5,
   maxHorizontalSpeed: 2000, maxVerticalSpeed: 1500,
   effectDuration: 0.7, contactDuration: 1.4,
   objectFirstMin: 400, objectFirstMax: 650,

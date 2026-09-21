@@ -8,11 +8,11 @@
 
 1. READYでタップ → 角度をタップで固定 → パワーをタップで確定して発射。
 2. 飛行中のタップは上昇中ならAERIAL DOWN、下降中ならAERIAL UPを自動選択。
-3. UPは3回、DOWNは1.5秒クールダウン。使えないときは何も発動しません。地面・浮遊中も使用不可。
+3. UPは3回。DOWNは初期100%、使用後0%となり、通常飛行中に自動充電して100%で再使用可能です。初期充電時間は1.5秒（`aerialDownRechargeTime`で調整）。SPECIAL受付・成功／失敗表示・商人登場（merchantVisual）・Type C浮遊中は充電が止まります。ANGLE / POWER / RESULT中も充電しません。使えないときは何も発動しません。地面・浮遊中も使用不可。
 4. SPECIAL受付は1.0秒。タップはSPECIALだけを成功させ、AERIALは同時発動しません。
 5. RESULT画面をタップするとRETRYして角度選択から再開します。
 
-判定は垂直速度が+40px/s超でDOWN、−40px/s未満でUP。±40の間は直前モードを維持します。発射直後の既定値はDOWN。操作ボタン・通常キーボード操作はなく、開発用Dキーだけを残しています。
+判定は垂直速度が+40px/s超でDOWN、−40px/s未満でUP。±40の間は直前モードを維持します。発射直後の既定値はDOWN。ゲーム操作ボタン・通常キーボード操作はなく、開発用Dキーだけを残しています。
 
 ## 通常接触
 
@@ -69,7 +69,7 @@ GUARD SPECIALはSTOPPERの通常効果だけを1回防ぐか、プレイ可能�
 
 A/BのSPECIAL対象はBOOST・BOUNCE・DASH・STOPPERのみ。BRAKE・ANGLE・GUARD SPECIALは回数やCHARGEを消費・追加しません。ANGLE通常／SPECIALは加速ではなく速度保存の回転なので成分別クランプを行いません（成分が加速上限を超える場合がありますが、回転自体は速度量を増やしません）。次の加速時には通常上限が適用されます。
 
-合成SEは `js/audio.js` に分離しています。最初の画面入力でAudioContextを開始し、通常成功・STOPPER専用・GUARD専用の音を鳴らします。STOPPERは白金フラッシュ・強い残像・大きなリングも表示します。音声不可・開始拒否でもゲームは動作します。
+合成SEは `js/audio.js` に分離しています。最初の画面入力でAudioContextを開始し、通常成功・STOPPER専用・GUARD専用の音を鳴らします。STOPPERは白金フラッシュ・強い残像・大きなリングも表示します。音声不可・開始拒否でもゲームは動作します。ヘッダーのSE ON / OFFでミュートを切り替え、設定をlocalStorageへ保存します（保存不可時は起動中のみ保持）。切替ではゲームは進みません。
 
 自己ベストは同じブラウザ・同じオリジンのlocalStorageに保存します。プライベートモードや保存制限時もゲームは続きます。ローカルプレビューと公開URLの記録は別です。
 
@@ -97,14 +97,19 @@ Node.jsがある場合は `node tests/release.cjs --serve` でもプレビュー
 
 `index.html` の直接表示も可能ですが、ゲームはfile://専用の処理に依存していません。通常の静的HTTP/HTTPS配信で動作します。遊ぶ側にNode.js・Python・npm・ビルドは不要です。
 
-## GitHub Pages公開（今回未実施）
+## GitHub Pages公開
 
-1. 公開するリポジトリのルートに `index.html`、`css/`、`js/`、`.nojekyll` を置きます。
-2. 公開時に選んだブランチへcommit・pushします。
-3. GitHubのSettings → Pages → Build and deploymentで「Deploy from a branch」、対象ブランチ、`/(root)` を選び保存します。
-4. 配備完了後のURLでSTART、スマホ操作、SPECIAL、RETRY、記録保存を最終確認します。
+公開URL：[異世界Truck Crash!!](https://dicek9750.github.io/Flash-game/)
 
-パスはすべて相対パスで、`https://ユーザー.github.io/リポジトリ/` のようなサブパスに対応します。独自サーバーやAPIは不要です。公開手順は[GitHub公式ドキュメント](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)を参照してください。
+GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設定変更を行っていないため、ローカルの未コミット改善は公開URLへ未反映です。
+
+相対パスでサブパス配信に対応し、ルートの `.nojekyll` を維持します。共有用のタイトル・説明・theme-colorと、外部素材を使わない `favicon.svg` を用意しています。OGP画像はありません。再公開時は既存の公開設定を維持し、公開URLで発射・スマホ操作・SPECIAL・RETRY・記録保存を確認してください。
+
+### CI（回帰テストのみ）
+
+`.github/workflows/test.yml` はpush / pull_requestでubuntu-latestとNode LTSを使用します。`node tests/release.cjs` が `tests/*.cjs` を列挙し、共有の前提テストをCommonJSキャッシュで重複実行せず、最後に公開回帰チェックを実行します。npm install・secrets・デプロイ処理は不要です。
+
+ワークフローはローカルに追加した段階です。GitHub上での初回実行結果は、後日commit・pushした後に確認してください。
 
 ## テスト
 
@@ -113,7 +118,17 @@ Node.jsがある場合は `node tests/release.cjs --serve` でもプレビュー
 - `node tests/specials.cjs`：正式SPECIAL・準備解除・商人A〜D・境界生成・終了・上書き・入力・RETRY。
 - `node tests/guard-special.cjs`：通常ベクトル・新SPECIAL・2種類のGUARD・タイマー停止・商人との統合。
 - `node tests/controls.cjs`：1入力・ヒステリシス・旧操作無効・音声不可時の安全性。
-- `node tests/release.cjs`：全テストに加え、描画・相対パス・維持した物理設定を照合。
+- `node tests/release.cjs`：全テストに加え、描画・必須ファイル・.nojekyll・共有メタ情報・ローカルアセットのサブパス解決・維持した物理設定を照合。
 - `node tests/release.cjs --serve`：`/NANACACRASH/qa.html` は検証専用。シナリオを選択して「準備」で通常効果・7SPECIAL・商人A〜D・BRAKE準備・GUARD期限／二重防御／浮遊中の時間停止を再現します。準備時は時間停止し、画面タップでSPECIAL成功、「再生」でタイマーを再開してMISSを確認できます。「次の通常STOPPER」「次のGUARD」で防御の順序も確認できます。QAプレイは保存しません。
 
 ゲーム中のDキーでDEBUG切替。DEBUGは従来の固定順序・間隔を維持し、追加の100m境界生成を行いません。OFFで通常の境界＋ランダム生成に戻ります。一度でもDEBUGを使ったプレイは記録対象外です。テスト用のサーバー・QA画面はGitHub Pagesには必要ありません。
+
+## プレイ中の表示・快適性
+
+- FLYING中にステージ内から始めるジェスチャーはゲーム操作を優先します。ステージ外やREADY・角度／パワー選択・RESULTでは縦スクロールできます。
+- ステージ左上に次のAERIAL操作とDOWN充電、右上に商人効果の残数を表示。Type Cは残り人数、Type BはCHARGEゲージです。
+- SPECIAL READYは現在の準備状態から導出した対象職業、頭上SPECIALは現在条件が成立する画面内キャラです。途中の接触・バウンドで条件は変化します。ANGLEの抽選結果は先読みしません。
+- 結界保持中、次の100m境界まで10m以内でMERCHANT ZONEを表示。対象境界キャラはMERCHANT表示を優先します。実際の接触条件・成功判定は従来どおりです。
+- SPECIAL受付・成功／失敗、GUARD SPECIAL開始／終了、DOWN再充電完了だけを読み上げ領域へ通知します。充電率や秒数は毎フレーム読み上げません。動きを減らす設定では強いフラッシュ・点滅を抑えます。
+- RESULTのハイライトは既存接触履歴から最大3件を抽出します。商人成功→僧侶SPECIAL→その他SPECIAL→GUARD BLOCKの順で、ない場合は接触・バウンド回数を表示します。
+- UI追加検証：`node tests/ui-quality.cjs`（release.cjsからも実行）。

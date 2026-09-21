@@ -210,13 +210,13 @@ test('retry clears all new state and preserves BEST', () => {
   for (const type of ['A', 'B', 'C', 'D']) {
     const g = isolated(); g.debug = g.debugUsed = true; g.best.distance = 999; g.acquireMerchant(type);
     g.specialArmed = { dash: true, stopper: true }; g.special = { remaining: 0.8 };
-    g.normalGuard = 1; g.upRemaining = 0; g.downCooldown = 1; g.merchantStats.attempts = 5;
+    g.normalGuard = 1; g.upRemaining = 0; g.downCharge = 0.5; g.merchantStats.attempts = 5;
     g.merchantVisual = { type, remaining: 1 }; g.finish(); g.act();
     assert.equal(g.state, 'AIM_ANGLE'); assert.equal(g.best.distance, 999); assert.equal(g.merchant, null);
     assert.equal(g.special, null); assert.equal(g.merchantVisual, null); assert.equal(g.normalGuard, 0);
     assert.equal(g.specialArmed.dash, false); assert.equal(g.specialArmed.stopper, false);
     assert.equal(g.merchantStats.attempts, 0); assert.equal(g.merchantStats.lastType, null);
-    assert.equal(g.upRemaining, 3); assert.equal(g.downCooldown, 0); assert.equal(g.history.length, 0);
+    assert.equal(g.upRemaining, 3); assert.equal(g.downCharge, 1); assert.equal(g.history.length, 0);
     assert(g.objects.every(o => !o.used));
   }
 });
@@ -235,7 +235,7 @@ test('merchant pointer priority, HUD, result', () => {
     element('stage').listeners.pointerdown({button:0,isPrimary:true,preventDefault(){}});
     assert.equal(g.special, null); assert.equal(g.upRemaining, 3);
   }
-  ui.update(); assert(element('special-state').textContent.includes('BOUND BOOST ×5'));
+  ui.update(); assert(element('merchant-hud-text').textContent.includes('BOUND ×5'));
   g.debugUsed = true; g.finish(); ui.update(); ui.draw();
   assert.equal(element('special-panel').hidden, true); assert.equal(element('contact-tag').hidden, true);
   assert(element('merchant-totals').textContent.includes('発生 2 / 成功 2'));

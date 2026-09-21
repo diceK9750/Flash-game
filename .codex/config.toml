@@ -1,0 +1,3 @@
+# Project development model. Game runtime has no OpenAI API dependency.
+model = "gpt-6-astra"
+model_reasoning_effort = "medium"

@@ -108,12 +108,12 @@ for (let i = 1; i < sequence.length; i++) assert.equal(sequence[i].x - sequence[
 debug.toggleDebug(); assert.equal(debug.debug, false); assert(debug.debugUsed);
 debug.body.x = 80000; debug.finish(); assert.equal(writes, beforeWrites); assert.equal(debug.newRecords.length, 0);
 assert.equal(debug.best.distance, 100);
-debug.normalGuard = 1; debug.special = { remaining: 0.4 }; debug.downCooldown = 1;
+debug.normalGuard = 1; debug.special = { remaining: 0.4 }; debug.downCharge = 0.5;
 debug.history.push({ type: 'STOPPER', label: 'STOPPER SPECIAL' }); debug.counts.STOPPER = 1;
 debug.specialCount = 4; debug.specialSuccesses = 3; debug.upRemaining = 0;
 debug.act();
 assert.equal(debug.state, 'AIM_ANGLE'); assert.equal(debug.normalGuard, 0); assert.equal(debug.special, null);
-assert.equal(debug.downCooldown, 0); assert.equal(debug.history.length, 0); assert.equal(debug.specialCount, 0);
+assert.equal(debug.downCharge, 1); assert.equal(debug.history.length, 0); assert.equal(debug.specialCount, 0);
 assert.equal(debug.specialSuccesses, 0); assert.equal(debug.upRemaining, 3); assert.equal(debug.debugUsed, false);
 assert(Object.values(debug.counts).every(n => n === 0)); assert(debug.objects.every(o => !o.used)); assert.equal(debug.best.distance, 100);
 debug.toggleDebug(); debug.reset(); assert(debug.debugUsed); const lastWrites = writes; debug.finish(); assert.equal(writes, lastWrites);

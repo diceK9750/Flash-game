@@ -14,7 +14,7 @@ Hop.Game = class {
     this.maxHeight = 0; this.maxSpeed = 0; this.finalDistance = null;
     this.trail = [];
     this.upRemaining = Hop.CONFIG.aerialUpUses;
-    this.downCooldown = 0; this.effect = null; this.contact = null;
+    this.downCharge = 1; this.effect = null; this.contact = null;
     this.normalGuard = 0; this.guardSpecial = { active: false, remaining: 0 };
     this.special = null; this.specialMessage = null;
     this.specialArmed = { dash: false, stopper: false, brake: false };
@@ -84,8 +84,8 @@ Hop.Game = class {
       this.specialArmed.brake = false;
       this.body.vy += c.aerialUpVertical; this.body.vx += c.aerialUpHorizontal;
     } else if (direction === "DOWN") {
-      if (this.downCooldown > 0) return false;
-      this.downCooldown = c.aerialDownCooldown;
+      if (this.downCharge < 1) return false;
+      this.downCharge = 0;
       this.specialArmed.brake = true;
       this.body.vy -= c.aerialDownVertical; this.body.vx += c.aerialDownHorizontal;
     } else return false;
@@ -340,10 +340,14 @@ Hop.Game = class {
     if (this.state !== Hop.STATES.FLYING) return;
     this.accumulator += dt;
     while (this.accumulator + 1e-10 >= c.physicsStep) {
-      const guardPaused = this.special || this.specialMessage || this.merchantVisual || this.merchant?.type === "C";
-      if (this.guardSpecial.active && !guardPaused) {
+      const playTimersPaused = this.special || this.specialMessage || this.merchantVisual || this.merchant?.type === "C";
+      if (this.guardSpecial.active && !playTimersPaused) {
         this.guardSpecial.remaining = Math.max(0, this.guardSpecial.remaining - c.physicsStep);
         if (this.guardSpecial.remaining < 1e-9) this.guardSpecial = { active: false, remaining: 0 };
+      }
+      if (!playTimersPaused) {
+        this.downCharge = Math.max(0, Math.min(1, this.downCharge + c.physicsStep / c.aerialDownRechargeTime));
+        if (1 - this.downCharge < 1e-9) this.downCharge = 1;
       }
       this.flash = Math.max(0, this.flash - c.physicsStep); this.specialTrail = Math.max(0, this.specialTrail - c.physicsStep);
       for (const key of ["effect", "contact", "specialMessage", "merchantVisual", "successVisual"]) {
@@ -357,8 +361,6 @@ Hop.Game = class {
         if (this.special.remaining <= 1e-9) this.resolveSpecial(false);
         continue;
       }
-      this.downCooldown = Math.max(0, this.downCooldown - c.physicsStep);
-      if (this.downCooldown < 1e-9) this.downCooldown = 0;
       this.generateObjects();
       const previous = { x: this.body.x, y: this.body.y, vx: this.body.vx, vy: this.body.vy };
       if (this.merchant?.type === "C") this.floatStep(c.physicsStep);

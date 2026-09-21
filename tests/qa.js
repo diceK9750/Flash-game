@@ -9,7 +9,7 @@
   const scenarios = [
     ...Object.keys(Hop.CONFIG.objectWeights).map(t => '通常 ' + t),
     ...Object.keys(Hop.CONFIG.specials).map(t => 'SPECIAL ' + t),
-    'BRAKE READY', 'GUARD期限直前', 'GUARD二重防御', '通常GUARD防御', 'GUARD SPECIAL防御', 'C中タイマー停止',
+    'READY先読み', '商人ゾーン', 'HUD CHARGE', 'BRAKE READY', 'GUARD期限直前', 'GUARD二重防御', '通常GUARD防御', 'GUARD SPECIAL防御', 'C中タイマー停止',
     ...['A','B','C','D'].map(t => '商人 ' + t)
   ];
   for (const name of scenarios) { const option = document.createElement('option'); option.textContent = name; select.append(option); }
@@ -42,6 +42,10 @@
     } else {
       Object.assign(game.body, { x: 480, y: 300, vx: 500, vy: 200, grounded: false }); game.cameraX = 250;
       if (name === 'BRAKE READY') game.act();
+      if (name === 'READY先読み') { game.specialArmed = { dash: true, stopper: true, brake: true }; game.objects = [{x:600,type:'BOOST',used:false},{x:880,type:'BOUNCE',used:false},{x:1200,type:'DASH',used:false}]; }
+      if (name === '商人ゾーン') { game.normalGuard = 1; game.body.x = 752; game.cameraX = 450; game.objects = [{x:800,type:'STOPPER',used:false}]; }
+      if (name === 'HUD CHARGE') { game.acquireMerchant('B'); game.merchant.charge = 7; game.downCharge = .63; }
+
       if (name === 'GUARD期限直前') game.guardSpecial = { active: true, remaining: 0.3 };
       if (name === 'GUARD二重防御') { game.guardSpecial = { active: true, remaining: 7.4 }; contact('GUARD'); }
       if (name === '通常GUARD防御') { game.normalGuard = 1; contact('STOPPER'); }

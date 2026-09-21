@@ -81,4 +81,35 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 }
 
 #overlay-prompt { font-weight: 800; color: #245d40; font-size: clamp(14px, 2vw, 23px); }
-.stage { cursor: pointer; user-select: none; touch-action: none; }
+.stage { cursor: pointer; user-select: none; touch-action: pan-y pinch-zoom; }
+
+.down-readout { display: inline-flex; align-items: center; gap: 7px; }
+#down-charge { width: 64px; height: 7px; appearance: none; border: 0; border-radius: 4px; overflow: hidden; background: #d1dfdf; color: #16727b; }
+#down-charge::-webkit-progress-bar { background: #d1dfdf; }
+#down-charge::-webkit-progress-value { background: #16727b; }
+#down-charge::-moz-progress-bar { background: #16727b; }
+
+/* Only gestures beginning on the flying stage belong to the game. */
+.stage.flying { touch-action: none; overscroll-behavior: none; }
+.header-meta { flex-wrap: wrap; }
+#se-toggle { min-width: 64px; min-height: 40px; border: 1px solid #a6b8a3; border-radius: 8px; background: #fffdf3; color: #284c3d; font: 700 12px system-ui; cursor: pointer; }
+#se-toggle:focus-visible { outline: 3px solid #277ca5; outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.flight-hud { position: absolute; top: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; gap: 6px; pointer-events: none; font: 700 clamp(12px, 1.3vw, 16px) system-ui; }
+#aerial-hud, #merchant-hud { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; padding: 5px 7px; border-radius: 7px; background: #fffdf1ed; color: #285745; max-width: 62%; }
+#aerial-hud.subdued { opacity: .55; }
+#merchant-hud { color: #805018; max-width: 43%; }
+#aerial-hud-charge, #merchant-hud-charge { width: 48px; height: 6px; accent-color: #16727b; }
+.flight-tag { display: none; }
+.ready-targets { position: absolute; top: 48px; left: 8px; max-width: calc(100% - 16px); padding: 3px 7px; border-radius: 6px; background: #fffbe6dc; color: #6b4609; font: 700 clamp(11px, 1.2vw, 15px) system-ui; pointer-events: none; }
+.contact-tag { top: 38%; }
+.merchant-zone { position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 3px 8px; background: #fff4cdcc; color: #77531e; border-radius: 5px; font: 700 clamp(11px, 1.4vw, 17px) system-ui; pointer-events: none; }
+.special-panel { inset: 30% 3% auto; padding: 10px; border-radius: 12px; background: #fff5cfee; text-align: center; }
+.special-panel strong { font-size: clamp(22px, 3.5vw, 44px); }
+.special-panel span { overflow-wrap: anywhere; }
+.special-panel.resolved { inset: auto 5% 13%; padding: 7px; background: #fffbedec; gap: 3px; }
+.special-panel.resolved strong { font-size: clamp(17px, 2vw, 28px); }
+#result-highlights { color: #714815; font-weight: 700; font-size: 13px; line-height: 1.6; }
+@media (prefers-reduced-motion: reduce) {
+  .stage *, .stage { animation: none !important; transition: none !important; }
+}

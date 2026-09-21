@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>異世界Truck Crash!!</title>
   <meta name="description" content="異世界Truck Crash!!は、架空のトラックで勇者をコミカルに飛ばす軽量ブラウザゲーム。角度とパワーを決め、仲間の力とSPECIALで飛距離に挑戦！">
+  <meta property="og:title" content="異世界Truck Crash!!">
+  <meta property="og:description" content="トラックで勇者をひとっ飛び！1タップで仲間とSPECIALを狙い、飛距離に挑戦する軽量ブラウザゲーム。">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#285745">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/style.css">
   <script defer src="js/config.js"></script>
   <script defer src="js/physics.js"></script>
@@ -17,7 +23,7 @@
 </head>
 <body>
   <main>
-    <header><div><div class="brand">異世界Truck Crash!!</div><p class="subtitle">トラックでひとっ飛び、仲間の力でどこまでも。</p></div><div class="header-meta"><span class="edition">公開版 v0.2 · HOP / DISTANCE</span><strong id="best-summary">BEST 0.0 m</strong></div></header>
+    <header><div><div class="brand">異世界Truck Crash!!</div><p class="subtitle">トラックでひとっ飛び、仲間の力でどこまでも。</p></div><div class="header-meta"><span class="edition">公開版 v0.2 · HOP / DISTANCE</span><button id="se-toggle" type="button" aria-pressed="false" aria-label="効果音のミュート">SE ON</button><strong id="best-summary">BEST 0.0 m</strong></div></header>
     <section class="readouts" aria-label="フライトデータ">
       <div><span>STATE / 状態</span><strong id="state">READY</strong></div>
       <div><span>ANGLE / 発射角</span><strong id="angle">—</strong></div>
@@ -27,9 +33,9 @@
       <div><span>SPEED / 最高速度</span><strong id="speed">0.0 m/s</strong></div>
     </section>
     <div class="aerial-status">
-      <strong id="up-status">AERIAL UP × 3</strong>
-      <span id="down-status">DOWN / 空中で使用可能</span>
-      <span id="contact-status" aria-live="polite">CONTACT / —</span>
+      <strong id="up-status">AERIAL ↑ ×3</strong>
+      <span class="down-readout"><span id="down-status">AERIAL ↓ READY</span><progress id="down-charge" max="1" value="1" aria-label="AERIAL DOWN充電率"></progress></span>
+      <span id="contact-status">CONTACT / —</span>
       <strong id="guard-status">GUARD × 0</strong>
       <span id="debug-status" hidden>DEBUG</span>
     </div>
@@ -44,6 +50,12 @@
         <p id="overlay-prompt">画面をタップ / クリック</p>
       </div>
       <div class="flight-tag" id="flight-tag" hidden>IN FLIGHT</div>
+      <div id="flight-hud" class="flight-hud" hidden>
+        <div id="aerial-hud"><strong id="aerial-hud-text"></strong><progress id="aerial-hud-charge" max="1" value="1" aria-label="DOWN充電率"></progress></div>
+        <div id="merchant-hud" hidden><span id="merchant-hud-text"></span><progress id="merchant-hud-charge" max="1" value="0" aria-label="商人CHARGE" hidden></progress></div>
+      </div>
+      <div id="ready-targets" class="ready-targets" hidden></div>
+      <div id="merchant-zone" class="merchant-zone" hidden></div>
       <div class="contact-tag" id="contact-tag" hidden></div>
       <div class="special-panel" id="special-panel" hidden>
         <strong id="special-title">SPECIAL!</strong>
@@ -51,7 +63,8 @@
         <div class="special-track" id="special-track"><div id="special-fill"></div></div>
       </div>
     </div>
-    <footer><p id="hint" aria-live="polite">画面をタップ / クリック</p></footer>
+    <div id="announcements" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+    <footer><p id="hint">画面をタップ / クリック</p></footer>
     <p class="final-line">FINAL / 最終飛距離 <strong id="final">—</strong></p>
     <p class="history" id="history">CONTACT / —</p>
     <section id="result-stats" class="result-stats" hidden aria-label="今回の記録と自己ベスト">
@@ -62,6 +75,7 @@
         <div><span>MAX HEIGHT / 最高高度</span><strong id="result-height"></strong></div>
         <div><span>MAX SPEED / 最高速度</span><strong id="result-speed"></strong></div>
       </div>
+      <p id="result-highlights"></p>
       <p id="contact-totals"></p>
       <p id="merchant-totals"></p>
       <p id="type-counts"></p>
@@ -69,7 +83,7 @@
       <p id="storage-status"></p>
     </section>
     <details class="rules"><summary>遊び方・仲間の効果・SPECIAL条件</summary>
-      <p>画面をタップ / 左クリックするだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。DOWNは1.5秒待って再使用。SPECIALは1秒以内にタップ。RESULTも画面タップでRETRY。</p>
+      <p>画面をタップ / 左クリックするだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。DOWNは使用後0%になり、通常飛行1.5秒で100%へ充電して再使用。SPECIAL受付・成功失敗表示・商人登場・浮遊中は充電停止。SPECIALは1秒以内にタップ。RESULTも画面タップでRETRY。</p>
       <p>魔法使い（BOOST）：45°へ800px/s加算 / 武闘家（BOUNCE）：60°へ880px/s加算 / 盗賊（BRAKE）：速度全体を半減 / 遊び人（ANGLE）：速さを保ち90°−角度の絶対値へ変更 / 戦士（DASH）：25°へ880px/s加算 / 賢者（GUARD）：次の1接触まで結界 / 僧侶（STOPPER）：強制停止</p>
       <p id="special-rules"></p>
       <p>BRAKE SPECIAL成功は速度・角度を維持。ANGLE SPECIAL成功は速度を保ち水平へ。GUARD SPECIAL成功はSTOPPER専用防御10秒。通常GUARDは次の接触で消滅し、BOOST・BOUNCE・DASH・STOPPERを防ぎます（BRAKE・ANGLEは防ぎません）。</p>

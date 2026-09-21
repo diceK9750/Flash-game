@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>異世界Truck Crash!!</title>
+  <rect width="64" height="64" rx="14" fill="#285745"/>
+  <path d="M8 24h26v24H8z" fill="#fff3d0"/>
+  <path d="M34 32h12l9 10v6H34z" fill="#efaa4c"/>
+  <path d="M38 35h7l5 6H38z" fill="#a8e0ec"/>
+  <path d="M7 47h49v5H7z" fill="#d7b570"/>
+  <g fill="#203747" stroke="#fff3d0" stroke-width="2">
+    <circle cx="17" cy="51" r="5"/><circle cx="45" cy="51" r="5"/>
+  </g>
+  <path d="m39 13-8 12 13-3z" fill="#ef7957"/>
+  <circle cx="44" cy="13" r="5" fill="#ffe2b3"/>
+  <path d="m39 18 8 3-5 8-8-4z" fill="#78b4cf"/>
+  <path d="m49 24 8-10M29 15l5-4" stroke="#fff3d0" stroke-width="3" stroke-linecap="round"/>
+</svg>
