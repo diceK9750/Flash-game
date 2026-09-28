@@ -172,7 +172,13 @@ Hop.Graphics = {
     }
     ctx.save(); ctx.translate(x, y);
     if (g.state === "FLYING" && !visual.reducedMotion) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)));
-    this.character(ctx, "HERO", 0, c.playerRadius, 0.936); ctx.restore();
+    // Same foot anchor and rotation as the silhouette; physics stays untouched.
+    // phaseTime shares the game's pause/hidden-tab handling (no wall-clock jump).
+    const flightTime = Number.isFinite(visual.launchAt) ? g.phaseTime - visual.launchAt : g.phaseTime;
+    const spriteDrawn = g.state === "FLYING" && Hop.Sprites?.draw(ctx, Hop.Sprites.heroFlight,
+      visual.reducedMotion ? 0 : flightTime, 0, c.playerRadius, Hop.Sprites.definitions.HERO.FLIGHT_LOOP.scale);
+    if (!spriteDrawn) this.character(ctx, "HERO", 0, c.playerRadius, 0.936);
+    ctx.restore();
     if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }
     if (g.successVisual?.strong && !visual.reducedMotion) {
       const age = c.stopperTrailDuration - g.successVisual.remaining;

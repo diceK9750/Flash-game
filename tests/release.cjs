@@ -76,7 +76,8 @@ if (!process.argv.includes('--serve')) {
   console.log('Release PASS: retained physics/contact config, pointer-only input, 1.0s, 9 silhouettes, merchant draw purity, states, relative paths.');
 } else {
   const http = require('node:http');
-  const allowed = new Set(['index.html', 'favicon.svg', 'css/style.css', ...fs.readdirSync(path.join(root, 'js')).map(f => 'js/' + f)]);
+  const spriteDir = 'assets/sprites/hero/flight_loop/';
+  const allowed = new Set(['index.html', 'favicon.svg', 'css/style.css', ...fs.readdirSync(path.join(root, 'js')).map(f => 'js/' + f), ...fs.readdirSync(path.join(root, spriteDir)).filter(f => /\.(png|json|gif)$/.test(f)).map(f => spriteDir + f)]);
   const qa = '<script>' + fs.readFileSync(path.join(__dirname, 'qa.js'), 'utf8') + '</script>';
   http.createServer((req, res) => {
     const prefix = '/NANACACRASH/';
@@ -84,7 +85,7 @@ if (!process.argv.includes('--serve')) {
     const file = req.url.slice(prefix.length) || 'index.html';
     if (file === 'qa.html') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html.replace('<script defer src="js/main.js"></script>', '').replace('</body>', qa + '</body>').replaceAll(' defer ', ' ')); return; }
     if (!allowed.has(file)) { res.writeHead(404); res.end(); return; }
-    res.setHeader('Content-Type', file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8');
+    res.setHeader('Content-Type', file.endsWith('.png') ? 'image/png' : file.endsWith('.gif') ? 'image/gif' : file.endsWith('.json') ? 'application/json' : file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8');
     fs.createReadStream(path.join(root, file)).pipe(res);
   }).listen(8765, '127.0.0.1', () => console.log('Preview http://127.0.0.1:8765/NANACACRASH/ | QA: /NANACACRASH/qa.html'));
 }

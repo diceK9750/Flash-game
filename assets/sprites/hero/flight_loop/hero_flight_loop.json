@@ -1,0 +1,25 @@
+{
+  "id": "HERO",
+  "animation": "FLIGHT_LOOP",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 8,
+  "fps": 8,
+  "loop": true,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "sourceVideo": "grok-video-a996b136-a98e-4a2c-8c3f-ce3df9e62221.mp4",
+  "sourceFrameIndices": [
+    40,
+    43,
+    46,
+    49,
+    52,
+    55,
+    58,
+    61
+  ],
+  "notes": "Transparent RGBA. Chroma-keyed from Grok video. Nearest-neighbor scaling."
+}

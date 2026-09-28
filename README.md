@@ -1,6 +1,6 @@
 # 異世界Truck Crash!! — 公開版 v0.2
 
-角度とパワーを決めて勇者を飛ばし、街道の仲間とSPECIALで飛距離を伸ばす軽量ブラウザゲームです。Canvas図形・文字と軽量な合成SEだけで構成し、外部素材・外部ライブラリ・外部通信は使いません。
+角度とパワーを決めて勇者を飛ばし、街道の仲間とSPECIALで飛距離を伸ばす軽量ブラウザゲームです。Canvas図形・文字、同梱の勇者スプライトと軽量な合成SEで構成し、外部ライブラリ・外部サービスへの通信は使いません。
 
 ## 操作
 
@@ -89,13 +89,17 @@ A/BのSPECIAL対象はBOOST・BOUNCE・DASH・STOPPERのみ。BRAKE・ANGLE・GU
 
 `js/graphics.js` の `Hop.CAST` に名称・色・性別・シルエット・演出名・将来のasset枠を集約しています。画像への差し替えは描画側で行い、ゲームのIDと当たり判定を維持してください。物理とSPECIAL設定は `js/config.js`、ゲーム処理は `js/game.js` / `physics.js` / `input.js` に分離しています。
 
+勇者のみ、FLYING中は `js/sprites.js` から同梱の `assets/sprites/hero/flight_loop/hero_flight_loop_sheet_96x96.png` とJSONを相対ロードします。96×96・横8枚・8fps（1秒ループ）、足元pivot (48,88)、表示倍率1.25（セル120×120）、画像補間OFFです。既存の足元座標と回転をそのまま使い、当たり判定は変えません。AERIAL・SPECIAL・バウンド中も同じループを使い、他8職業と飛行以外の勇者は従来のCanvas図形です。ゲームのphaseTimeを再利用し、タブ復帰時の時間リセット・QA一時停止に追従します。動きを減らす設定では先頭フレームを表示します。
+
+ロード中・画像欠落・不正JSON・画像寸法不一致・描画失敗時はCanvas勇者へ戻ります。GIFと個別8枚は確認用で、実行時には読み込みません。素材はユーザー提供の完成版を無加工で使用しています。
+
 ## ローカル起動
 
 ビルド不要。HTTPプレビューを推奨します。Pythonがある場合、このフォルダで `python -m http.server 8000 --bind 127.0.0.1` を実行し、`http://127.0.0.1:8000/` を開きます。終了はCtrl+C。
 
 Node.jsがある場合は `node tests/release.cjs --serve` でもプレビューできます。`http://127.0.0.1:8765/NANACACRASH/` を開きます。
 
-`index.html` の直接表示も可能ですが、ゲームはfile://専用の処理に依存していません。通常の静的HTTP/HTTPS配信で動作します。遊ぶ側にNode.js・Python・npm・ビルドは不要です。
+`index.html` の直接表示も可能ですが、file://でJSON読込が制限される環境ではCanvas勇者に戻ります。スプライト確認には通常の静的HTTP/HTTPS配信を使ってください。遊ぶ側にNode.js・Python・npm・ビルドは不要です。
 
 ## GitHub Pages公開
 
@@ -118,6 +122,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 - `node tests/specials.cjs`：正式SPECIAL・準備解除・商人A〜D・境界生成・終了・上書き・入力・RETRY。
 - `node tests/guard-special.cjs`：通常ベクトル・新SPECIAL・2種類のGUARD・タイマー停止・商人との統合。
 - `node tests/controls.cjs`：1入力・ヒステリシス・旧操作無効・音声不可時の安全性。
+- `node tests/sprites.cjs`：画像／JSONロードと異常系、RGBA寸法、8fps・固定pivot、補間設定の復元、飛行時だけの置換、描画によるゲーム状態不変。QAの「HERO FLIGHT_LOOP」「HERO 画像欠落」で実画像と意図的な404フォールバックを比較できます。
 - `node tests/release.cjs`：全テストに加え、描画・必須ファイル・.nojekyll・共有メタ情報・ローカルアセットのサブパス解決・維持した物理設定を照合。
 - `node tests/release.cjs --serve`：`/NANACACRASH/qa.html` は検証専用。シナリオを選択して「準備」で通常効果・7SPECIAL・商人A〜D・BRAKE準備・GUARD期限／二重防御／浮遊中の時間停止を再現します。準備時は時間停止し、画面タップでSPECIAL成功、「再生」でタイマーを再開してMISSを確認できます。「次の通常STOPPER」「次のGUARD」で防御の順序も確認できます。QAプレイは保存しません。
 

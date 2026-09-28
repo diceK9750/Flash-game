@@ -9,11 +9,13 @@
   const scenarios = [
     ...Object.keys(Hop.CONFIG.objectWeights).map(t => '通常 ' + t),
     ...Object.keys(Hop.CONFIG.specials).map(t => 'SPECIAL ' + t),
-    'READY先読み', '商人ゾーン', 'HUD CHARGE', 'BRAKE READY', 'GUARD期限直前', 'GUARD二重防御', '通常GUARD防御', 'GUARD SPECIAL防御', 'C中タイマー停止',
+    'HERO FLIGHT_LOOP', 'HERO 画像欠落', 'READY先読み', '商人ゾーン', 'HUD CHARGE', 'BRAKE READY', 'GUARD期限直前', 'GUARD二重防御', '通常GUARD防御', 'GUARD SPECIAL防御', 'C中タイマー停止',
     ...['A','B','C','D'].map(t => '商人 ' + t)
   ];
   for (const name of scenarios) { const option = document.createElement('option'); option.textContent = name; select.append(option); }
   let paused = true;
+  let originalSprite;
+  Hop.Sprites.ready.then(asset => { originalSprite = asset; });
   function contact(type, x = 500, partner = null) {
     Object.assign(game.body, { x: x - 20, y: 10, vx: 500, vy: -100, grounded: false, stopped: false });
     game.objects = [{ x, type, used: false }];
@@ -27,6 +29,12 @@
     paused = true; play.textContent = '再生'; game.reset(); game.state = Hop.STATES.FLYING;
     game.random = () => 0.9;
     const name = select.value, type = name.split(' ')[1];
+    if (originalSprite) Hop.Sprites.heroFlight = originalSprite;
+    if (name === 'HERO 画像欠落') {
+      Hop.Sprites.load({ ...Hop.Sprites.definitions.HERO.FLIGHT_LOOP, src: 'assets/sprites/hero/flight_loop/missing.png' }).then(asset => {
+        if (select.value === name) Hop.Sprites.heroFlight = asset;
+      });
+    }
     if (name.startsWith('通常 ')) contact(type);
     else if (name.startsWith('SPECIAL ')) {
       const rule = Hop.CONFIG.specials[type];
@@ -62,7 +70,7 @@
   function frame(time) {
     game.update(paused || previous === null ? 0 : (time - previous) / 1000); previous = time;
     ui.update(); ui.draw();
-    document.getElementById('qa-info').textContent = `vx ${game.body.vx.toFixed(2)} / vy ${game.body.vy.toFixed(2)} / 速さ ${Math.hypot(game.body.vx, game.body.vy).toFixed(2)} / GUARD ${game.normalGuard} / 専用防御 ${game.guardSpecial.remaining.toFixed(2)}s`;
+    document.getElementById('qa-info').textContent = `vx ${game.body.vx.toFixed(2)} / vy ${game.body.vy.toFixed(2)} / 速さ ${Math.hypot(game.body.vx, game.body.vy).toFixed(2)} / GUARD ${game.normalGuard} / 専用防御 ${game.guardSpecial.remaining.toFixed(2)}s / HERO ${Hop.Sprites.heroFlight?.ready ? 'SPRITE' : 'CANVAS fallback'}`;
     requestAnimationFrame(frame);
   }
   ui.update(); ui.draw(); requestAnimationFrame(frame);

@@ -17,7 +17,7 @@ function element(id) {
 const document = { getElementById: element, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; } };
 const scope = { document, requestAnimationFrame() {} }; scope.window = scope;
 vm.createContext(scope);
-for (const name of ['config', 'physics', 'game', 'graphics', 'ui', 'audio', 'input', 'main']) {
+for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'input', 'main']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), scope, { filename: name });
 }
 const { Game, CONFIG: c } = scope.Hop;
