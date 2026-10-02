@@ -91,7 +91,9 @@ A/BのSPECIAL対象はBOOST・BOUNCE・DASH・STOPPERのみ。BRAKE・ANGLE・GU
 
 勇者のみ、FLYING中は `js/sprites.js` から同梱の `assets/sprites/hero/flight_loop/hero_flight_loop_sheet_96x96.png` とJSONを相対ロードします。96×96・横8枚・8fps（1秒ループ）、足元pivot (48,88)、表示倍率1.25（セル120×120）、画像補間OFFです。既存の足元座標と回転をそのまま使い、当たり判定は変えません。AERIAL・SPECIAL・バウンド中も同じループを使い、他8職業と飛行以外の勇者は従来のCanvas図形です。ゲームのphaseTimeを再利用し、タブ復帰時の時間リセット・QA一時停止に追従します。動きを減らす設定では先頭フレームを表示します。
 
-ロード中・画像欠落・不正JSON・画像寸法不一致・描画失敗時はCanvas勇者へ戻ります。GIFと個別8枚は確認用で、実行時には読み込みません。素材はユーザー提供の完成版を無加工で使用しています。
+AERIAL UP / DOWN成功時は、`assets/sprites/hero/hero_aerial_up_v1_bundle/` と `hero_aerial_down_v1_bundle/` のシート（96×96・横8枚・**12fps・非ループ**、足元pivot (48,88)、表示倍率1.25、画像補間OFF）を1回だけ再生し、終了後（8/12≈0.67秒）にFLIGHT_LOOPへ戻ります。再生中に新しいAERIALが成功すると、その方向（同じ方向を含む）で最初から再生し直します。失敗したAERIALや、地面効果などAERIAL以外の効果では開始しません。FLYING中だけ表示し、READY・角度／パワー選択・RESULTは従来のCanvas勇者です。RETRYでは再生状態を消去します。判定は `js/ui.js` が `game.effect` の新規AERIALを表示用に検出するだけで、ゲーム状態・物理・入力は変更しません。動きを減らす設定では、AERIALの先頭フレームを同じ時間だけ静止表示してから、FLIGHT_LOOPの先頭フレームに戻ります。
+
+ロード中・画像欠落・不正JSON・画像寸法不一致・描画失敗時は、AERIAL → FLIGHT_LOOP → Canvas勇者の順に戻ります。GIFと個別8枚は確認用で、実行時には読み込みません。素材はユーザー提供の完成版を無加工で使用しています。
 
 ## ローカル起動
 
@@ -123,6 +125,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 - `node tests/guard-special.cjs`：通常ベクトル・新SPECIAL・2種類のGUARD・タイマー停止・商人との統合。
 - `node tests/controls.cjs`：1入力・ヒステリシス・旧操作無効・音声不可時の安全性。
 - `node tests/sprites.cjs`：画像／JSONロードと異常系、RGBA寸法、8fps・固定pivot、補間設定の復元、飛行時だけの置換、描画によるゲーム状態不変。QAの「HERO FLIGHT_LOOP」「HERO 画像欠落」で実画像と意図的な404フォールバックを比較できます。
+- `node tests/sprites-aerial.cjs`：AERIAL UP / DOWNの素材仕様、ロード異常系、30/60/120/144Hzで同じ12fpsのフレーム、終了後のFLIGHT_LOOP復帰、再生中の再発動、pivot・補間、フォールバックの順序、動きを減らす設定、FLYING以外とRETRY、描画してもゲーム状態と物理が変わらないこと。QAの「HERO AERIAL UP」「HERO AERIAL DOWN」「HERO AERIAL 画像欠落」は準備時に一時停止し、「再生」で動きを確認できます。
 - `node tests/release.cjs`：全テストに加え、描画・必須ファイル・.nojekyll・共有メタ情報・ローカルアセットのサブパス解決・維持した物理設定を照合。
 - `node tests/release.cjs --serve`：`/NANACACRASH/qa.html` は検証専用。シナリオを選択して「準備」で通常効果・7SPECIAL・商人A〜D・BRAKE準備・GUARD期限／二重防御／浮遊中の時間停止を再現します。準備時は時間停止し、画面タップでSPECIAL成功、「再生」でタイマーを再開してMISSを確認できます。「次の通常STOPPER」「次のGUARD」で防御の順序も確認できます。QAプレイは保存しません。
 

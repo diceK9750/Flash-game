@@ -9,13 +9,14 @@
   const scenarios = [
     ...Object.keys(Hop.CONFIG.objectWeights).map(t => '通常 ' + t),
     ...Object.keys(Hop.CONFIG.specials).map(t => 'SPECIAL ' + t),
-    'HERO FLIGHT_LOOP', 'HERO 画像欠落', 'READY先読み', '商人ゾーン', 'HUD CHARGE', 'BRAKE READY', 'GUARD期限直前', 'GUARD二重防御', '通常GUARD防御', 'GUARD SPECIAL防御', 'C中タイマー停止',
+    'HERO FLIGHT_LOOP', 'HERO 画像欠落', 'HERO AERIAL UP', 'HERO AERIAL DOWN', 'HERO AERIAL 画像欠落', 'READY先読み', '商人ゾーン', 'HUD CHARGE', 'BRAKE READY', 'GUARD期限直前', 'GUARD二重防御', '通常GUARD防御', 'GUARD SPECIAL防御', 'C中タイマー停止',
     ...['A','B','C','D'].map(t => '商人 ' + t)
   ];
   for (const name of scenarios) { const option = document.createElement('option'); option.textContent = name; select.append(option); }
   let paused = true;
-  let originalSprite;
+  let originalSprite, originalAerial;
   Hop.Sprites.ready.then(asset => { originalSprite = asset; });
+  Hop.Sprites.aerialReady?.then(assets => { originalAerial = assets; });
   function contact(type, x = 500, partner = null) {
     Object.assign(game.body, { x: x - 20, y: 10, vx: 500, vy: -100, grounded: false, stopped: false });
     game.objects = [{ x, type, used: false }];
@@ -27,9 +28,17 @@
   }
   function prepare() {
     paused = true; play.textContent = '再生'; game.reset(); game.state = Hop.STATES.FLYING;
+    ui.visual.aerial = null; // display-only one-shot from the previous scenario
     game.random = () => 0.9;
     const name = select.value, type = name.split(' ')[1];
     if (originalSprite) Hop.Sprites.heroFlight = originalSprite;
+    if (originalAerial) [Hop.Sprites.heroAerialUp, Hop.Sprites.heroAerialDown] = originalAerial;
+    if (name === 'HERO AERIAL 画像欠落') {
+      // Both one-shots 404 -> FLIGHT_LOOP keeps drawing (then Canvas if that fails too).
+      Promise.all(['UP', 'DOWN'].map(d => Hop.Sprites.load({ ...Hop.Sprites.definitions.HERO['AERIAL_' + d], src: 'assets/sprites/hero/missing_aerial.png' }))).then(([up, down]) => {
+        if (select.value === name) { Hop.Sprites.heroAerialUp = up; Hop.Sprites.heroAerialDown = down; }
+      });
+    }
     if (name === 'HERO 画像欠落') {
       Hop.Sprites.load({ ...Hop.Sprites.definitions.HERO.FLIGHT_LOOP, src: 'assets/sprites/hero/flight_loop/missing.png' }).then(asset => {
         if (select.value === name) Hop.Sprites.heroFlight = asset;
@@ -50,6 +59,9 @@
     } else {
       Object.assign(game.body, { x: 480, y: 300, vx: 500, vy: 200, grounded: false }); game.cameraX = 250;
       if (name === 'BRAKE READY') game.act();
+      // 1-tap path: descending -> AERIAL UP, rising -> AERIAL DOWN. 「再生」で12fpsの再生とFLIGHT_LOOP復帰を確認。
+      if (name === 'HERO AERIAL UP') { game.body.vy = -200; game.act(); }
+      if (name === 'HERO AERIAL DOWN' || name === 'HERO AERIAL 画像欠落') game.act();
       if (name === 'READY先読み') { game.specialArmed = { dash: true, stopper: true, brake: true }; game.objects = [{x:600,type:'BOOST',used:false},{x:880,type:'BOUNCE',used:false},{x:1200,type:'DASH',used:false}]; }
       if (name === '商人ゾーン') { game.normalGuard = 1; game.body.x = 752; game.cameraX = 450; game.objects = [{x:800,type:'STOPPER',used:false}]; }
       if (name === 'HUD CHARGE') { game.acquireMerchant('B'); game.merchant.charge = 7; game.downCharge = .63; }
@@ -70,7 +82,7 @@
   function frame(time) {
     game.update(paused || previous === null ? 0 : (time - previous) / 1000); previous = time;
     ui.update(); ui.draw();
-    document.getElementById('qa-info').textContent = `vx ${game.body.vx.toFixed(2)} / vy ${game.body.vy.toFixed(2)} / 速さ ${Math.hypot(game.body.vx, game.body.vy).toFixed(2)} / GUARD ${game.normalGuard} / 専用防御 ${game.guardSpecial.remaining.toFixed(2)}s / HERO ${Hop.Sprites.heroFlight?.ready ? 'SPRITE' : 'CANVAS fallback'}`;
+    document.getElementById('qa-info').textContent = `vx ${game.body.vx.toFixed(2)} / vy ${game.body.vy.toFixed(2)} / 速さ ${Math.hypot(game.body.vx, game.body.vy).toFixed(2)} / GUARD ${game.normalGuard} / 専用防御 ${game.guardSpecial.remaining.toFixed(2)}s / HERO ${Hop.Sprites.heroFlight?.ready ? 'SPRITE' : 'CANVAS fallback'} / AERIAL ${ui.visual.aerial ? ui.visual.aerial.direction + ' ' + Math.max(0, game.phaseTime - ui.visual.aerial.at).toFixed(2) + 's' : '—'} (UP ${Hop.Sprites.heroAerialUp?.ready ? 'OK' : 'NG'} / DOWN ${Hop.Sprites.heroAerialDown?.ready ? 'OK' : 'NG'})`;
     requestAnimationFrame(frame);
   }
   ui.update(); ui.draw(); requestAnimationFrame(frame);

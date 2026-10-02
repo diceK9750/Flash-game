@@ -7,7 +7,7 @@ Hop.UI = class {
     this.lastState = null;
     this.notices = { special: null, message: null, charge: 1, guard: false };
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, reducedMotion: motion?.matches || false };
+    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, aerial: null, lastEffect: null, reducedMotion: motion?.matches || false };
     motion?.addEventListener?.("change", event => { this.visual.reducedMotion = event.matches; });
   }
   update() {
@@ -16,6 +16,13 @@ Hop.UI = class {
     if (g.soundEvent) { Hop.Audio?.play(g.soundEvent); g.soundEvent = null; }
     if (g.state === s.FLYING && this.lastState === s.AIM_POWER) this.visual.launchAt = g.phaseTime;
     if (g.state === s.READY || g.state === s.AIM_ANGLE) this.visual.launchAt = -Infinity;
+    // Display-only: a new AERIAL effect object (re)starts the hero one-shot sprite.
+    if (g.state !== s.FLYING) { this.visual.aerial = null; this.visual.lastEffect = g.effect; }
+    else if (g.effect !== this.visual.lastEffect) {
+      this.visual.lastEffect = g.effect;
+      const aerial = /^AERIAL (UP|DOWN)$/.exec(g.effect?.label || "");
+      if (aerial) this.visual.aerial = { direction: aerial[1], at: g.phaseTime };
+    }
     if (g.contact !== this.visual.lastContact) { this.visual.lastContact = g.contact; this.visual.contactAt = g.phaseTime; }
     document.getElementById("best-summary").textContent = `BEST ${g.best.distance.toFixed(1)} m`;
     document.getElementById("aim-display").hidden = ![s.AIM_ANGLE, s.AIM_POWER].includes(g.state);
