@@ -1,0 +1,27 @@
+{
+  "id": "HERO",
+  "animation": "AERIAL_DOWN",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceVideo": "grok-video-a996b136-a98e-4a2c-8c3f-ce3df9e62221 (2).mp4",
+  "sourceFrameIndices": [
+    18,
+    24,
+    30,
+    36,
+    42,
+    48,
+    54,
+    66
+  ],
+  "nextAnimation": "FLIGHT_LOOP",
+  "notes": "Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling."
+}
