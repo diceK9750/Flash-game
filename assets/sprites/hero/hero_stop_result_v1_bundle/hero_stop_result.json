@@ -1,0 +1,39 @@
+{
+  "id": "HERO",
+  "animation": "STOP_RESULT",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "sequence": [
+    0,
+    0,
+    1,
+    2,
+    3,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceVideo": "stop_result_v1b.mp4",
+  "sourceFrameIndices": [
+    22,
+    24,
+    28,
+    56,
+    82,
+    84,
+    86,
+    100
+  ],
+  "nextAnimation": "HOLD_LAST_FRAME",
+  "notes": "Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling; same px scale as FLIGHT_LOOP (0.2174 = 1/4.6), fixed anchor (354,387). Plays once from the full stop: brake (0) -> straighten (1) -> planted (2) -> wobble (3) -> sword raise (4-6) -> proud hold (7), then holds sheet 7 while RESULT is shown. Source frames 6-20 (dust puffs, or wider than the 96px cell at this scale) are not used."
+}

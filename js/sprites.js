@@ -31,6 +31,14 @@ Hop.Sprites = {
         // back over tiltEase s. A new bounce restarts it only after minRestartInterval s, and
         // tiny hops (predicted airtime 2*vy/gravity < minHopTime s) never start it.
         suppressTilt: true, tiltEase: 0.12, minRestartInterval: 0.3, minHopTime: 0.25
+      },
+      // Played once when the hero has come to a full stop on the ground (body.stopped, FLYING
+      // or RESULT), then the last frame is held until RETRY. Same flag pattern as GROUND_BOUNCE.
+      // A stop above the ground (STOPPER contact in mid-air) keeps the previous drawing.
+      STOP_RESULT: {
+        src: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result_sheet_96x96.png",
+        metadata: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result.json",
+        animation: "STOP_RESULT", fps: 12, loop: false, scale: 1.25, enabled: true, maxGroundY: 0.5
       }
     }
   },
@@ -101,6 +109,20 @@ Hop.Sprites = {
     if (time < end) return 0;
     return def.tiltEase > 0 ? Math.min(1, (time - end) / def.tiltEase) : 1;
   },
+  // Display-only: should a STOP_RESULT play for this game state? (pure)
+  stopResultEligible(game) {
+    const def = this.definitions.HERO.STOP_RESULT, b = game?.body, s = Hop.STATES;
+    return !!b?.stopped && b.y <= def.maxGroundY && (game.state === s?.FLYING || game.state === s?.RESULT);
+  },
+  // STOP_RESULT candidate (pure): [] when not stopped or the asset is missing. Holds the last
+  // frame after playing; reduced motion shows that final frame immediately.
+  stopLayers(visual, phaseTime) {
+    const asset = this.heroStopResult, at = visual?.stopAt;
+    if (!asset?.ready || !asset.data || !Number.isFinite(at)) return [];
+    const end = this.duration(asset.data);
+    const time = visual.reducedMotion ? end : Math.max(0, phaseTime - at);
+    return [{ name: "STOP_RESULT", asset, time, scale: this.definitions.HERO.STOP_RESULT.scale }];
+  },
   // Ordered FLYING candidates (pure): active one-shot (AERIAL / GROUND_BOUNCE), then FLIGHT_LOOP.
   // The caller falls back to the Canvas HERO when every candidate fails to draw.
   heroLayers(visual, phaseTime) {
@@ -128,5 +150,9 @@ Hop.Sprites.aerialReady = Promise.all([["UP", "heroAerialUp"], ["DOWN", "heroAer
   })));
 Hop.Sprites.groundBounceReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.GROUND_BOUNCE).then(asset => {
   Hop.Sprites.heroGroundBounce = asset;
+  return asset;
+});
+Hop.Sprites.stopResultReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.STOP_RESULT).then(asset => {
+  Hop.Sprites.heroStopResult = asset;
   return asset;
 });

@@ -7,7 +7,7 @@ Hop.UI = class {
     this.lastState = null;
     this.notices = { special: null, message: null, charge: 1, guard: false };
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, reducedMotion: motion?.matches || false };
+    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, stopAt: null, reducedMotion: motion?.matches || false };
     motion?.addEventListener?.("change", event => { this.visual.reducedMotion = event.matches; });
   }
   update() {
@@ -31,6 +31,10 @@ Hop.UI = class {
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
       if (aerial) v.oneShot = { animation: "AERIAL_" + aerial[1], at: g.phaseTime };
     }
+    // STOP_RESULT clock: set on the first update after a full stop on the ground, cleared when
+    // the hero moves again (Type B revive) or on RETRY (READY / AIM).
+    if (Hop.Sprites?.stopResultEligible?.(g)) { if (!Number.isFinite(v.stopAt)) v.stopAt = g.phaseTime; }
+    else v.stopAt = null;
     if (g.contact !== this.visual.lastContact) { this.visual.lastContact = g.contact; this.visual.contactAt = g.phaseTime; }
     document.getElementById("best-summary").textContent = `BEST ${g.best.distance.toFixed(1)} m`;
     document.getElementById("aim-display").hidden = ![s.AIM_ANGLE, s.AIM_POWER].includes(g.state);
