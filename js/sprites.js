@@ -32,6 +32,16 @@ Hop.Sprites = {
         // tiny hops (predicted airtime 2*vy/gravity < minHopTime s) never start it.
         suppressTilt: true, tiltEase: 0.12, minRestartInterval: 0.3, minHopTime: 0.25
       },
+      // Truck impact at launch (AIM_POWER -> FLYING): comedic "blown away" one-shot with the
+      // rotation baked into the frames, then FLIGHT_LOOP. Any later AERIAL / GROUND_BOUNCE replaces
+      // it (newest wins). vy tilt is suppressed while it plays (baked rotation) and eases back.
+      // Reduced motion shows one representative frame (stillTime) for the same duration.
+      HIT: {
+        src: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit_sheet_96x96.png",
+        metadata: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit.json",
+        animation: "HIT", fps: 12, loop: false, scale: 1.25, enabled: true,
+        suppressTilt: true, tiltEase: 0.12, stillTime: 3.5 / 12
+      },
       // Played once when the hero has come to a full stop on the ground (body.stopped, FLYING
       // or RESULT), then the last frame is held until RETRY. Same flag pattern as GROUND_BOUNCE.
       // A stop above the ground (STOPPER contact in mid-air) keeps the previous drawing.
@@ -46,7 +56,7 @@ Hop.Sprites = {
     }
   },
   // visual.oneShot.animation -> loaded asset key. Later events restart/replace the one-shot.
-  oneShots: { AERIAL_UP: "heroAerialUp", AERIAL_DOWN: "heroAerialDown", GROUND_BOUNCE: "heroGroundBounce" },
+  oneShots: { AERIAL_UP: "heroAerialUp", AERIAL_DOWN: "heroAerialDown", GROUND_BOUNCE: "heroGroundBounce", HIT: "heroHit" },
   async load(definition) {
     const asset = { ready: false, image: null, data: null };
     if (definition?.enabled === false) return asset;
@@ -103,10 +113,13 @@ Hop.Sprites = {
     if (shot?.animation === "GROUND_BOUNCE" && def.minRestartInterval > 0 && phaseTime - shot.at < def.minRestartInterval) return false;
     return true;
   },
-  // Multiplier for the FLYING vy tilt (pure): 0 while GROUND_BOUNCE plays, then eases back to 1.
+  // Multiplier for the FLYING vy tilt (pure): 0 while a suppressTilt one-shot (GROUND_BOUNCE, HIT)
+  // plays, then eases back to 1 over its tiltEase.
   tiltWeight(visual, phaseTime) {
-    const def = this.definitions.HERO.GROUND_BOUNCE, shot = visual?.oneShot, asset = this.heroGroundBounce;
-    if (!def.suppressTilt || shot?.animation !== "GROUND_BOUNCE" || !asset?.ready || !asset.data) return 1;
+    const shot = visual?.oneShot, name = shot?.animation;
+    if (!name || !Object.prototype.hasOwnProperty.call(this.oneShots, name)) return 1;
+    const def = this.definitions.HERO[name], asset = this[this.oneShots[name]];
+    if (!def?.suppressTilt || !asset?.ready || !asset.data) return 1;
     const time = phaseTime - shot.at, end = this.duration(asset.data);
     if (!(time >= 0)) return 1;
     if (time < end) return 0;
@@ -143,7 +156,7 @@ Hop.Sprites = {
     if (name && Object.prototype.hasOwnProperty.call(this.oneShots, name)) {
       const asset = this[this.oneShots[name]], time = phaseTime - shot.at;
       if (asset?.ready && asset.data && time >= 0 && time < this.duration(asset.data)) {
-        layers.push({ name, asset, time: still ? 0 : time, scale: d[name].scale });
+        layers.push({ name, asset, time: still ? (d[name].stillTime || 0) : time, scale: d[name].scale });
       }
     }
     const flightTime = Number.isFinite(visual?.launchAt) ? phaseTime - visual.launchAt : phaseTime;
@@ -166,5 +179,9 @@ Hop.Sprites.groundBounceReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.GR
 });
 Hop.Sprites.stopResultReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.STOP_RESULT).then(asset => {
   Hop.Sprites.heroStopResult = asset;
+  return asset;
+});
+Hop.Sprites.hitReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.HIT).then(asset => {
+  Hop.Sprites.heroHit = asset;
   return asset;
 });

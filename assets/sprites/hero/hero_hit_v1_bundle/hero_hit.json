@@ -1,0 +1,27 @@
+{
+  "id": "HERO",
+  "animation": "HIT",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceVideo": "hit_v1a.mp4",
+  "sourceFrameIndices": [
+    10,
+    12,
+    14,
+    30,
+    60,
+    90,
+    120,
+    144
+  ],
+  "nextAnimation": "FLIGHT_LOOP",
+  "notes": "Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling; same px scale as FLIGHT_LOOP (0.2174 = 1/4.6), fixed anchor (388,386). Truck impact one-shot: jolt (0) -> arms snap up (1) -> blown-away pose (2) -> stiff tilt progression (3-7, rotation baked from the clip). Played once at launch, then FLIGHT_LOOP."
+}

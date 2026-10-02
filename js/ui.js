@@ -14,7 +14,8 @@ Hop.UI = class {
     const g = this.game, c = Hop.CONFIG, s = Hop.STATES;
     this.updateQuality();
     if (g.soundEvent) { Hop.Audio?.play(g.soundEvent); g.soundEvent = null; }
-    if (g.state === s.FLYING && this.lastState === s.AIM_POWER) this.visual.launchAt = g.phaseTime;
+    const launched = g.state === s.FLYING && this.lastState === s.AIM_POWER;
+    if (launched) this.visual.launchAt = g.phaseTime;
     if (g.state === s.READY || g.state === s.AIM_ANGLE) this.visual.launchAt = -Infinity;
     // Display-only hero one-shots. A new AERIAL effect object or a new normal ground
     // bounce (body.bounces grew, still airborne, no new Type D "BOUND BOOST") restarts
@@ -27,6 +28,8 @@ Hop.UI = class {
       v.lastEffect = g.effect; v.lastBounces = g.body.bounces;
       // Without a loaded GROUND_BOUNCE asset a bounce changes nothing (an AERIAL keeps playing);
       // restart interval / tiny-hop gating lives in Hop.Sprites.groundBounceAllowed.
+      // Truck impact at launch: HIT one-shot (only with a loaded asset; otherwise unchanged).
+      if (launched && Hop.Sprites?.heroHit?.ready) v.oneShot = { animation: "HIT", at: g.phaseTime };
       if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && Hop.Sprites?.groundBounceAllowed?.(v, g.phaseTime, g.body.vy)) v.oneShot = { animation: "GROUND_BOUNCE", at: g.phaseTime };
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
       if (aerial) v.oneShot = { animation: "AERIAL_" + aerial[1], at: g.phaseTime };
