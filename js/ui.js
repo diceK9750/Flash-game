@@ -77,6 +77,12 @@ Hop.UI = class {
     const mode = g.aerialMode;
     const flightHint = g.special ? "TAP → SPECIAL!" : floating ? "FLOAT / 浮遊中" : !airborne ? "AERIAL / 空中で使用可能" : mode === "DOWN" ? `AERIAL ↓ ${chargeText}` : `AERIAL ↑ ×${g.upRemaining}`;
     set("hint", labels[g.state] || flightHint);
+    // Display only: let a playing STOP_RESULT show through, then fade the overlay in. Runs every
+    // update (before the state-change early return). The overlay stays un-hidden with the same
+    // content, aria and tap handling; only its opacity changes.
+    const overlayAlpha = Hop.Sprites?.resultOverlayAlpha ? Hop.Sprites.resultOverlayAlpha(this.visual, g.phaseTime, g.state) : 1;
+    const opacity = overlayAlpha >= 1 ? "" : String(Math.round(overlayAlpha * 1000) / 1000);
+    if (this.overlay.style.opacity !== opacity) this.overlay.style.opacity = opacity;
     if (g.state === this.lastState) return;
     this.lastState = g.state;
     document.getElementById("result-highlights").textContent = g.state === s.RESULT ? "今回のハイライト：" + Hop.UI.highlights(g).join(" · ") : "";

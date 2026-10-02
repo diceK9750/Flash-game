@@ -38,7 +38,10 @@ Hop.Sprites = {
       STOP_RESULT: {
         src: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result_sheet_96x96.png",
         metadata: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result.json",
-        animation: "STOP_RESULT", fps: 12, loop: false, scale: 1.25, enabled: true, maxGroundY: 0.5
+        animation: "STOP_RESULT", fps: 12, loop: false, scale: 1.25, enabled: true, maxGroundY: 0.5,
+        // RESULT overlay (display only): transparent while STOP_RESULT plays, then fades in over
+        // overlayFade s. Only when the animation really plays; input/RETRY timing is unchanged.
+        overlayFade: 0.2
       }
     }
   },
@@ -122,6 +125,15 @@ Hop.Sprites = {
     const end = this.duration(asset.data);
     const time = visual.reducedMotion ? end : Math.max(0, phaseTime - at);
     return [{ name: "STOP_RESULT", asset, time, scale: this.definitions.HERO.STOP_RESULT.scale }];
+  },
+  // RESULT overlay opacity (pure): 1 = current behaviour. 0 while STOP_RESULT plays, then a
+  // linear fade to 1. Mid-air stops (no stopAt), missing asset and reduced motion stay at 1.
+  resultOverlayAlpha(visual, phaseTime, state) {
+    const asset = this.heroStopResult, at = visual?.stopAt, fade = this.definitions.HERO.STOP_RESULT.overlayFade;
+    if (state !== Hop.STATES?.RESULT || visual?.reducedMotion || !asset?.ready || !asset.data || !Number.isFinite(at)) return 1;
+    const t = phaseTime - at - this.duration(asset.data);
+    if (!(t >= 0)) return 0;
+    return fade > 0 ? Math.min(1, t / fade) : 1;
   },
   // Ordered FLYING candidates (pure): active one-shot (AERIAL / GROUND_BOUNCE), then FLIGHT_LOOP.
   // The caller falls back to the Canvas HERO when every candidate fails to draw.
