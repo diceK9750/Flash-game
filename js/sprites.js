@@ -18,11 +18,22 @@ Hop.Sprites = {
         src: "assets/sprites/hero/hero_aerial_down_v1_bundle/hero_aerial_down_sheet_96x96.png",
         metadata: "assets/sprites/hero/hero_aerial_down_v1_bundle/hero_aerial_down.json",
         animation: "AERIAL_DOWN", fps: 12, loop: false, scale: 1.25
+      },
+      // Normal ground bounce one-shot (merchant Type D BOUND BOOST excluded).
+      // enabled:false = asset not delivered yet: never requested, so no 404 in the console.
+      // Set to true after adding the bundle (tests/sprites-ground-bounce.cjs enforces it).
+      GROUND_BOUNCE: {
+        src: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce_sheet_96x96.png",
+        metadata: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce.json",
+        animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: false
       }
     }
   },
+  // visual.oneShot.animation -> loaded asset key. Later events restart/replace the one-shot.
+  oneShots: { AERIAL_UP: "heroAerialUp", AERIAL_DOWN: "heroAerialDown", GROUND_BOUNCE: "heroGroundBounce" },
   async load(definition) {
     const asset = { ready: false, image: null, data: null };
+    if (definition?.enabled === false) return asset;
     try {
       const response = await fetch(definition.metadata);
       if (!response.ok) return asset;
@@ -61,16 +72,15 @@ Hop.Sprites = {
     } catch (_) { return false; }
     finally { ctx.restore(); }
   },
-  // Ordered FLYING candidates (pure): active AERIAL one-shot, then FLIGHT_LOOP.
+  // Ordered FLYING candidates (pure): active one-shot (AERIAL / GROUND_BOUNCE), then FLIGHT_LOOP.
   // The caller falls back to the Canvas HERO when every candidate fails to draw.
   heroLayers(visual, phaseTime) {
     const d = this.definitions.HERO, layers = [], still = !!visual?.reducedMotion;
-    const aerial = visual?.aerial;
-    if (aerial && (aerial.direction === "UP" || aerial.direction === "DOWN")) {
-      const asset = aerial.direction === "UP" ? this.heroAerialUp : this.heroAerialDown;
-      const time = phaseTime - aerial.at;
+    const shot = visual?.oneShot, name = shot?.animation;
+    if (name && Object.prototype.hasOwnProperty.call(this.oneShots, name)) {
+      const asset = this[this.oneShots[name]], time = phaseTime - shot.at;
       if (asset?.ready && asset.data && time >= 0 && time < this.duration(asset.data)) {
-        layers.push({ name: "AERIAL_" + aerial.direction, asset, time: still ? 0 : time, scale: d["AERIAL_" + aerial.direction].scale });
+        layers.push({ name, asset, time: still ? 0 : time, scale: d[name].scale });
       }
     }
     const flightTime = Number.isFinite(visual?.launchAt) ? phaseTime - visual.launchAt : phaseTime;
@@ -87,3 +97,7 @@ Hop.Sprites.aerialReady = Promise.all([["UP", "heroAerialUp"], ["DOWN", "heroAer
     Hop.Sprites[key] = asset;
     return asset;
   })));
+Hop.Sprites.groundBounceReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.GROUND_BOUNCE).then(asset => {
+  Hop.Sprites.heroGroundBounce = asset;
+  return asset;
+});

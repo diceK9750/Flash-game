@@ -1,0 +1,205 @@
+// HERO GROUND_BOUNCE one-shot: ships disabled until the real asset exists; behaviour is
+// verified with test-only mock assets (no art is created). Display-only checks.
+const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
+const dir = 'assets/sprites/hero/hero_ground_bounce_v1_bundle/';
+const mockMeta = { id: 'HERO', animation: 'GROUND_BOUNCE', frameWidth: 96, frameHeight: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 }, displayScale: 1.25, nextAnimation: 'FLIGHT_LOOP' };
+if (process.argv.includes('--loader')) {
+  (async () => {
+    let mode = 'ok'; const requested = [];
+    class Image {
+      constructor() { this.complete = true; this.naturalWidth = 768; this.naturalHeight = 96; }
+      set src(value) { requested.push(value); if (mode === 'image-error') this.onerror(new Error('missing')); else { if (mode === 'size') this.naturalWidth = 760; this.onload(); } }
+    }
+    const scope = { Hop: {}, Image, fetch: async url => {
+      requested.push(url);
+      if (mode === 'network') throw new Error('offline');
+      return { ok: mode !== '404', json: async () => {
+        if (mode === 'json') throw new SyntaxError('bad');
+        if (!url.includes('ground_bounce')) return { ...mockMeta, animation: url.includes('aerial_up') ? 'AERIAL_UP' : url.includes('aerial_down') ? 'AERIAL_DOWN' : 'FLIGHT_LOOP', fps: url.includes('flight_loop') ? 8 : 12, loop: url.includes('flight_loop') };
+        if (mode === 'swap') return { ...mockMeta, animation: 'AERIAL_UP' };
+        if (mode === 'loop') return { ...mockMeta, loop: true };
+        if (mode === 'fps') return { ...mockMeta, fps: 8 };
+        if (mode === 'pivot') return { ...mockMeta, pivot: { x: 40, y: 88 } };
+        if (mode === 'frame') return { ...mockMeta, frameWidth: 64 };
+        return mockMeta;
+      } };
+    } };
+    vm.createContext(scope); vm.runInContext(code, scope);
+    const s = scope.Hop.Sprites, def = s.definitions.HERO.GROUND_BOUNCE;
+    const startup = await s.groundBounceReady;
+    if (def.enabled === false) {
+      assert.equal(startup.ready, false);
+      assert(!requested.some(u => u.includes('ground_bounce')), 'disabled asset is never requested (no 404 in console)');
+      assert.equal((await s.load(def)).ready, false);
+      assert(!requested.some(u => u.includes('ground_bounce')));
+    }
+    assert.equal(s.heroGroundBounce, startup);
+    assert.equal((await s.ready).ready, true); assert.equal((await s.aerialReady).every(a => a.ready), true, 'other sprites unaffected');
+    const on = { ...def, enabled: true };
+    assert.equal((await s.load(on)).ready, true, 'mock success once enabled');
+    for (mode of ['image-error', 'size', 'network', '404', 'json', 'swap', 'loop', 'fps', 'pivot', 'frame']) assert.equal((await s.load(on)).ready, false, mode);
+    mode = 'ok'; assert.equal((await s.load(on)).ready, true, 'recovery');
+    console.log('Ground bounce loader PASS: disabled = no request, mock success, image/size/network/404/JSON/animation/loop/fps/pivot/frame errors, recovery.');
+  })().catch(error => { console.error(error); process.exitCode = 1; });
+} else {
+  const child = require('node:child_process').spawnSync(process.execPath, [__filename, '--loader'], { encoding: 'utf8' });
+  assert.equal(child.status, 0, child.stderr); process.stdout.write(child.stdout);
+  const { scope, launch, element } = require('./phase2.cjs');
+  const s = scope.Hop.Sprites, H = s.definitions.HERO, def = H.GROUND_BOUNCE, c = scope.Hop.CONFIG;
+  // Planned asset contract: relative paths below the Pages subpath; flag must match the files.
+  for (const ref of [def.src, def.metadata]) {
+    assert(!/^(?:\/|[a-z]+:)/i.test(ref)); assert(ref.startsWith(dir));
+    assert(new URL(ref, 'https://example.test/Flash-game/').pathname.startsWith('/Flash-game/' + dir));
+  }
+  assert.equal(def.src, dir + 'hero_ground_bounce_sheet_96x96.png'); assert.equal(def.metadata, dir + 'hero_ground_bounce.json');
+  assert.deepEqual([def.animation, def.fps, def.loop, def.scale], ['GROUND_BOUNCE', 12, false, 1.25]);
+  const present = fs.existsSync(path.join(root, def.src)) && fs.existsSync(path.join(root, def.metadata));
+  assert.equal(def.enabled !== false, present, present
+    ? 'GROUND_BOUNCE bundle found: set enabled: true in js/sprites.js'
+    : 'GROUND_BOUNCE enabled but bundle missing: add the files or set enabled: false');
+  if (present) {
+    const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
+    assert.deepEqual({ id: m.id, animation: m.animation, w: m.frameWidth, h: m.frameHeight, frames: m.frames, fps: m.fps, loop: m.loop, pivot: { x: m.pivot?.x, y: m.pivot?.y } },
+      { id: 'HERO', animation: 'GROUND_BOUNCE', w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 } });
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96); assert.equal(png[25], 6, 'RGBA PNG');
+  }
+  assert.equal(c.playerRadius, 18);
+
+  const fake = data => ({ ready: true, image: { complete: true, naturalWidth: 768 }, data });
+  const loopMeta = JSON.parse(fs.readFileSync(path.join(root, 'assets/sprites/hero/flight_loop/hero_flight_loop.json')));
+  const upMeta = { ...mockMeta, animation: 'AERIAL_UP' }, downMeta = { ...mockMeta, animation: 'AERIAL_DOWN' };
+  const A = { GB: fake(mockMeta), LOOP: fake(loopMeta), UP: fake(upMeta), DOWN: fake(downMeta) };
+  const names = new Map([[A.GB, 'GROUND_BOUNCE'], [A.LOOP, 'FLIGHT_LOOP'], [A.UP, 'AERIAL_UP'], [A.DOWN, 'AERIAL_DOWN']]);
+  const stack = [], images = [];
+  const ctx = { imageSmoothingEnabled: true, save() { stack.push(this.imageSmoothingEnabled); }, restore() { this.imageSmoothingEnabled = stack.pop(); },
+    drawImage(...args) { assert.equal(this.imageSmoothingEnabled, false); images.push(args); } };
+  for (let f = 0; f < 8; f++) {
+    assert(s.draw(ctx, A.GB, (f + 0.25) / 12, 100, 200, def.scale));
+    assert.deepEqual(images.at(-1).slice(1), [f * 96, 0, 96, 96, 40, 90, 120, 120]); assert.equal(ctx.imageSmoothingEnabled, true);
+  }
+  assert.equal(s.frameAt(mockMeta, 5), 7, 'non-loop holds last frame');
+
+  const graphics = scope.Hop.Graphics, originalCharacter = graphics.character, originalDraw = s.draw;
+  const saved = { heroFlight: s.heroFlight, heroAerialUp: s.heroAerialUp, heroAerialDown: s.heroAerialDown, heroGroundBounce: s.heroGroundBounce };
+  let canvasHero = 0, drawn = [];
+  graphics.character = function (cx, id, ...rest) { if (id === 'HERO') canvasHero++; return originalCharacter.call(this, cx, id, ...rest); };
+  s.draw = function (_ctx, asset, time, x, feet, scale) {
+    const ok = originalDraw.call(this, ctx, asset, time, x, feet, scale);
+    if (ok) drawn.push({ name: names.get(asset) || 'OTHER', frame: this.frameAt(asset.data, time), time, scale, feet });
+    return ok;
+  };
+  const install = (gb = A.GB, loop = A.LOOP, up = A.UP, down = A.DOWN) => Object.assign(s, { heroGroundBounce: gb, heroFlight: loop, heroAerialUp: up, heroAerialDown: down });
+  const frame = (game, ui) => { drawn = []; canvasHero = 0; const g0 = JSON.stringify(game), v0 = JSON.stringify(ui.visual);
+    ui.draw(); assert.equal(JSON.stringify(game), g0, 'draw must not mutate game'); assert.equal(JSON.stringify(ui.visual), v0, 'draw must not mutate visual');
+    return drawn.at(-1) || { name: canvasHero ? 'CANVAS' : 'NONE' }; };
+  function flight(seed = 5) {
+    const game = launch(seed, 45, 1), ui = new scope.Hop.UI(game, element('canvas'));
+    game.objects = []; game.nextObjectX = 1e12; game.nextBoundaryX = 1e12; // no contacts: pure bounce physics
+    ui.lastState = 'AIM_POWER'; ui.update();
+    return { game, ui };
+  }
+  const step = (game, ui, dt) => { const b = game.body.bounces; game.update(dt); ui.update(); return game.body.bounces > b; };
+  install();
+  // Timing at each refresh rate: starts on the bounce frame, 12fps, all 8 frames, then FLIGHT_LOOP.
+  const rates = [];
+  for (const hz of [30, 60, 120, 144]) {
+    const { game, ui } = flight();
+    let guard = 0; while (!step(game, ui, 1 / hz)) assert(++guard < hz * 20, 'first bounce');
+    assert(!game.body.grounded, 'first impact is a real bounce');
+    const start = game.phaseTime; assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE'); assert.equal(ui.visual.oneShot.at, start);
+    const seen = new Set(); let ended = null;
+    for (let i = 0; i <= hz; i++) {
+      if (i && step(game, ui, 1 / hz)) break; // another bounce would legitimately restart
+      const t = game.phaseTime - start, out = frame(game, ui);
+      if (t < 8 / 12) { assert.equal(out.name, 'GROUND_BOUNCE', `${hz}Hz t=${t}`); assert.equal(out.frame, Math.min(7, Math.floor(t * 12))); assert.equal(out.scale, 1.25); assert.equal(out.feet, c.playerRadius); seen.add(out.frame); }
+      else { assert.equal(out.name, 'FLIGHT_LOOP'); ended ??= t; }
+    }
+    assert.equal(seen.size, 8, hz + 'Hz all frames'); assert(ended >= 8 / 12 && ended < 8 / 12 + 1 / hz + 1e-9, hz + 'Hz ends on time');
+    rates.push(hz);
+  }
+  // Every airborne normal bounce triggers; the settling impact (-> rolling) does not.
+  {
+    const { game, ui } = flight(); let bounces = 0, triggered = 0, settled = false;
+    for (let i = 0; i < 60 * 60 && game.state === 'FLYING'; i++) {
+      const before = ui.visual.oneShot;
+      if (step(game, ui, 1 / 60)) {
+        bounces++;
+        if (game.body.grounded) { assert.equal(ui.visual.oneShot, before, 'settle does not trigger'); settled = true; }
+        else { assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE'); assert.equal(ui.visual.oneShot.at, game.phaseTime); triggered++; }
+      }
+    }
+    assert(bounces >= 3 && triggered >= 2 && settled, `bounces ${bounces} triggered ${triggered} settled ${settled}`);
+  }
+  // Merchant Type D (BOUND BOOST) bounces never trigger; normal bounces after it ends do.
+  {
+    const { game, ui } = flight(9); game.acquireMerchant('D'); ui.update();
+    let typeD = 0, normalAfter = 0;
+    for (let i = 0; i < 60 * 90 && game.state === 'FLYING' && normalAfter < 1; i++) {
+      const wasD = game.merchant?.type === 'D', before = ui.visual.oneShot;
+      if (step(game, ui, 1 / 60)) {
+        if (wasD) { typeD++; assert.equal(game.effect?.label, 'BOUND BOOST'); assert.equal(ui.visual.oneShot, before, 'Type D bounce must not trigger GROUND_BOUNCE'); }
+        else if (!game.body.grounded) { assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE'); normalAfter++; }
+      }
+    }
+    assert.equal(typeD, c.typeDBounces, 'all Type D bounces observed'); assert.equal(normalAfter, 1, 'normal bounce after Type D ends triggers');
+  }
+  // Interrupts: AERIAL during GROUND_BOUNCE restarts as AERIAL; a bounce during AERIAL restarts as GROUND_BOUNCE.
+  {
+    const { game, ui } = flight();
+    while (!step(game, ui, 1 / 60));
+    for (let i = 0; i < 10; i++) step(game, ui, 1 / 60);
+    assert.equal(frame(game, ui).name, 'GROUND_BOUNCE'); assert(frame(game, ui).frame >= 1);
+    game.downCharge = 1; const mode = game.updateAerialMode(); game.act(); ui.update();
+    let out = frame(game, ui); assert.equal(out.name, 'AERIAL_' + mode); assert.equal(out.frame, 0);
+    Object.assign(game.body, { y: 25, vy: -400 }); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update();
+    assert.equal(frame(game, ui).name, 'AERIAL_DOWN');
+    let guard = 0; while (!step(game, ui, 1 / 60)) assert(++guard < 60);
+    assert(!game.body.grounded); out = frame(game, ui); assert.equal(out.name, 'GROUND_BOUNCE'); assert.equal(out.frame, 0);
+  }
+  // Asset absent (current shipping state): bounces change nothing, an AERIAL keeps playing.
+  for (const missing of [undefined, { ready: false }]) {
+    install(); s.heroGroundBounce = missing; const { game, ui } = flight();
+    while (!step(game, ui, 1 / 60)); assert.equal(ui.visual.oneShot, null); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
+    Object.assign(game.body, { y: 25, vy: -400 }); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update(); const at = ui.visual.oneShot.at;
+    while (!step(game, ui, 1 / 60)); assert.equal(ui.visual.oneShot.animation, 'AERIAL_DOWN'); assert.equal(ui.visual.oneShot.at, at);
+    assert.equal(frame(game, ui).name, 'AERIAL_DOWN');
+  }
+  // Fallback chain once triggered: broken GROUND_BOUNCE -> FLIGHT_LOOP -> Canvas HERO, no throw.
+  {
+    install(); const { game, ui } = flight(); while (!step(game, ui, 1 / 60));
+    assert.equal(frame(game, ui).name, 'GROUND_BOUNCE');
+    install({ ...A.GB, data: null }); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
+    install({ ...A.GB, image: { complete: false, naturalWidth: 0 } }); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
+    install({ ready: false }, { ready: false }); assert.equal(frame(game, ui).name, 'CANVAS');
+    install(); const throwing = s.draw; let thrown = 0;
+    s.draw = function (cx, asset, ...rest) { if (asset === A.GB) { thrown++; return originalDraw.call(this, { save() {}, restore() {}, drawImage() { throw new Error('decode lost'); } }, asset, ...rest); } return throwing.call(this, cx, asset, ...rest); };
+    assert.equal(frame(game, ui).name, 'FLIGHT_LOOP'); assert.equal(thrown, 1); s.draw = throwing;
+  }
+  // Reduced motion: hold frame 0 for the one-shot duration, then FLIGHT_LOOP frame 0 (same as AERIAL).
+  {
+    install(); const { game, ui } = flight(); ui.visual.reducedMotion = true;
+    while (!step(game, ui, 1 / 60)); const start = game.phaseTime;
+    while (game.phaseTime - start < 8 / 12) { const out = frame(game, ui); assert.equal(out.name, 'GROUND_BOUNCE'); assert.equal(out.frame, 0); assert.equal(out.time, 0); if (step(game, ui, 1 / 60)) break; }
+    const out = frame(game, ui); assert.equal(out.name, 'FLIGHT_LOOP'); assert.equal(out.time, 0);
+  }
+  // Only FLYING; RESULT and RETRY clear it.
+  {
+    install(); const { game, ui } = flight(); while (!step(game, ui, 1 / 60));
+    for (const state of ['READY', 'AIM_ANGLE', 'AIM_POWER', 'RESULT']) { const keep = game.state; game.state = state; assert.equal(frame(game, ui).name, 'CANVAS'); game.state = keep; }
+    game.finish(); ui.update(); assert.equal(ui.visual.oneShot, null); game.act(); ui.update(); assert.equal(game.state, 'AIM_ANGLE'); assert.equal(ui.visual.oneShot, null);
+    assert.equal(ui.visual.lastBounces, game.body.bounces);
+  }
+  // Display-only: identical physics/game outcome with the mock asset, without it, and without drawing.
+  {
+    const run = (draw, gb) => { install(gb); const { game, ui } = flight(11); game.acquireMerchant('D');
+      for (let i = 0; i < 60 * 40 && game.state === 'FLYING'; i++) { game.update(1 / 60); ui.update(); if (draw) ui.draw(); if (i % 97 === 50) { game.act(); ui.update(); } }
+      return JSON.stringify({ body: game.body, state: game.state, final: game.finalDistance, up: game.upRemaining, merchant: game.merchant, stats: game.merchantStats }); };
+    const ref = run(true, A.GB); assert.equal(run(true, { ready: false }), ref); assert.equal(run(false, A.GB), ref);
+  }
+  graphics.character = originalCharacter; s.draw = originalDraw; Object.assign(s, saved);
+  console.log('Ground bounce PASS: planned paths/flag, 12fps one-shot at ' + rates.join('/') + 'Hz, end -> FLIGHT_LOOP, settle excluded, Type D excluded, AERIAL<->BOUNCE interrupts, absent asset = no change, fallback chain, reduced motion, FLYING only/RESULT/RETRY, draw purity, physics unchanged.');
+}

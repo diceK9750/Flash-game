@@ -127,7 +127,7 @@ if (process.argv.includes('--loader')) {
       game.downCharge = 1; game.upRemaining = 3;
       const startPhase = game.phaseTime;
       assert.equal(game.aerial(dir), true); ui.update();
-      assert.equal(ui.visual.aerial.direction, dir); assert.equal(ui.visual.aerial.at, startPhase);
+      assert.equal(ui.visual.oneShot.animation, 'AERIAL_' + dir); assert.equal(ui.visual.oneShot.at, startPhase);
       const seen = new Set(); let endedAt = null;
       for (let i = 0; i <= hz; i++) {
         if (i) { game.update(1 / hz); ui.update(); }
@@ -174,7 +174,7 @@ if (process.argv.includes('--loader')) {
   {
     const { game, ui } = airborne(); const mode = game.updateAerialMode();
     game.act(); ui.update();
-    assert.equal(ui.visual.aerial.direction, mode); assert.equal(frame(game, ui).name, 'AERIAL_' + mode);
+    assert.equal(ui.visual.oneShot.animation, 'AERIAL_' + mode); assert.equal(frame(game, ui).name, 'AERIAL_' + mode);
   }
   // Fallbacks: missing aerial -> FLIGHT_LOOP; missing both -> Canvas HERO; draw failure -> next layer.
   {
@@ -185,7 +185,7 @@ if (process.argv.includes('--loader')) {
     install(assets.UP, { ...assets.DOWN, data: null }); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
     install(assets.UP, { ...assets.DOWN, image: { complete: true, naturalWidth: 0 } }); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
     install(); assert.equal(frame(game, ui).name, 'AERIAL_DOWN');
-    ui.visual.aerial = { direction: 'SIDEWAYS', at: game.phaseTime }; assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
+    ui.visual.oneShot = { animation: 'SIDEWAYS', at: game.phaseTime }; assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
   }
   // reduced motion: hold the aerial first frame for its duration, then FLIGHT_LOOP first frame.
   {
@@ -201,9 +201,9 @@ if (process.argv.includes('--loader')) {
     for (const state of ['READY', 'AIM_ANGLE', 'AIM_POWER', 'RESULT']) {
       const keep = game.state; game.state = state; assert.equal(frame(game, ui).name, 'CANVAS', state); game.state = keep;
     }
-    game.finish(); ui.update(); assert.equal(game.state, 'RESULT'); assert.equal(ui.visual.aerial, null);
+    game.finish(); ui.update(); assert.equal(game.state, 'RESULT'); assert.equal(ui.visual.oneShot, null);
     assert.equal(frame(game, ui).name, 'CANVAS');
-    game.act(); ui.update(); assert.equal(game.state, 'AIM_ANGLE'); assert.equal(ui.visual.aerial, null);
+    game.act(); ui.update(); assert.equal(game.state, 'AIM_ANGLE'); assert.equal(ui.visual.oneShot, null);
   }
   // Rendering is display-only: identical physics with and without sprites/draw calls.
   {

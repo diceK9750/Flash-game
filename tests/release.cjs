@@ -76,7 +76,7 @@ if (!process.argv.includes('--serve')) {
   console.log('Release PASS: retained physics/contact config, pointer-only input, 1.0s, 9 silhouettes, merchant draw purity, states, relative paths.');
 } else {
   const http = require('node:http');
-  const spriteDirs = ['assets/sprites/hero/flight_loop/', 'assets/sprites/hero/hero_aerial_up_v1_bundle/', 'assets/sprites/hero/hero_aerial_down_v1_bundle/'].filter(dir => fs.existsSync(path.join(root, dir)));
+  const spriteDirs = ['assets/sprites/hero/flight_loop/', 'assets/sprites/hero/hero_aerial_up_v1_bundle/', 'assets/sprites/hero/hero_aerial_down_v1_bundle/', 'assets/sprites/hero/hero_ground_bounce_v1_bundle/'].filter(dir => fs.existsSync(path.join(root, dir)));
   const allowed = new Set(['index.html', 'favicon.svg', 'css/style.css', ...fs.readdirSync(path.join(root, 'js')).map(f => 'js/' + f), ...spriteDirs.flatMap(dir => fs.readdirSync(path.join(root, dir)).filter(f => /\.(png|json|gif)$/.test(f)).map(f => dir + f))]);
   const qa = '<script>' + fs.readFileSync(path.join(__dirname, 'qa.js'), 'utf8') + '</script>';
   http.createServer((req, res) => {
