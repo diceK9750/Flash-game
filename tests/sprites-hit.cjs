@@ -50,6 +50,10 @@ if (process.argv.includes('--loader')) {
       { id: 'HERO', animation: 'HIT', w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 } });
     const png = fs.readFileSync(path.join(root, def.src));
     assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96); assert.equal(png[25], 6, 'RGBA PNG');
+    // v2: jolt held for 2 steps, then every sheet frame once (0.75 s); reduced motion = stiff pose (sheet 4).
+    assert.deepEqual([...m.sequence], [0, 0, 1, 2, 3, 4, 5, 6, 7]); assert.equal(s.duration(m), 9 / 12);
+    assert.equal(s.frameAt(m, def.stillTime), 4);
+    for (const hz of [30, 60, 120, 144]) for (let i = 0; i <= hz; i++) assert.equal(s.frameAt(m, i / hz), m.sequence[Math.min(8, Math.floor(i / hz * 12))]);
   }
   assert.equal(c.playerRadius, 18);
   const fake = data => ({ ready: true, image: { complete: true, naturalWidth: 768 }, data });
@@ -125,7 +129,7 @@ if (process.argv.includes('--loader')) {
   {
     const { game, ui } = start(); ui.visual.reducedMotion = true;
     for (let i = 0; i < 60; i++) { const t = game.phaseTime - ui.visual.oneShot.at, out = frame(game, ui);
-      if (t < 8 / 12) { assert.equal(out.name, 'HIT'); assert.equal(out.frame, 3); } else assert.equal(out.name, 'FLIGHT_LOOP');
+      if (t < 8 / 12) { assert.equal(out.name, 'HIT'); assert.equal(out.frame, s.frameAt(A.HIT.data, def.stillTime)); assert.equal(out.frame, 5); } else assert.equal(out.name, 'FLIGHT_LOOP');
       game.update(1 / 60); ui.update(); }
   }
   // Missing asset: no HIT, FLIGHT_LOOP from the first frame (unchanged). Draw failure: FLIGHT_LOOP, then Canvas.
@@ -143,5 +147,5 @@ if (process.argv.includes('--loader')) {
     game.act(); ui.update(); assert.equal(game.state, ST.FLYING); assert.equal(ui.visual.oneShot.animation, 'HIT', 'next launch plays it again');
   }
   graphics.character = originalCharacter; s.draw = originalDraw; Object.assign(s, saved);
-  console.log('Hit PASS: flag/files/JSON, starts on the launch update, 12fps 8 frames at 30/60/120/144Hz then FLIGHT_LOOP, no vy tilt during HIT + ease back, physics unchanged, AERIAL/GROUND_BOUNCE interrupt (newest wins), reduced motion = sheet 3, missing asset/draw failure fallback, launch-only trigger, draw purity.');
+  console.log('Hit PASS: flag/files/JSON, starts on the launch update, 12fps 8 frames at 30/60/120/144Hz then FLIGHT_LOOP, no vy tilt during HIT + ease back, physics unchanged, AERIAL/GROUND_BOUNCE interrupt (newest wins), reduced motion = stillTime frame (real v2: sheet 4), real JSON sequence at 30/60/120/144Hz, missing asset/draw failure fallback, launch-only trigger, draw purity.');
 }

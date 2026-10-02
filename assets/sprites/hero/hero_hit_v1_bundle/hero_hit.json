@@ -6,22 +6,33 @@
   "frames": 8,
   "fps": 12,
   "loop": false,
+  "sequence": [
+    0,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
   "pivot": {
     "x": 48,
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceVideo": "hit_v1a.mp4",
+  "sourceVideo": "hit_v2a.mp4",
   "sourceFrameIndices": [
-    10,
-    12,
-    14,
-    30,
-    60,
-    90,
-    120,
-    144
+    13,
+    18,
+    20,
+    22,
+    26,
+    50,
+    80,
+    120
   ],
   "nextAnimation": "FLIGHT_LOOP",
-  "notes": "Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling; same px scale as FLIGHT_LOOP (0.2174 = 1/4.6), fixed anchor (388,386). Truck impact one-shot: jolt (0) -> arms snap up (1) -> blown-away pose (2) -> stiff tilt progression (3-7, rotation baked from the clip). Played once at launch, then FLIGHT_LOOP."
+  "notes": "v2: Grok hit_v2a (back-to-camera Rumiko-style blow-away). Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling; same px scale as FLIGHT_LOOP (0.2174 = 1/4.6), fixed anchor (374,386). Jolt crouch (0, held 2 steps) -> turn (1) -> back-facing snap (2) -> cape flare (3) -> stiff pose, hands up, frog legs (4-7, slight drift/tilt from the clip; no full rotation in the source). 9 steps at 12fps = 0.75 s."
 }

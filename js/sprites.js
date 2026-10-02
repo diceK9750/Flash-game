@@ -35,12 +35,12 @@ Hop.Sprites = {
       // Truck impact at launch (AIM_POWER -> FLYING): comedic "blown away" one-shot with the
       // rotation baked into the frames, then FLIGHT_LOOP. Any later AERIAL / GROUND_BOUNCE replaces
       // it (newest wins). vy tilt is suppressed while it plays (baked rotation) and eases back.
-      // Reduced motion shows one representative frame (stillTime) for the same duration.
+      // Reduced motion shows one representative frame (stillTime; v2 = sheet 4, the stiff pose) for the same duration.
       HIT: {
         src: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit_sheet_96x96.png",
         metadata: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit.json",
         animation: "HIT", fps: 12, loop: false, scale: 1.25, enabled: true,
-        suppressTilt: true, tiltEase: 0.12, stillTime: 3.5 / 12
+        suppressTilt: true, tiltEase: 0.12, stillTime: 5.5 / 12
       },
       // Played once when the hero has come to a full stop on the ground (body.stopped, FLYING
       // or RESULT), then the last frame is held until RETRY. Same flag pattern as GROUND_BOUNCE.
