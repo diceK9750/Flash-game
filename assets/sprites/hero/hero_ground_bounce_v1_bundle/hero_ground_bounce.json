@@ -1,0 +1,27 @@
+{
+  "id": "HERO",
+  "animation": "GROUND_BOUNCE",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceVideo": "ground_bounce_v2b.mp4",
+  "sourceFrameIndices": [
+    32,
+    38,
+    42,
+    46,
+    50,
+    108,
+    110,
+    112
+  ],
+  "nextAnimation": "FLIGHT_LOOP",
+  "notes": "Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling."
+}

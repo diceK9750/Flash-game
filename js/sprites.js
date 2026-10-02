@@ -21,11 +21,11 @@ Hop.Sprites = {
       },
       // Normal ground bounce one-shot (merchant Type D BOUND BOOST excluded).
       // enabled:false = asset not delivered yet: never requested, so no 404 in the console.
-      // Set to true after adding the bundle (tests/sprites-ground-bounce.cjs enforces it).
+      // v1 bundle delivered: enabled. tests/sprites-ground-bounce.cjs enforces flag == files present.
       GROUND_BOUNCE: {
         src: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce_sheet_96x96.png",
         metadata: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce.json",
-        animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: false
+        animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: true
       }
     }
   },
