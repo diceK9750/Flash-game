@@ -25,7 +25,12 @@ Hop.Sprites = {
       GROUND_BOUNCE: {
         src: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce_sheet_96x96.png",
         metadata: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce.json",
-        animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: true
+        animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: true,
+        // Display tuning (no game effect). Detection happens after the rebound, so the JSON
+        // "sequence" starts at the deepest squash. Tilt is suppressed while it plays and eases
+        // back over tiltEase s. A new bounce restarts it only after minRestartInterval s, and
+        // tiny hops (predicted airtime 2*vy/gravity < minHopTime s) never start it.
+        suppressTilt: true, tiltEase: 0.12, minRestartInterval: 0.3, minHopTime: 0.25
       }
     }
   },
@@ -42,6 +47,9 @@ Hop.Sprites = {
           data.frameWidth !== 96 || data.frameHeight !== 96 || data.frames !== 8 ||
           data.fps !== definition.fps || data.loop !== definition.loop ||
           data.pivot?.x !== 48 || data.pivot?.y !== 88) return asset;
+      // Optional playback order: sheet column indices, played at fps (duration = length / fps).
+      if (data.sequence !== undefined && !(Array.isArray(data.sequence) && data.sequence.length >= 1 && data.sequence.length <= 64 &&
+          data.sequence.every(i => Number.isInteger(i) && i >= 0 && i < data.frames))) return asset;
       const image = await new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
@@ -56,9 +64,11 @@ Hop.Sprites = {
   // Time-based frame index: identical for any refresh rate. One-shots hold the last frame.
   frameAt(data, time) {
     const index = Math.floor(Math.max(0, Number.isFinite(time) ? time : 0) * data.fps);
-    return data.loop === false ? Math.min(index, data.frames - 1) : index % data.frames;
+    const sequence = Array.isArray(data.sequence) ? data.sequence : null, count = sequence ? sequence.length : data.frames;
+    const step = data.loop === false ? Math.min(index, count - 1) : index % count;
+    return sequence ? sequence[step] : step;
   },
-  duration(data) { return data.frames / data.fps; },
+  duration(data) { return (Array.isArray(data.sequence) ? data.sequence.length : data.frames) / data.fps; },
   draw(ctx, asset, time, x, feet, scale) {
     if (!asset?.ready || !asset.image?.complete || !asset.image.naturalWidth || !asset.data?.pivot) return false;
     const d = asset.data;
@@ -71,6 +81,25 @@ Hop.Sprites = {
       return true;
     } catch (_) { return false; }
     finally { ctx.restore(); }
+  },
+  // Display-only GROUND_BOUNCE gating for a detected normal bounce (pure; vy = rebound speed).
+  groundBounceAllowed(visual, phaseTime, vy) {
+    const def = this.definitions.HERO.GROUND_BOUNCE, asset = this.heroGroundBounce;
+    if (!asset?.ready || !asset.data) return false;
+    const gravity = Hop.CONFIG?.gravity;
+    if (def.minHopTime > 0 && gravity > 0 && 2 * Math.max(0, vy) / gravity < def.minHopTime) return false;
+    const shot = visual?.oneShot;
+    if (shot?.animation === "GROUND_BOUNCE" && def.minRestartInterval > 0 && phaseTime - shot.at < def.minRestartInterval) return false;
+    return true;
+  },
+  // Multiplier for the FLYING vy tilt (pure): 0 while GROUND_BOUNCE plays, then eases back to 1.
+  tiltWeight(visual, phaseTime) {
+    const def = this.definitions.HERO.GROUND_BOUNCE, shot = visual?.oneShot, asset = this.heroGroundBounce;
+    if (!def.suppressTilt || shot?.animation !== "GROUND_BOUNCE" || !asset?.ready || !asset.data) return 1;
+    const time = phaseTime - shot.at, end = this.duration(asset.data);
+    if (!(time >= 0)) return 1;
+    if (time < end) return 0;
+    return def.tiltEase > 0 ? Math.min(1, (time - end) / def.tiltEase) : 1;
   },
   // Ordered FLYING candidates (pure): active one-shot (AERIAL / GROUND_BOUNCE), then FLIGHT_LOOP.
   // The caller falls back to the Canvas HERO when every candidate fails to draw.

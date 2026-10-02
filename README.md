@@ -95,6 +95,8 @@ AERIAL UP / DOWN成功時は、`assets/sprites/hero/hero_aerial_up_v1_bundle/` �
 
 GROUND_BOUNCE（勇者の通常の地面バウンド、12fps・非ループ・pivot (48,88)・表示倍率1.25）は v1素材（Grok動画 ground_bounce_v2b の元フレーム 32,38,42,46,50,108,110,112、FLIGHT_LOOPと同じ縮尺）を同梱し、`enabled: true` です。`js/sprites.js` の `GROUND_BOUNCE.enabled: false` にすると画像を要求しなくなり（404やコンソールエラーは出ません）、表示は従来どおりになります。その場合は素材フォルダも外してください（テストがフラグとファイルの一致を確認します）。素材は `assets/sprites/hero/hero_ground_bounce_v1_bundle/`（`hero_ground_bounce.json` と `hero_ground_bounce_sheet_96x96.png`。JSONの形式はAERIALと同じで、animationは `GROUND_BOUNCE`）に置き、`enabled: true` で有効になります。ファイルの有無とフラグが食い違うと `tests/sprites-ground-bounce.cjs` が失敗します。発生条件は、FLYING中の地面接触（body.bounces増加）のうち、反発して再び空中にいるものだけです。最後に転がりへ移る接地と、商人Type DのBOUND BOOSTバウンドでは発生しません（Type D終了後の通常バウンドでは発生します）。AERIALとGROUND_BOUNCEは「新しい方が優先」です。GROUND_BOUNCE中にAERIALが成功するとAERIALに、AERIAL中に通常バウンドするとGROUND_BOUNCEに切り替わり、最初から再生します。ただしGROUND_BOUNCE素材が読めない場合、バウンドしても再生中のAERIALは続きます。検知は画面の更新タイミングで行うため、開始は最大1描画フレーム遅れることがあります。
 
+GROUND_BOUNCEの見え方の調整（表示のみ。物理・当たり判定・状態・効果・入力は変更なし）：検知は反発した後なので、JSONの `sequence`（シートのコマ番号の再生順。省略時は0から順番）を `[4,4,5,5,6,6,7,7]` にし、一番深く潰れたコマ（シート4）から跳ね返り→直立の順に再生します（合計8コマ・12fps・0.667秒は従来どおり。着地コマ0〜3はシートに残していますが再生しません）。GROUND_BOUNCEの再生中は落下速度による勇者の傾きを0にし、終了後0.12秒かけて元の傾きに戻します（AERIAL・素材なし・動きを減らす設定の挙動は従来どおり）。連続再始動は次の2条件で抑えます（どちらも表示のみで、バウンド自体は通常どおり起きます）。(1) GROUND_BOUNCE開始から0.3秒以内の新しいバウンドでは再始動しません。(2) 反発後の滞空時間の見込み（2×vy÷重力）が0.25秒未満の小さな跳ねでは開始しません。根拠は200回分のシミュレーション（通常の空中バウンド1434回）です。前のバウンドとの間隔は5パーセンタイルが0.325秒で、0.3秒未満は1238回中30回でした。滞空時間の見込みは5パーセンタイルが0.217秒で、0.25秒未満は134回でした。0.25秒未満の跳ねでは再生途中で次の接地が来るため、開始しません。AERIALによる割り込みは従来どおり常に即座です。AERIAL再生中のバウンドには0.3秒の制限はかかりません。
+
 ロード中・画像欠落・不正JSON・画像寸法不一致・描画失敗時は、AERIAL / GROUND_BOUNCE → FLIGHT_LOOP → Canvas勇者の順に戻ります。GIFと個別8枚は確認用で、実行時には読み込みません。素材はユーザー提供の完成版を無加工で使用しています。
 
 ## ローカル起動
@@ -128,7 +130,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 - `node tests/controls.cjs`：1入力・ヒステリシス・旧操作無効・音声不可時の安全性。
 - `node tests/sprites.cjs`：画像／JSONロードと異常系、RGBA寸法、8fps・固定pivot、補間設定の復元、飛行時だけの置換、描画によるゲーム状態不変。QAの「HERO FLIGHT_LOOP」「HERO 画像欠落」で実画像と意図的な404フォールバックを比較できます。
 - `node tests/sprites-aerial.cjs`：AERIAL UP / DOWNの素材仕様、ロード異常系、30/60/120/144Hzで同じ12fpsのフレーム、終了後のFLIGHT_LOOP復帰、再生中の再発動、pivot・補間、フォールバックの順序、動きを減らす設定、FLYING以外とRETRY、描画してもゲーム状態と物理が変わらないこと。QAの「HERO AERIAL UP」「HERO AERIAL DOWN」「HERO AERIAL 画像欠落」は準備時に一時停止し、「再生」で動きを確認できます。
-- `node tests/sprites-ground-bounce.cjs`：GROUND_BOUNCEのパスとフラグの整合、無効時に画像を要求しないこと、テスト専用のモック素材による4種類のリフレッシュレートでのタイミング、転がり接地とType Dの除外、AERIALとの割り込み、素材がない場合は従来どおりであること、フォールバック、動きを減らす設定、描画してもゲーム状態と物理が変わらないこと。QAの「HERO GROUND_BOUNCE」「HERO GROUND_BOUNCE 商人D」。
+- `node tests/sprites-ground-bounce.cjs`：GROUND_BOUNCEのパスとフラグの整合、無効時に画像を要求しないこと、テスト専用のモック素材による4種類のリフレッシュレートでのタイミング、転がり接地とType Dの除外、AERIALとの割り込み、素材がない場合は従来どおりであること、`sequence` の検証と再生順（潰れ→跳ね返り）、再生中に傾かないことと終了後に元の傾きへ戻ること、0.3秒の再始動制限と0.25秒の小さな跳ねの除外、フォールバック、動きを減らす設定、描画してもゲーム状態と物理が変わらないこと。QAの「HERO GROUND_BOUNCE」「HERO GROUND_BOUNCE 商人D」。
 - `node tests/release.cjs`：全テストに加え、描画・必須ファイル・.nojekyll・共有メタ情報・ローカルアセットのサブパス解決・維持した物理設定を照合。
 - `node tests/release.cjs --serve`：`/NANACACRASH/qa.html` は検証専用。シナリオを選択して「準備」で通常効果・7SPECIAL・商人A〜D・BRAKE準備・GUARD期限／二重防御／浮遊中の時間停止を再現します。準備時は時間停止し、画面タップでSPECIAL成功、「再生」でタイマーを再開してMISSを確認できます。「次の通常STOPPER」「次のGUARD」で防御の順序も確認できます。QAプレイは保存しません。
 

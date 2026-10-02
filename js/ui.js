@@ -25,8 +25,9 @@ Hop.UI = class {
       const fresh = g.effect !== v.lastEffect ? g.effect : null;
       const bounced = g.body.bounces > v.lastBounces;
       v.lastEffect = g.effect; v.lastBounces = g.body.bounces;
-      // Without a loaded GROUND_BOUNCE asset a bounce changes nothing (an AERIAL keeps playing).
-      if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && Hop.Sprites?.heroGroundBounce?.ready) v.oneShot = { animation: "GROUND_BOUNCE", at: g.phaseTime };
+      // Without a loaded GROUND_BOUNCE asset a bounce changes nothing (an AERIAL keeps playing);
+      // restart interval / tiny-hop gating lives in Hop.Sprites.groundBounceAllowed.
+      if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && Hop.Sprites?.groundBounceAllowed?.(v, g.phaseTime, g.body.vy)) v.oneShot = { animation: "GROUND_BOUNCE", at: g.phaseTime };
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
       if (aerial) v.oneShot = { animation: "AERIAL_" + aerial[1], at: g.phaseTime };
     }

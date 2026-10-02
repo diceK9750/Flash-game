@@ -24,6 +24,11 @@ if (process.argv.includes('--loader')) {
         if (mode === 'fps') return { ...mockMeta, fps: 8 };
         if (mode === 'pivot') return { ...mockMeta, pivot: { x: 40, y: 88 } };
         if (mode === 'frame') return { ...mockMeta, frameWidth: 64 };
+        if (mode === 'seq-range') return { ...mockMeta, sequence: [4, 8] };
+        if (mode === 'seq-empty') return { ...mockMeta, sequence: [] };
+        if (mode === 'seq-type') return { ...mockMeta, sequence: '4,5' };
+        if (mode === 'seq-float') return { ...mockMeta, sequence: [4.5] };
+        if (mode === 'seq-ok') return { ...mockMeta, sequence: [4, 4, 5, 5, 6, 6, 7, 7] };
         return mockMeta;
       } };
     } };
@@ -40,9 +45,10 @@ if (process.argv.includes('--loader')) {
     assert.equal((await s.ready).ready, true); assert.equal((await s.aerialReady).every(a => a.ready), true, 'other sprites unaffected');
     const on = { ...def, enabled: true };
     assert.equal((await s.load(on)).ready, true, 'mock success once enabled');
-    for (mode of ['image-error', 'size', 'network', '404', 'json', 'swap', 'loop', 'fps', 'pivot', 'frame']) assert.equal((await s.load(on)).ready, false, mode);
+    for (mode of ['image-error', 'size', 'network', '404', 'json', 'swap', 'loop', 'fps', 'pivot', 'frame', 'seq-range', 'seq-empty', 'seq-type', 'seq-float']) assert.equal((await s.load(on)).ready, false, mode);
+    mode = 'seq-ok'; const seqAsset = await s.load(on); assert.equal(seqAsset.ready, true); assert.equal(s.duration(seqAsset.data), 8 / 12);
     mode = 'ok'; assert.equal((await s.load(on)).ready, true, 'recovery');
-    console.log('Ground bounce loader PASS: disabled = no request, mock success, image/size/network/404/JSON/animation/loop/fps/pivot/frame errors, recovery.');
+    console.log('Ground bounce loader PASS: disabled = no request, mock success, image/size/network/404/JSON/animation/loop/fps/pivot/frame/sequence errors, valid sequence, recovery.');
   })().catch(error => { console.error(error); process.exitCode = 1; });
 } else {
   const child = require('node:child_process').spawnSync(process.execPath, [__filename, '--loader'], { encoding: 'utf8' });
@@ -121,18 +127,20 @@ if (process.argv.includes('--loader')) {
     assert.equal(seen.size, 8, hz + 'Hz all frames'); assert(ended >= 8 / 12 && ended < 8 / 12 + 1 / hz + 1e-9, hz + 'Hz ends on time');
     rates.push(hz);
   }
-  // Every airborne normal bounce triggers; the settling impact (-> rolling) does not.
+  // Airborne normal bounces trigger unless gated (tiny hop / restart interval); settling never does.
   {
-    const { game, ui } = flight(); let bounces = 0, triggered = 0, settled = false;
+    const { game, ui } = flight(); let bounces = 0, triggered = 0, gated = 0, settled = false;
     for (let i = 0; i < 60 * 60 && game.state === 'FLYING'; i++) {
       const before = ui.visual.oneShot;
       if (step(game, ui, 1 / 60)) {
         bounces++;
+        const hop = 2 * game.body.vy / c.gravity, sinceGB = before?.animation === 'GROUND_BOUNCE' ? game.phaseTime - before.at : Infinity;
         if (game.body.grounded) { assert.equal(ui.visual.oneShot, before, 'settle does not trigger'); settled = true; }
+        else if (hop < def.minHopTime || sinceGB < def.minRestartInterval) { assert.equal(ui.visual.oneShot, before, 'gated bounce keeps the current one-shot'); gated++; }
         else { assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE'); assert.equal(ui.visual.oneShot.at, game.phaseTime); triggered++; }
       }
     }
-    assert(bounces >= 3 && triggered >= 2 && settled, `bounces ${bounces} triggered ${triggered} settled ${settled}`);
+    assert(bounces >= 3 && triggered >= 2 && settled, `bounces ${bounces} triggered ${triggered} gated ${gated} settled ${settled}`);
   }
   // Merchant Type D (BOUND BOOST) bounces never trigger; normal bounces after it ends do.
   {
@@ -200,6 +208,77 @@ if (process.argv.includes('--loader')) {
       return JSON.stringify({ body: game.body, state: game.state, final: game.finalDistance, up: game.upRemaining, merchant: game.merchant, stats: game.merchantStats }); };
     const ref = run(true, A.GB); assert.equal(run(true, { ready: false }), ref); assert.equal(run(false, A.GB), ref);
   }
+  // ---- Display tuning: (a) sequence, (b) tilt suppression, (c) restart gating ----
+  const seqMeta = { ...mockMeta, sequence: [4, 4, 5, 5, 6, 6, 7, 7] }, SEQ = fake(seqMeta); names.set(SEQ, 'GROUND_BOUNCE');
+  if (present) {
+    const real = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
+    assert.deepEqual([...real.sequence], [4, 4, 5, 5, 6, 6, 7, 7], 'real asset starts at the deepest squash (sheet 4) and ends upright (sheet 7)');
+    assert.equal(s.duration(real), 8 / 12);
+  }
+  // (a) frame order follows the sequence, time-based at every refresh rate; duration = length / fps.
+  for (const hz of [30, 60, 120, 144]) for (let i = 0; i <= hz; i++) assert.equal(s.frameAt(seqMeta, i / hz), seqMeta.sequence[Math.min(7, Math.floor(i / hz * 12))]);
+  assert.equal(s.frameAt({ ...seqMeta, loop: true }, 9 / 12), 4, 'looping sequence wraps');
+  {
+    install(SEQ); const { game, ui } = flight(); while (!step(game, ui, 1 / 60));
+    const seen = []; const start = game.phaseTime;
+    for (let i = 0; i < 50; i++) { const out = frame(game, ui); if (game.phaseTime - start < 8 / 12) { assert.equal(out.name, 'GROUND_BOUNCE'); seen.push(out.frame); } else assert.equal(out.name, 'FLIGHT_LOOP'); if (step(game, ui, 1 / 60)) break; }
+    assert.equal(seen[0], 4, 'first frame on detection is the deepest squash');
+    assert.deepEqual([...new Set(seen)], [4, 5, 6, 7], 'squash -> rebound -> upright, landing frames 0-3 skipped');
+  }
+  // (b) no vy tilt while GROUND_BOUNCE plays; eases back over tiltEase; unchanged otherwise.
+  {
+    const rotations = [];
+    const rec = new Proxy({}, { get: (o, k) => k === 'rotate' ? (a => rotations.push(a)) : (o[k] || (() => {})), set: (o, k, v) => (o[k] = v, true) });
+    install(SEQ); const { game, ui } = flight(); ui.ctx = rec;
+    const tiltOf = () => { rotations.length = 0; ui.draw(); return rotations.length ? rotations[0] : 0; };
+    const full = () => Math.max(-0.7, Math.min(0.7, -game.body.vy / 1200));
+    assert.equal(tiltOf(), full(), 'normal FLIGHT_LOOP tilt unchanged');
+    while (!step(game, ui, 1 / 60)); const start = game.phaseTime;
+    assert(Math.abs(full()) > 0.05, 'test needs a visible tilt');
+    while (game.phaseTime - start < 8 / 12) { assert.equal(tiltOf(), 0, 'upright during GROUND_BOUNCE'); assert.equal(s.tiltWeight(ui.visual, game.phaseTime), 0); if (step(game, ui, 1 / 120)) break; }
+    let last = 0, eased = false;
+    for (let i = 0; i < 40; i++) { const w = s.tiltWeight(ui.visual, game.phaseTime); assert(w >= last - 1e-12 && w <= 1); if (w > 0 && w < 1) eased = true; assert(Math.abs(tiltOf() - full() * w) < 1e-12); last = w; step(game, ui, 1 / 120); }
+    assert(eased && last === 1, 'eases back to the full tilt');
+    assert.equal(s.tiltWeight({ oneShot: { animation: 'GROUND_BOUNCE', at: 0 } }, 0.2), 0);
+    assert(Math.abs(s.tiltWeight({ oneShot: { animation: 'GROUND_BOUNCE', at: 0 } }, 8 / 12 + def.tiltEase / 2) - 0.5) < 1e-9);
+    assert.equal(s.tiltWeight({ oneShot: { animation: 'AERIAL_UP', at: 0 } }, 0.2), 1, 'AERIAL keeps the tilt');
+    install({ ready: false }); assert.equal(s.tiltWeight({ oneShot: { animation: 'GROUND_BOUNCE', at: 0 } }, 0.2), 1, 'no asset: tilt unchanged');
+    install(SEQ); ui.visual.reducedMotion = true; assert.equal(tiltOf(), 0, 'reduced motion still never rotates');
+  }
+  // (c) restart gating: within minRestartInterval a new bounce is ignored; tiny hops never start it; AERIAL unchanged.
+  {
+    assert.equal(def.minRestartInterval, 0.3); assert.equal(def.minHopTime, 0.25);
+    install(SEQ); const { game, ui } = flight(); while (!step(game, ui, 1 / 60));
+    const first = ui.visual.oneShot.at;
+    for (let i = 0; i < 6; i++) step(game, ui, 1 / 60);            // 0.1 s into the bounce
+    Object.assign(game.body, { y: 4, vy: -600 }); let guard = 0; while (!step(game, ui, 1 / 120)) assert(++guard < 30);
+    assert(!game.body.grounded && 2 * game.body.vy / c.gravity >= def.minHopTime);
+    assert(game.phaseTime - first < def.minRestartInterval); assert.equal(ui.visual.oneShot.at, first, 'early re-bounce ignored');
+    while (game.phaseTime - first < def.minRestartInterval) step(game, ui, 1 / 120);
+    Object.assign(game.body, { y: 4, vy: -600 }); guard = 0; while (!step(game, ui, 1 / 120)) assert(++guard < 30);
+    assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE'); assert.equal(ui.visual.oneShot.at, game.phaseTime, 'restart allowed after the interval');
+    assert.equal(frame(game, ui).frame, 4);
+    // AERIAL still interrupts immediately, even right after a bounce started.
+    step(game, ui, 1 / 60); const gbAt = ui.visual.oneShot.at; assert(game.phaseTime - gbAt < def.minRestartInterval);
+    Object.assign(game.body, { y: 25, vy: -400 }); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update();
+    assert.equal(ui.visual.oneShot.animation, 'AERIAL_DOWN');
+    // A bounce during AERIAL restarts GROUND_BOUNCE (interval applies only to GROUND_BOUNCE itself).
+    Object.assign(game.body, { y: 4, vy: -600 }); guard = 0; while (!step(game, ui, 1 / 120)) assert(++guard < 30);
+    assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE');
+    // Tiny hop: rebound airtime below minHopTime never starts it.
+    for (let i = 0; i < 120; i++) step(game, ui, 1 / 120);
+    const keep = ui.visual.oneShot;
+    Object.assign(game.body, { y: 1, vy: -140 }); guard = 0; while (!step(game, ui, 1 / 120)) assert(++guard < 30);
+    assert(!game.body.grounded, 'still an airborne bounce'); assert(2 * game.body.vy / c.gravity < def.minHopTime);
+    assert.equal(ui.visual.oneShot, keep, 'tiny hop ignored');
+    // Pure gate checks.
+    assert.equal(s.groundBounceAllowed({ oneShot: null }, 1, 500), true);
+    assert.equal(s.groundBounceAllowed({ oneShot: null }, 1, 50), false);
+    assert.equal(s.groundBounceAllowed({ oneShot: { animation: 'GROUND_BOUNCE', at: 0.9 } }, 1, 500), false);
+    assert.equal(s.groundBounceAllowed({ oneShot: { animation: 'AERIAL_UP', at: 0.9 } }, 1, 500), true);
+    install({ ready: false }); assert.equal(s.groundBounceAllowed({ oneShot: null }, 1, 500), false);
+  }
   graphics.character = originalCharacter; s.draw = originalDraw; Object.assign(s, saved);
+  console.log('Ground bounce tuning PASS: (a) JSON sequence 4,4,5,5,6,6,7,7 at 30/60/120/144Hz, validation, squash->rebound order; (b) no tilt during GROUND_BOUNCE, eased return, AERIAL/no-asset/reduced-motion unchanged; (c) 0.3 s restart interval, 0.25 s tiny-hop gate, AERIAL interrupts unchanged.');
   console.log('Ground bounce PASS: planned paths/flag, 12fps one-shot at ' + rates.join('/') + 'Hz, end -> FLIGHT_LOOP, settle excluded, Type D excluded, AERIAL<->BOUNCE interrupts, absent asset = no change, fallback chain, reduced motion, FLYING only/RESULT/RETRY, draw purity, physics unchanged.');
 }

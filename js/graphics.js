@@ -171,7 +171,9 @@ Hop.Graphics = {
       this.line(ctx, [[x - 28, y + 20], [x - 12, y + (g.effect.label.endsWith("UP") ? -30 : 55)]], "#277ca5", 6); ctx.restore();
     }
     ctx.save(); ctx.translate(x, y);
-    if (g.state === "FLYING" && !visual.reducedMotion) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)));
+    // GROUND_BOUNCE plays upright (tilt weight 0) and the tilt eases back afterwards.
+    const tilt = Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1;
+    if (g.state === "FLYING" && !visual.reducedMotion && tilt > 0) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt);
     // Same foot anchor and rotation as the silhouette; physics stays untouched.
     // phaseTime shares the game's pause/hidden-tab handling (no wall-clock jump).
     // FLYING order: AERIAL UP/DOWN one-shot -> FLIGHT_LOOP -> Canvas HERO.

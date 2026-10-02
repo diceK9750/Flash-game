@@ -6,6 +6,16 @@
   "frames": 8,
   "fps": 12,
   "loop": false,
+  "sequence": [
+    4,
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    7
+  ],
   "pivot": {
     "x": 48,
     "y": 88
@@ -23,5 +33,5 @@
     112
   ],
   "nextAnimation": "FLIGHT_LOOP",
-  "notes": "Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling."
+  "notes": "Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling. sequence starts at the deepest squash (sheet 4 = source 50) because the game detects the bounce after the rebound; sheet 0-3 (landing) are kept but not played."
 }
