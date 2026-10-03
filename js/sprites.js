@@ -82,7 +82,7 @@ Hop.Sprites = {
       BOUNCE: { // 武闘家 (v1a idle + kick_v2 stills delivered: enabled)
         IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle.json" },
-        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
       },
       BRAKE: { // 盗賊
