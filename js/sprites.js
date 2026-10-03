@@ -79,10 +79,10 @@ Hop.Sprites = {
         IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" }
       },
-      BOUNCE: { // 武闘家
-        IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+      BOUNCE: { // 武闘家 (v1a idle + kick_v2 stills delivered: enabled)
+        IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle.json" },
-        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
       },
       BRAKE: { // 盗賊
