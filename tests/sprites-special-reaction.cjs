@@ -136,14 +136,16 @@ if (process.argv.includes('--loader')) {
   for (const hz of [30, 60, 120, 144]) {
     const { game, ui } = flight();
     bumpSuccess(game, ui);
-    assert.equal(JSON.stringify(ui.visual.oneShot), JSON.stringify({ animation: 'SPECIAL_REACTION', at: game.phaseTime }));
+    assert.equal(JSON.stringify({ ...ui.visual.oneShot, tiltFrom: undefined }), JSON.stringify({ animation: 'SPECIAL_REACTION', at: game.phaseTime }));
     const at = game.phaseTime, seen = []; let ended = false;
     for (let i = 0; i < hz * 1.5; i++) {
       const t = game.phaseTime - at, out = frame(game, ui);
       if (t < 8 / 12) {
         assert.equal(out.name, 'SPECIAL_REACTION'); assert.equal(out.frame, Math.min(7, Math.floor(t * 12)), `${hz}Hz t=${t}`);
         assert.equal(out.feet, c.playerRadius); assert.equal(out.scale, 1.25);
-        assert.equal(s.tiltWeight(ui.visual, game.phaseTime), 0, 'no vy tilt during SPECIAL_REACTION');
+        // Phase B tiltIn: the vy tilt eases out over tiltIn s (no snap), then stays 0.
+        const w = s.tiltWeight(ui.visual, game.phaseTime);
+        assert(w <= Math.max(0, 1 - t / def.tiltIn) + 1e-9, 'tilt eases out'); if (t >= def.tiltIn) assert.equal(w, 0, 'no vy tilt during SPECIAL_REACTION');
         if (seen.at(-1) !== out.frame) seen.push(out.frame);
       } else { assert.equal(out.name, 'FLIGHT_LOOP', 'hands back to FLIGHT_LOOP'); ended = true; }
       game.update(1 / hz); ui.update();
@@ -194,23 +196,45 @@ if (process.argv.includes('--loader')) {
     assert.equal(JSON.stringify(game.body), JSON.stringify(ref.body), 'physics unchanged');
   }
 
-  // Interrupts: newest wins vs AERIAL / HIT / GROUND_BOUNCE (and vice versa).
+  // Phase B priority: SPECIAL_REACTION (2) replaces AERIAL / HIT / GROUND_BOUNCE (1) and is never cut
+  // by them while it plays; physics of the blocked AERIAL still applies. After it ends they play again.
   {
-    const { game, ui } = flight(); bumpSuccess(game, ui);
-    assert.equal(frame(game, ui).name, 'SPECIAL_REACTION');
-    Object.assign(game.body, { y: 25, vy: -400 }); assert(game.aerial('UP')); ui.update();
-    assert.equal(frame(game, ui).name, 'AERIAL_UP');
+    const { game, ui } = flight(); Object.assign(game.body, { y: 25, vy: -400 });
+    assert(game.aerial('UP')); ui.update(); assert.equal(frame(game, ui).name, 'AERIAL_UP');
     bumpSuccess(game, ui); assert.equal(frame(game, ui).name, 'SPECIAL_REACTION');
+    const at = ui.visual.oneShot.at;
+    for (let i = 0; i < 20; i++) { game.update(1 / 60); ui.update(); }
+    const vy = game.body.vy; Object.assign(game.body, { y: 200 }); assert(game.aerial('UP')); ui.update();
+    assert(game.body.vy > vy, 'AERIAL physics applied'); assert.equal(frame(game, ui).name, 'SPECIAL_REACTION'); assert.equal(ui.visual.oneShot.at, at);
+    assert.equal(s.oneShotAllowed(ui.visual, 'AERIAL_DOWN', game.phaseTime), false);
+    assert.equal(s.oneShotAllowed(ui.visual, 'SPECIAL_REACTION', game.phaseTime), true);
+    while (game.phaseTime - at < 10 / 12) { game.update(1 / 60); ui.update(); }
+    Object.assign(game.body, { y: 200 }); game.downCharge = 1; game.aerialMode = 'DOWN'; game.act(); ui.update();
+    assert.equal(frame(game, ui).name, 'AERIAL_DOWN', 'AERIAL plays again after the reaction');
   }
   {
     install(A.SR, { heroGroundBounce: A.GB });
     const { game, ui } = flight(4, 15, 0.6); bumpSuccess(game, ui);
-    assert.equal(ui.visual.oneShot.animation, 'SPECIAL_REACTION');
+    assert.equal(ui.visual.oneShot.animation, 'SPECIAL_REACTION'); const at = ui.visual.oneShot.at;
     Object.assign(game.body, { y: 3, vy: -500 }); let guard = 0; const b0 = game.body.bounces;
     while (game.body.bounces === b0) { game.update(1 / 120); ui.update(); assert(++guard < 30); }
-    assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE');
-    bumpSuccess(game, ui); assert.equal(ui.visual.oneShot.animation, 'SPECIAL_REACTION');
+    assert.equal(ui.visual.oneShot.animation, 'SPECIAL_REACTION', 'GROUND_BOUNCE does not cut it'); assert.equal(ui.visual.oneShot.at, at);
+    assert.equal(frame(game, ui).name, 'SPECIAL_REACTION');
     install();
+  }
+  {
+    install(A.SR, { heroGroundBounce: A.GB });
+    const { game, ui } = flight(4, 15, 0.6); Object.assign(game.body, { y: 3, vy: -500 }); let guard = 0; const b0 = game.body.bounces;
+    while (game.body.bounces === b0) { game.update(1 / 120); ui.update(); assert(++guard < 30); }
+    assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE');
+    bumpSuccess(game, ui); assert.equal(ui.visual.oneShot.animation, 'SPECIAL_REACTION', 'replaces GROUND_BOUNCE');
+    install();
+  }
+  // MERCHANT SPECIAL success (merchantStats.successes grows; specialSuccesses does not) also plays it.
+  {
+    const { game, ui } = flight(); const keep = game.specialSuccesses;
+    game.merchantStats.successes++; ui.update();
+    assert.equal(game.specialSuccesses, keep); assert.equal(ui.visual.oneShot.animation, 'SPECIAL_REACTION');
   }
   {
     install(A.SR, { heroHit: A.HIT });

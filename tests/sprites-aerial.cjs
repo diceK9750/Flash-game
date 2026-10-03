@@ -178,9 +178,12 @@ if (process.argv.includes('--loader')) {
   }
   // Fallbacks: missing aerial -> FLIGHT_LOOP; missing both -> Canvas HERO; draw failure -> next layer.
   {
+    // Phase B: an AERIAL whose asset is missing never starts (nothing to cut the current drawing).
+    { const r = airborne(); r.game.downCharge = 1; install({ ready: false }, { ready: false }); assert(r.game.aerial('DOWN')); r.ui.update();
+      assert.equal(r.ui.visual.oneShot, null); assert.equal(frame(r.game, r.ui).name, 'FLIGHT_LOOP'); install(); }
     const { game, ui } = airborne(); game.downCharge = 1;
-    install({ ready: false }, { ready: false }); assert(game.aerial('DOWN')); ui.update();
-    assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
+    assert(game.aerial('DOWN')); ui.update(); assert.equal(ui.visual.oneShot.animation, 'AERIAL_DOWN');
+    install({ ready: false }, { ready: false }); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
     install({ ready: false }, null, { ready: false }); assert.equal(frame(game, ui).name, 'CANVAS');
     install(assets.UP, { ...assets.DOWN, data: null }); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
     install(assets.UP, { ...assets.DOWN, image: { complete: true, naturalWidth: 0 } }); assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
@@ -199,10 +202,13 @@ if (process.argv.includes('--loader')) {
   {
     const { game, ui } = airborne(); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update();
     for (const state of ['READY', 'AIM_ANGLE', 'AIM_POWER', 'RESULT']) {
-      const keep = game.state; game.state = state; assert.equal(frame(game, ui).name, 'CANVAS', state); game.state = keep;
+      const keep = game.state; game.state = state; assert.equal(frame(game, ui).name, state === 'RESULT' ? 'FLIGHT_LOOP' : 'CANVAS', state); game.state = keep;
     }
+    // Phase B: RESULT without STOP_RESULT (mid-air stop here) keeps FLIGHT_LOOP, frozen at the RESULT entry.
     game.finish(); ui.update(); assert.equal(game.state, 'RESULT'); assert.equal(ui.visual.oneShot, null);
-    assert.equal(frame(game, ui).name, 'CANVAS');
+    assert.equal(ui.visual.frozenAt, game.phaseTime);
+    const still = frame(game, ui); assert.equal(still.name, 'FLIGHT_LOOP');
+    for (let i = 0; i < 30; i++) { game.update(1 / 60); ui.update(); assert.deepEqual([frame(game, ui).name, frame(game, ui).time], [still.name, still.time]); }
     game.act(); ui.update(); assert.equal(game.state, 'AIM_ANGLE'); assert.equal(ui.visual.oneShot, null);
   }
   // Rendering is display-only: identical physics with and without sprites/draw calls.

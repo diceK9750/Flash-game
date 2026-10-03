@@ -86,7 +86,7 @@ if (process.argv.includes('--loader')) {
   install();
   for (const hz of [30, 60, 120, 144]) {
     const { game, ui } = start();
-    assert.equal(JSON.stringify(ui.visual.oneShot), JSON.stringify({ animation: 'HIT', at: game.phaseTime }), 'HIT starts on the launch update');
+    assert.equal(JSON.stringify({ ...ui.visual.oneShot, tiltFrom: undefined }), JSON.stringify({ animation: 'HIT', at: game.phaseTime }), 'HIT starts on the launch update');
     assert.equal(ui.visual.launchAt, game.phaseTime);
     const at = game.phaseTime, seen = []; let ended = false;
     for (let i = 0; i < hz * 1.5; i++) {
@@ -119,7 +119,8 @@ if (process.argv.includes('--loader')) {
   }
   {
     install(A.HIT, { heroGroundBounce: A.GB });
-    const { game, ui } = start(4, 15, 0.6); for (let i = 0; i < 3; i++) { game.update(1 / 60); ui.update(); }
+    // Same priority: GROUND_BOUNCE replaces HIT once HIT has been shown for minShow (Phase B).
+    const { game, ui } = start(4, 15, 0.6); for (let i = 0; i < 6; i++) { game.update(1 / 60); ui.update(); }
     assert.equal(ui.visual.oneShot.animation, 'HIT');
     Object.assign(game.body, { y: 3, vy: -500 }); let guard = 0; const b0 = game.body.bounces;
     while (game.body.bounces === b0) { game.update(1 / 120); ui.update(); assert(++guard < 30); }

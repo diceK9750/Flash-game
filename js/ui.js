@@ -7,7 +7,7 @@ Hop.UI = class {
     this.lastState = null;
     this.notices = { special: null, message: null, charge: 1, guard: false };
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, lastSpecialSuccesses: 0, stopAt: null, reducedMotion: motion?.matches || false };
+    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, lastSpecialSuccesses: 0, lastMerchantSuccesses: 0, stopAt: null, frozenAt: null, reducedMotion: motion?.matches || false };
     motion?.addEventListener?.("change", event => { this.visual.reducedMotion = event.matches; });
   }
   update() {
@@ -18,24 +18,29 @@ Hop.UI = class {
     if (launched) this.visual.launchAt = g.phaseTime;
     if (g.state === s.READY || g.state === s.AIM_ANGLE) this.visual.launchAt = -Infinity;
     // Display-only hero one-shots. A new AERIAL effect object or a new normal ground
-    // bounce (body.bounces grew, still airborne, no new Type D "BOUND BOOST") restarts
-    // the sprite; whichever event is newest wins. Settling into rolling does not trigger.
-    const v = this.visual;
-    if (g.state !== s.FLYING) { v.oneShot = null; v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses; }
+    // bounce (body.bounces grew, still airborne, no new Type D "BOUND BOOST") starts the
+    // sprite; Hop.Sprites.startOneShot applies the priority table (SPECIAL_REACTION is never cut
+    // by HIT / AERIAL / GROUND_BOUNCE). Settling into rolling does not trigger.
+    const v = this.visual, sp = Hop.Sprites;
+    // RESULT keeps the last FLIGHT_LOOP frame when no STOP_RESULT plays (frozenAt = RESULT entry).
+    if (g.state === s.RESULT) { if (!Number.isFinite(v.frozenAt)) v.frozenAt = g.phaseTime; }
+    else v.frozenAt = null;
+    if (g.state !== s.FLYING) { v.oneShot = null; v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses; v.lastMerchantSuccesses = g.merchantStats.successes; }
     else {
       const fresh = g.effect !== v.lastEffect ? g.effect : null;
       const bounced = g.body.bounces > v.lastBounces;
-      const specialOk = g.specialSuccesses > v.lastSpecialSuccesses;
-      v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses;
+      const specialOk = g.specialSuccesses > v.lastSpecialSuccesses || g.merchantStats.successes > v.lastMerchantSuccesses;
+      v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses; v.lastMerchantSuccesses = g.merchantStats.successes;
       // Without a loaded GROUND_BOUNCE asset a bounce changes nothing (an AERIAL keeps playing);
       // restart interval / tiny-hop gating lives in Hop.Sprites.groundBounceAllowed.
       // Truck impact at launch: HIT one-shot (only with a loaded asset; otherwise unchanged).
-      if (launched && Hop.Sprites?.heroHit?.ready) v.oneShot = { animation: "HIT", at: g.phaseTime };
-      if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && Hop.Sprites?.groundBounceAllowed?.(v, g.phaseTime, g.body.vy)) v.oneShot = { animation: "GROUND_BOUNCE", at: g.phaseTime };
+      if (launched && sp?.heroHit?.ready) sp.startOneShot(v, "HIT", g.phaseTime);
+      if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && sp?.groundBounceAllowed?.(v, g.phaseTime, g.body.vy)) sp.startOneShot(v, "GROUND_BOUNCE", g.phaseTime);
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
-      if (aerial) v.oneShot = { animation: "AERIAL_" + aerial[1], at: g.phaseTime };
-      // SPECIAL success (specialSuccesses grew via resolveSpecial(true); MISS does not). Display-only.
-      if (specialOk && Hop.Sprites?.heroSpecialReaction?.ready) v.oneShot = { animation: "SPECIAL_REACTION", at: g.phaseTime };
+      if (aerial && sp?.startOneShot) sp.startOneShot(v, "AERIAL_" + aerial[1], g.phaseTime);
+      // SPECIAL success (specialSuccesses grew via resolveSpecial(true), or a MERCHANT SPECIAL
+      // success; MISS does not). Display-only.
+      if (specialOk && sp?.heroSpecialReaction?.ready) sp.startOneShot(v, "SPECIAL_REACTION", g.phaseTime);
     }
     // STOP_RESULT clock: set on the first update after a full stop on the ground, cleared when
     // the hero moves again (Type B revive) or on RETRY (READY / AIM).

@@ -163,10 +163,19 @@ if (process.argv.includes('--loader')) {
     assert.equal(frame(game, ui).name, 'GROUND_BOUNCE'); assert(frame(game, ui).frame >= 1);
     game.downCharge = 1; const mode = game.updateAerialMode(); game.act(); ui.update();
     let out = frame(game, ui); assert.equal(out.name, 'AERIAL_' + mode); assert.equal(out.frame, 0);
-    Object.assign(game.body, { y: 25, vy: -400 }); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update();
+    // Phase B: same-priority events wait minShow (1/12 s): an immediate second AERIAL keeps the first sprite.
+    game.downCharge = 1; game.aerialMode = mode === 'UP' ? 'DOWN' : 'UP';
+    for (let i = 0; i < 6; i++) step(game, ui, 1 / 60);
+    Object.assign(game.body, { y: 150, vy: -400 }); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update();
     assert.equal(frame(game, ui).name, 'AERIAL_DOWN');
     let guard = 0; while (!step(game, ui, 1 / 60)) assert(++guard < 60);
+    assert(game.phaseTime - ui.visual.oneShot.at < 0.2);
     assert(!game.body.grounded); out = frame(game, ui); assert.equal(out.name, 'GROUND_BOUNCE'); assert.equal(out.frame, 0);
+    // A bounce within minShow of a new AERIAL does not flash the AERIAL for 1-3 frames: AERIAL keeps playing.
+    Object.assign(game.body, { y: 30, vy: -400 }); for (let i = 0; i < 25; i++) step(game, ui, 1 / 60);
+    game.downCharge = 1; Object.assign(game.body, { y: 6, vy: -300 }); assert(game.aerial('DOWN')); ui.update();
+    const aerialAt = ui.visual.oneShot.at; guard = 0; while (!step(game, ui, 1 / 120)) assert(++guard < 30);
+    assert(game.phaseTime - aerialAt < 1 / 12); assert.equal(frame(game, ui).name, 'AERIAL_DOWN'); assert.equal(ui.visual.oneShot.at, aerialAt);
   }
   // Asset absent (current shipping state): bounces change nothing, an AERIAL keeps playing.
   for (const missing of [undefined, { ready: false }]) {
@@ -194,10 +203,10 @@ if (process.argv.includes('--loader')) {
     while (game.phaseTime - start < 8 / 12) { const out = frame(game, ui); assert.equal(out.name, 'GROUND_BOUNCE'); assert.equal(out.frame, 0); assert.equal(out.time, 0); if (step(game, ui, 1 / 60)) break; }
     const out = frame(game, ui); assert.equal(out.name, 'FLIGHT_LOOP'); assert.equal(out.time, 0);
   }
-  // Only FLYING; RESULT and RETRY clear it.
+  // Only FLYING; RESULT and RETRY clear it (RESULT without STOP_RESULT: frozen FLIGHT_LOOP, Phase B).
   {
     install(); const { game, ui } = flight(); while (!step(game, ui, 1 / 60));
-    for (const state of ['READY', 'AIM_ANGLE', 'AIM_POWER', 'RESULT']) { const keep = game.state; game.state = state; assert.equal(frame(game, ui).name, 'CANVAS'); game.state = keep; }
+    for (const state of ['READY', 'AIM_ANGLE', 'AIM_POWER', 'RESULT']) { const keep = game.state; game.state = state; assert.equal(frame(game, ui).name, state === 'RESULT' ? 'FLIGHT_LOOP' : 'CANVAS'); game.state = keep; }
     game.finish(); ui.update(); assert.equal(ui.visual.oneShot, null); game.act(); ui.update(); assert.equal(game.state, 'AIM_ANGLE'); assert.equal(ui.visual.oneShot, null);
     assert.equal(ui.visual.lastBounces, game.body.bounces);
   }
@@ -258,11 +267,13 @@ if (process.argv.includes('--loader')) {
     Object.assign(game.body, { y: 4, vy: -600 }); guard = 0; while (!step(game, ui, 1 / 120)) assert(++guard < 30);
     assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE'); assert.equal(ui.visual.oneShot.at, game.phaseTime, 'restart allowed after the interval');
     assert.equal(frame(game, ui).frame, 4);
-    // AERIAL still interrupts immediately, even right after a bounce started.
-    step(game, ui, 1 / 60); const gbAt = ui.visual.oneShot.at; assert(game.phaseTime - gbAt < def.minRestartInterval);
-    Object.assign(game.body, { y: 25, vy: -400 }); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update();
+    // AERIAL interrupts once the bounce has been shown for minShow (Phase B), well before minRestartInterval.
+    const gbAt = ui.visual.oneShot.at; while (game.phaseTime - gbAt < s.minShow) step(game, ui, 1 / 120);
+    assert(game.phaseTime - gbAt < def.minRestartInterval);
+    Object.assign(game.body, { y: 60, vy: -100 }); game.downCharge = 1; assert(game.aerial('DOWN')); ui.update();
     assert.equal(ui.visual.oneShot.animation, 'AERIAL_DOWN');
-    // A bounce during AERIAL restarts GROUND_BOUNCE (interval applies only to GROUND_BOUNCE itself).
+    // A bounce during AERIAL (after minShow) restarts GROUND_BOUNCE (interval applies only to GROUND_BOUNCE itself).
+    const adAt = ui.visual.oneShot.at; while (game.phaseTime - adAt < s.minShow) step(game, ui, 1 / 120);
     Object.assign(game.body, { y: 4, vy: -600 }); guard = 0; while (!step(game, ui, 1 / 120)) assert(++guard < 30);
     assert.equal(ui.visual.oneShot.animation, 'GROUND_BOUNCE');
     // Tiny hop: rebound airtime below minHopTime never starts it.

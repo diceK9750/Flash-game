@@ -176,11 +176,11 @@ Hop.Graphics = {
     if (g.state === "FLYING" && !visual.reducedMotion && tilt > 0) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt);
     // Same foot anchor and rotation as the silhouette; physics stays untouched.
     // phaseTime shares the game's pause/hidden-tab handling (no wall-clock jump).
-    // Stopped on the ground (FLYING or RESULT): STOP_RESULT. FLYING order: AERIAL UP/DOWN /
-    // GROUND_BOUNCE one-shot -> FLIGHT_LOOP. Anything that fails to draw -> Canvas HERO.
+    // Stopped on the ground (FLYING or RESULT): STOP_RESULT. FLYING order: one-shot (priority
+    // table) -> FLIGHT_LOOP; RESULT without STOP_RESULT: frozen FLIGHT_LOOP. Else -> Canvas HERO.
     const drawLayer = layer => Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
     const spriteDrawn = !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
-      (g.state === "FLYING" && !!Hop.Sprites?.heroLayers(visual, g.phaseTime).some(drawLayer));
+      ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer));
     if (!spriteDrawn) this.character(ctx, "HERO", 0, c.playerRadius, 0.936);
     ctx.restore();
     if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }

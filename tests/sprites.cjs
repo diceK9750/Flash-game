@@ -73,7 +73,7 @@ if (process.argv.includes('--loader')) {
     game.state = state; rendered.length = 0;
     const before = JSON.stringify(game); ui.draw();
     assert.equal(JSON.stringify(game), before, 'Drawing must not mutate any game state');
-    assert.equal(rendered.includes('HERO'), state !== 'FLYING');
+    assert.equal(rendered.includes('HERO'), state !== 'FLYING' && state !== 'RESULT'); // RESULT: frozen FLIGHT_LOOP (Phase B)
   }
   game.state = 'FLYING'; s.heroFlight = { ready: false }; rendered.length = 0; ui.draw();
   assert(rendered.includes('HERO'));

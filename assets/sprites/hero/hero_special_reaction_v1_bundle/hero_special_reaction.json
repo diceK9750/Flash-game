@@ -35,5 +35,5 @@
     28
   ],
   "nextAnimation": "FLIGHT_LOOP",
-  "notes": "Grok special_reaction_v1b. Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling; scale 0.205 = FLIGHT_LOOP px scale for this 464x688 clip (v1a frame 0 = FLIGHT_LOOP frame 00 gives 0.1827 for that clip; v1b shield template-matched at 0.89x of v1a). Fixed anchor (240,546). Flight pose (0) -> brace, sword dips (1-3) -> sword swings up-forward (4-6) -> proud hold (7, held 3 steps). 10 steps at 12fps = 0.833 s."
+  "notes": "Grok special_reaction_v1b. Transparent RGBA; cyan chroma-key removed; nearest-neighbor scaling; scale 0.205 = FLIGHT_LOOP px scale for this 464x688 clip (v1a frame 0 = FLIGHT_LOOP frame 00 gives 0.1827 for that clip; v1b shield template-matched at 0.89x of v1a). Fixed anchor (240,546), then every frame shifted 4 px left (Phase B: torso x lines up with FLIGHT_LOOP; ~4 px residual is the limit before the frame-0 sword tip reaches the cell edge; vertical torso already within 1-2 px, the higher feet are the tucked flight pose). Flight pose (0) -> brace, sword dips (1-3) -> sword swings up-forward (4-6) -> proud hold (7, held 3 steps). 10 steps at 12fps = 0.833 s."
 }

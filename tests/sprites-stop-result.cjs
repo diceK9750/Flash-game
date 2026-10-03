@@ -112,11 +112,11 @@ if (process.argv.includes('--loader')) {
     const { game, ui } = run(); while (game.state === ST.FLYING) { game.update(1 / 60); ui.update(); }
     ui.visual.reducedMotion = true; assert.equal(frame(game, ui).frame, 7);
   }
-  // Fallbacks: missing asset or a failing draw -> previous drawing (Canvas HERO in RESULT, FLIGHT_LOOP while FLYING).
+  // Fallbacks: missing asset or a failing draw -> previous drawing (frozen FLIGHT_LOOP in RESULT since Phase B, FLIGHT_LOOP while FLYING).
   for (const broken of [{ ready: false }, null, fake(mockMeta)]) {
     install(broken); failSR = broken?.ready === true;
     const { game, ui } = run(); while (game.state === ST.FLYING) { game.update(1 / 60); ui.update(); }
-    assert.equal(frame(game, ui).name, 'CANVAS');
+    assert.equal(frame(game, ui).name, 'FLIGHT_LOOP');
     assert.deepEqual(s.stopLayers(ui.visual, game.phaseTime).length, failSR ? 1 : 0);
     failSR = false;
   }
