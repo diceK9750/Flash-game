@@ -1,0 +1,16 @@
+{
+  "id": "BRAKE",
+  "animation": "IDLE",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceImage": "thief_v1b.jpg",
+  "notes": "Transparent RGBA; cyan chroma-key removed; pixel grid 7.78px (phase 0.72,2.35) -> 1 sprite px per block (median colour, majority alpha); feet on pivot."
+}
