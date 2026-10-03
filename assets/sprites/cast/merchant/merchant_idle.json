@@ -1,0 +1,16 @@
+{
+  "id": "SPECIAL_ONLY",
+  "animation": "IDLE",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.1447,
+  "sourceImage": "merchant_v1a.jpg",
+  "notes": "Transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so she is 85px tall incl. hat; box in the viewer-right hand inside the cell; cyan spill on outline pixels neutralised (green/blue clamped to red+8; the navy handle kept); feet on pivot. Drawn as the MERCHANT SPECIAL overlay at the manifest scale 1.25*1.25/1.365."
+}

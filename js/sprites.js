@@ -105,8 +105,8 @@ Hop.Sprites = {
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png", metadata: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json" }
       },
-      SPECIAL_ONLY: { // 商人
-        IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: false,
+      SPECIAL_ONLY: { // 商人 (v1a still delivered: enabled; box on the viewer's right under the item orb, so never flipped)
+        IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: true,
           src: "assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png", metadata: "assets/sprites/cast/merchant/merchant_idle.json" }
       }
     }
