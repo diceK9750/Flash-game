@@ -55,7 +55,7 @@ if (process.argv.includes('--loader')) {
   assert.equal(def.metadata, dir + 'hero_special_reaction.json');
   assert.deepEqual([def.animation, def.fps, def.loop, def.scale], ['SPECIAL_REACTION', 12, false, 1.25]);
   assert.equal(def.suppressTilt, true); assert.equal(def.tiltEase, 0.12);
-  assert.equal(def.stillTime, 5.5 / 12);
+  assert.equal(def.stillTime, 7.5 / 12);
   const present = fs.existsSync(path.join(root, def.src)) && fs.existsSync(path.join(root, def.metadata));
   assert.equal(def.enabled !== false, present, present
     ? 'SPECIAL_REACTION bundle found: set enabled: true in js/sprites.js'
@@ -66,6 +66,10 @@ if (process.argv.includes('--loader')) {
       { id: 'HERO', animation: 'SPECIAL_REACTION', w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 } });
     const png = fs.readFileSync(path.join(root, def.src));
     assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96); assert.equal(png[25], 6, 'RGBA PNG');
+    // v1: every sheet frame once, proud hold (sheet 7) for 3 steps (0.833 s); reduced motion = sheet 7.
+    assert.deepEqual([...m.sequence], [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]); assert.equal(s.duration(m), 10 / 12);
+    assert.equal(s.frameAt(m, def.stillTime), 7);
+    for (const hz of [30, 60, 120, 144]) for (let i = 0; i <= hz; i++) assert.equal(s.frameAt(m, i / hz), m.sequence[Math.min(9, Math.floor(i / hz * 12))]);
   }
   assert.equal(c.playerRadius, 18);
   assert.equal(s.oneShots.SPECIAL_REACTION, 'heroSpecialReaction');
@@ -221,11 +225,11 @@ if (process.argv.includes('--loader')) {
     install();
   }
 
-  // Reduced motion: one representative frame (stillTime → sheet ~5) for the duration, then FLIGHT_LOOP.
+  // Reduced motion: one representative frame (stillTime → sheet 7) for the duration, then FLIGHT_LOOP.
   {
     const { game, ui } = flight(); ui.visual.reducedMotion = true; bumpSuccess(game, ui);
     const expect = s.frameAt(A.SR.data, def.stillTime);
-    assert.equal(expect, 5);
+    assert.equal(expect, 7);
     for (let i = 0; i < 60; i++) {
       const t = game.phaseTime - ui.visual.oneShot.at, out = frame(game, ui);
       if (t < 8 / 12) { assert.equal(out.name, 'SPECIAL_REACTION'); assert.equal(out.frame, expect); }
@@ -261,5 +265,5 @@ if (process.argv.includes('--loader')) {
   }
 
   graphics.character = originalCharacter; s.draw = originalDraw; Object.assign(s, saved);
-  console.log('Special reaction PASS: flag/files/paths, disabled = no request, starts only when specialSuccesses increases (MISS does not), resolveSpecial(true) path, 12fps 8 frames at 30/60/120/144Hz then FLIGHT_LOOP, no vy tilt + ease back, physics unchanged, AERIAL/HIT/GROUND_BOUNCE interrupt (newest wins), reduced motion = stillTime frame (~sheet 5), missing asset/draw failure fallback, FLYING only, draw purity.');
+  console.log('Special reaction PASS: flag/files/paths, disabled = no request, starts only when specialSuccesses increases (MISS does not), resolveSpecial(true) path, 12fps 8 frames at 30/60/120/144Hz then FLIGHT_LOOP, no vy tilt + ease back, physics unchanged, AERIAL/HIT/GROUND_BOUNCE interrupt (newest wins), reduced motion = stillTime frame (sheet 7), real JSON sequence at 30/60/120/144Hz, missing asset/draw failure fallback, FLYING only, draw purity.');
 }

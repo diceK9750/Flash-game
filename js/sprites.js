@@ -43,15 +43,15 @@ Hop.Sprites = {
         suppressTilt: true, tiltEase: 0.12, stillTime: 5.5 / 12
       },
       // SPECIAL success one-shot (resolveSpecial true / specialSuccesses++), then FLIGHT_LOOP.
-      // enabled:false = asset not delivered yet: never requested, so no 404 in the console.
-      // tests/sprites-special-reaction.cjs enforces flag == files present. Newest one-shot wins
+      // v1 bundle delivered (special_reaction_v1b): enabled. tests/sprites-special-reaction.cjs
+      // enforces flag == files present. Newest one-shot wins
       // vs HIT / AERIAL / GROUND_BOUNCE. Proud pose: suppressTilt kept for consistency with HIT/GB.
-      // Reduced motion shows one representative frame (stillTime; sheet ~5 until the real asset).
+      // Reduced motion shows one representative frame (stillTime -> sheet 7, the proud hold).
       SPECIAL_REACTION: {
         src: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction_sheet_96x96.png",
         metadata: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction.json",
-        animation: "SPECIAL_REACTION", fps: 12, loop: false, scale: 1.25, enabled: false,
-        suppressTilt: true, tiltEase: 0.12, stillTime: 5.5 / 12
+        animation: "SPECIAL_REACTION", fps: 12, loop: false, scale: 1.25, enabled: true,
+        suppressTilt: true, tiltEase: 0.12, stillTime: 7.5 / 12
       },
       // Played once when the hero has come to a full stop on the ground (body.stopped, FLYING
       // or RESULT), then the last frame is held until RETRY. Same flag pattern as GROUND_BOUNCE.
