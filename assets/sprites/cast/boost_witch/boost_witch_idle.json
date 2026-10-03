@@ -1,0 +1,16 @@
+{
+  "id": "BOOST",
+  "animation": "IDLE",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceImage": "witch_v1b.png",
+  "notes": "Transparent RGBA; cyan chroma-key removed; pixel grid 10.35px (phase 9.2,2.75) -> 1 sprite px per block (median colour, majority alpha); feet on pivot; nearest-resized 59x87 -> height 84."
+}

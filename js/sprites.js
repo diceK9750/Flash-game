@@ -75,8 +75,8 @@ Hop.Sprites = {
     // roadside figures). flip mirrors a still that faces the wrong way. BOUNCE.KICK = post-contact
     // pose (the Canvas fighter raises a kicking leg); a missing KICK falls back to IDLE.
     CAST: {
-      BOOST: { // 魔法使い
-        IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+      BOOST: { // 魔法使い (v1b still delivered: enabled)
+        IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" }
       },
       BOUNCE: { // 武闘家
