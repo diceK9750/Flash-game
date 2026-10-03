@@ -1,0 +1,16 @@
+{
+  "id": "STOPPER",
+  "animation": "IDLE",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceImage": "cleric_v1a.jpg",
+  "notes": "Transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the fighter/thief; median colour, majority alpha) so she is 77px tall incl. hood; then shifted +4 px so the boots (not the staff tip) are centred on the pivot x; feet on pivot."
+}
