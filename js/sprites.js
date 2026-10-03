@@ -42,6 +42,17 @@ Hop.Sprites = {
         animation: "HIT", fps: 12, loop: false, scale: 1.25, enabled: true,
         suppressTilt: true, tiltEase: 0.12, stillTime: 5.5 / 12
       },
+      // SPECIAL success one-shot (resolveSpecial true / specialSuccesses++), then FLIGHT_LOOP.
+      // enabled:false = asset not delivered yet: never requested, so no 404 in the console.
+      // tests/sprites-special-reaction.cjs enforces flag == files present. Newest one-shot wins
+      // vs HIT / AERIAL / GROUND_BOUNCE. Proud pose: suppressTilt kept for consistency with HIT/GB.
+      // Reduced motion shows one representative frame (stillTime; sheet ~5 until the real asset).
+      SPECIAL_REACTION: {
+        src: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction_sheet_96x96.png",
+        metadata: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction.json",
+        animation: "SPECIAL_REACTION", fps: 12, loop: false, scale: 1.25, enabled: false,
+        suppressTilt: true, tiltEase: 0.12, stillTime: 5.5 / 12
+      },
       // Played once when the hero has come to a full stop on the ground (body.stopped, FLYING
       // or RESULT), then the last frame is held until RETRY. Same flag pattern as GROUND_BOUNCE.
       // A stop above the ground (STOPPER contact in mid-air) keeps the previous drawing.
@@ -56,7 +67,7 @@ Hop.Sprites = {
     }
   },
   // visual.oneShot.animation -> loaded asset key. Later events restart/replace the one-shot.
-  oneShots: { AERIAL_UP: "heroAerialUp", AERIAL_DOWN: "heroAerialDown", GROUND_BOUNCE: "heroGroundBounce", HIT: "heroHit" },
+  oneShots: { AERIAL_UP: "heroAerialUp", AERIAL_DOWN: "heroAerialDown", GROUND_BOUNCE: "heroGroundBounce", HIT: "heroHit", SPECIAL_REACTION: "heroSpecialReaction" },
   async load(definition) {
     const asset = { ready: false, image: null, data: null };
     if (definition?.enabled === false) return asset;
@@ -113,8 +124,8 @@ Hop.Sprites = {
     if (shot?.animation === "GROUND_BOUNCE" && def.minRestartInterval > 0 && phaseTime - shot.at < def.minRestartInterval) return false;
     return true;
   },
-  // Multiplier for the FLYING vy tilt (pure): 0 while a suppressTilt one-shot (GROUND_BOUNCE, HIT)
-  // plays, then eases back to 1 over its tiltEase.
+  // Multiplier for the FLYING vy tilt (pure): 0 while a suppressTilt one-shot (GROUND_BOUNCE, HIT,
+  // SPECIAL_REACTION) plays, then eases back to 1 over its tiltEase.
   tiltWeight(visual, phaseTime) {
     const shot = visual?.oneShot, name = shot?.animation;
     if (!name || !Object.prototype.hasOwnProperty.call(this.oneShots, name)) return 1;
@@ -183,5 +194,9 @@ Hop.Sprites.stopResultReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.STOP
 });
 Hop.Sprites.hitReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.HIT).then(asset => {
   Hop.Sprites.heroHit = asset;
+  return asset;
+});
+Hop.Sprites.specialReactionReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.SPECIAL_REACTION).then(asset => {
+  Hop.Sprites.heroSpecialReaction = asset;
   return asset;
 });

@@ -7,7 +7,7 @@ Hop.UI = class {
     this.lastState = null;
     this.notices = { special: null, message: null, charge: 1, guard: false };
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, stopAt: null, reducedMotion: motion?.matches || false };
+    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, lastSpecialSuccesses: 0, stopAt: null, reducedMotion: motion?.matches || false };
     motion?.addEventListener?.("change", event => { this.visual.reducedMotion = event.matches; });
   }
   update() {
@@ -21,11 +21,12 @@ Hop.UI = class {
     // bounce (body.bounces grew, still airborne, no new Type D "BOUND BOOST") restarts
     // the sprite; whichever event is newest wins. Settling into rolling does not trigger.
     const v = this.visual;
-    if (g.state !== s.FLYING) { v.oneShot = null; v.lastEffect = g.effect; v.lastBounces = g.body.bounces; }
+    if (g.state !== s.FLYING) { v.oneShot = null; v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses; }
     else {
       const fresh = g.effect !== v.lastEffect ? g.effect : null;
       const bounced = g.body.bounces > v.lastBounces;
-      v.lastEffect = g.effect; v.lastBounces = g.body.bounces;
+      const specialOk = g.specialSuccesses > v.lastSpecialSuccesses;
+      v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses;
       // Without a loaded GROUND_BOUNCE asset a bounce changes nothing (an AERIAL keeps playing);
       // restart interval / tiny-hop gating lives in Hop.Sprites.groundBounceAllowed.
       // Truck impact at launch: HIT one-shot (only with a loaded asset; otherwise unchanged).
@@ -33,6 +34,8 @@ Hop.UI = class {
       if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && Hop.Sprites?.groundBounceAllowed?.(v, g.phaseTime, g.body.vy)) v.oneShot = { animation: "GROUND_BOUNCE", at: g.phaseTime };
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
       if (aerial) v.oneShot = { animation: "AERIAL_" + aerial[1], at: g.phaseTime };
+      // SPECIAL success (specialSuccesses grew via resolveSpecial(true); MISS does not). Display-only.
+      if (specialOk && Hop.Sprites?.heroSpecialReaction?.ready) v.oneShot = { animation: "SPECIAL_REACTION", at: g.phaseTime };
     }
     // STOP_RESULT clock: set on the first update after a full stop on the ground, cleared when
     // the hero moves again (Type B revive) or on RETRY (READY / AIM).
