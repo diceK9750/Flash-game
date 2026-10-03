@@ -65,6 +65,50 @@ Hop.Sprites = {
         // overlayFade s. Only when the animation really plays; input/RETRY timing is unchanged.
         overlayFade: 0.2
       }
+    },
+    // Phase C: roadside characters (g.objects) and the merchant overlay (SPECIAL_ONLY). One still
+    // per slot (1-frame 96x96 sheet, pivot 48,88) drawn in place of the Canvas figure with its feet
+    // at the same point; the caller keeps the name label and the 35% used opacity. enabled:false =
+    // asset not delivered yet: never requested (no 404), Canvas figure as before;
+    // tests/sprites-cast.cjs enforces flag == files present. scale = sprite px -> canvas px (1.25 =
+    // the hero's pixel size; the merchant overlay keeps its Canvas ratio 1.25/1.365 of the
+    // roadside figures). flip mirrors a still that faces the wrong way. BOUNCE.KICK = post-contact
+    // pose (the Canvas fighter raises a kicking leg); a missing KICK falls back to IDLE.
+    CAST: {
+      BOOST: { // 魔法使い
+        IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" }
+      },
+      BOUNCE: { // 武闘家
+        IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle.json" },
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
+      },
+      BRAKE: { // 盗賊
+        IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/brake_thief/brake_thief_idle_sheet_96x96.png", metadata: "assets/sprites/cast/brake_thief/brake_thief_idle.json" }
+      },
+      ANGLE: { // 遊び人
+        IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/angle_jester/angle_jester_idle_sheet_96x96.png", metadata: "assets/sprites/cast/angle_jester/angle_jester_idle.json" }
+      },
+      DASH: { // 戦士
+        IDLE: { id: "DASH", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/dash_warrior/dash_warrior_idle_sheet_96x96.png", metadata: "assets/sprites/cast/dash_warrior/dash_warrior_idle.json" }
+      },
+      GUARD: { // 賢者
+        IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png", metadata: "assets/sprites/cast/guard_sage/guard_sage_idle.json" }
+      },
+      STOPPER: { // 僧侶
+        IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: false,
+          src: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png", metadata: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json" }
+      },
+      SPECIAL_ONLY: { // 商人
+        IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: false,
+          src: "assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png", metadata: "assets/sprites/cast/merchant/merchant_idle.json" }
+      }
     }
   },
   // visual.oneShot.animation -> loaded asset key.
@@ -99,8 +143,9 @@ Hop.Sprites = {
       const response = await fetch(definition.metadata);
       if (!response.ok) return asset;
       const data = await response.json();
-      if (data.id !== "HERO" || data.animation !== definition.animation ||
-          data.frameWidth !== 96 || data.frameHeight !== 96 || data.frames !== 8 ||
+      // HERO animations stay 8 frames; CAST stills declare id and frames: 1.
+      if (data.id !== (definition.id || "HERO") || data.animation !== definition.animation ||
+          data.frameWidth !== 96 || data.frameHeight !== 96 || data.frames !== (definition.frames || 8) ||
           data.fps !== definition.fps || data.loop !== definition.loop ||
           data.pivot?.x !== 48 || data.pivot?.y !== 88) return asset;
       // Optional playback order: sheet column indices, played at fps (duration = length / fps).
@@ -136,6 +181,23 @@ Hop.Sprites = {
         x - d.pivot.x * scale, feet - d.pivot.y * scale, d.frameWidth * scale, d.frameHeight * scale);
       return true;
     } catch (_) { return false; }
+    finally { ctx.restore(); }
+  },
+  // CAST still for a roadside character / merchant (pure lookup): { asset, scale, flip } or null.
+  // pose 1 = used (post-contact): BOUNCE uses KICK when loaded, otherwise IDLE.
+  castLayer(id, pose = 0) {
+    const slots = this.castAssets?.[id], defs = this.definitions.CAST?.[id];
+    if (!slots || !defs) return null;
+    const name = pose && slots.KICK?.ready ? "KICK" : "IDLE", asset = slots[name];
+    return asset?.ready ? { name, asset, scale: defs[name].scale, flip: !!defs[name].flip } : null;
+  },
+  // Draw a CAST still with its feet at (x, feet); false -> caller draws the Canvas figure.
+  drawCast(ctx, id, x, feet, pose = 0) {
+    const layer = this.castLayer(id, pose);
+    if (!layer) return false;
+    if (!layer.flip) return this.draw(ctx, layer.asset, 0, x, feet, layer.scale);
+    ctx.save();
+    try { ctx.translate(x, 0); ctx.scale(-1, 1); return this.draw(ctx, layer.asset, 0, 0, feet, layer.scale); }
     finally { ctx.restore(); }
   },
   // Display-only GROUND_BOUNCE gating for a detected normal bounce (pure; vy = rebound speed).
@@ -233,3 +295,9 @@ Hop.Sprites.specialReactionReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO
   Hop.Sprites.heroSpecialReaction = asset;
   return asset;
 });
+Hop.Sprites.castAssets = {};
+Hop.Sprites.castReady = Promise.all(Object.entries(Hop.Sprites.definitions.CAST).flatMap(([id, slots]) =>
+  Object.entries(slots).map(([name, definition]) => Hop.Sprites.load(definition).then(asset => {
+    (Hop.Sprites.castAssets[id] ||= {})[name] = asset;
+    return asset;
+  }))));

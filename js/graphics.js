@@ -147,7 +147,8 @@ Hop.Graphics = {
     for (const object of g.objects) {
       const ox = sx(object.x); if (ox < -120 || ox > c.width + 120) continue;
       ctx.save(); ctx.globalAlpha = object.used ? 0.35 : 1;
-      this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
+      // Phase C: CAST sprite when loaded, else the Canvas figure (same feet point; alpha above applies).
+      if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
       ctx.textAlign = "center"; ctx.font = "bold 25px system-ui";
       ctx.fillStyle = "#fff9e9"; ctx.fillRect(ox - 59, ground - 173, 118, 32);
       ctx.fillStyle = this.objectColor(object.type); ctx.fillText(Hop.CAST[object.type].name, ox, ground - 148);
@@ -193,7 +194,7 @@ Hop.Graphics = {
     if (g.merchantVisual) {
       // Merchant is an overlay participant, never a generated collision object.
       const mx = Math.max(90, Math.min(c.width - 100, x + 105));
-      this.character(ctx, "SPECIAL_ONLY", mx, y + 20, 1.25);
+      if (!Hop.Sprites?.drawCast?.(ctx, "SPECIAL_ONLY", mx, y + 20)) this.character(ctx, "SPECIAL_ONLY", mx, y + 20, 1.25);
       const lift = visual.reducedMotion ? 25 : 25 + (1 - Math.min(1, g.merchantVisual.remaining / c.specialMessageDuration)) * 20;
       this.circle(ctx, mx + 35, y - lift, 12, "#ffd867");
       ctx.font = "bold 23px system-ui"; ctx.fillStyle = "#654417";
