@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.1447,
-  "sourceImage": "merchant_v1a.jpg",
-  "notes": "Transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so she is 85px tall incl. hat; box in the viewer-right hand inside the cell; cyan spill on outline pixels neutralised (green/blue clamped to red+8; the navy handle kept); feet on pivot. Drawn as the MERCHANT SPECIAL overlay at the manifest scale 1.25*1.25/1.365."
+  "sourceImage": "merchant_r1a.jpg",
+  "notes": "Redesign r1 (design sheet 商人): transparent RGBA; cyan background (~2,231,254) removed by the standard key (no foreground pixel within distance 60 of the background; the blue star top stays well below the key, and the only enclosed keyed areas are background gaps between the arm and torso, at the bag strap and the pouch drawstring); resampled from the JPEG still at 8.0 source px per sprite px (7.78 gave 88px with the ponytail) so she is 86px tall incl. the ponytail; the boots are already centred on the pivot x, so not shifted; background spill on outline pixels (g-r > 30, g >= 0.65 b) corrected: on the blue top's edge green lowered to 0.45 b (its hue), elsewhere green/blue clamped to red+8; she faces the viewer's left (towards the hero) with the money pouch in the viewer-left hand and the bag on the viewer-right hip, where the Canvas merchant's box is, so not mirrored; feet on pivot. Drawn as the MERCHANT SPECIAL overlay at the manifest scale 1.25*1.25/1.365."
 }
