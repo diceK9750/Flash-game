@@ -57,7 +57,7 @@ if (process.argv.includes('--loader')) {
     assert(H.CAST[id], id + ' is a CAST id');
     assert.deepEqual(Object.keys(C[id]), id === 'BOUNCE' ? ['IDLE', 'KICK'] : ['IDLE']);
     for (const [name, def] of Object.entries(C[id])) {
-      assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, (id === 'BOUNCE' && name === 'KICK') || id === 'BRAKE' || id === 'ANGLE' || id === 'DASH']); // mirrored: the kick (kicks right like the Canvas pose), the thief (hook on the viewer's right), the jester (ball on the viewer's right) and the warrior (sword right, shield left), like the Canvas figures
+      assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, (id === 'BOUNCE' && name === 'KICK') || id === 'ANGLE' || id === 'DASH']); // mirrored: the kick (kicks right like the Canvas pose), the jester (ball on the viewer's right) and the warrior (sword right, shield left), like the Canvas figures
       assert.equal(def.scale, id === 'SPECIAL_ONLY' ? 1.25 * 1.25 / 1.365 : 1.25);
       for (const ref of [def.src, def.metadata]) {
         assert(!/^(?:\/|[a-z]+:)/i.test(ref) && ref.startsWith('assets/sprites/cast/'));
@@ -114,8 +114,8 @@ if (process.argv.includes('--loader')) {
     assert.deepEqual(sprites.map(e => e.id), game.objects.map(o => o.type));
     for (const [i, o] of game.objects.entries()) {
       const e = sprites[i];
-      // BOUNCE KICK and the BRAKE, ANGLE and DASH IDLE stills are mirrored (flip:true): the 96px cell is centred on the pivot x, so the feet point stays at ox.
-      const flip = (o.type === 'BOUNCE' && o.used) || o.type === 'BRAKE' || o.type === 'ANGLE' || o.type === 'DASH';
+      // BOUNCE KICK and the ANGLE and DASH IDLE stills are mirrored (flip:true; the redesigned BRAKE already has the hook on the viewer's right): the 96px cell is centred on the pivot x, so the feet point stays at ox.
+      const flip = (o.type === 'BOUNCE' && o.used) || o.type === 'ANGLE' || o.type === 'DASH';
       assert.equal(!!C[o.type][o.type === 'BOUNCE' && o.used ? 'KICK' : 'IDLE'].flip, flip, 'manifest flip as expected');
       assert.equal(e.dx, sxOf(game, o) + (flip ? 48 : -48) * 1.25); assert.equal(e.dy, ground - 88 * 1.25); assert.equal(e.dw, (flip ? -96 : 96) * 1.25);
       assert.equal(e.dx + e.dw / 2, sxOf(game, o), 'feet x unchanged (mirrored or not)');
@@ -142,11 +142,12 @@ if (process.argv.includes('--loader')) {
     assert.equal(s.drawCast(failCtx, 'NOPE', 100, 500, 0), false);
   }
   // 5) flip mirrors around the feet x.
-  install(all); assert.equal(C.BRAKE.IDLE.flip, true, 'thief still is mirrored (hook on the viewer\'s right like the Canvas thief)');
-  { log = []; s.drawCast(ctx(), 'BRAKE', 300, 500, 0); const e = log[0]; assert.equal(e.dx, 300 + 48 * 1.25); assert.equal(e.dw, -96 * 1.25); }
-  C.BRAKE.IDLE.flip = false;
-  { log = []; s.drawCast(ctx(), 'BRAKE', 300, 500, 0); const e = log[0]; assert.equal(e.dx, 300 - 48 * 1.25); assert.equal(e.dw, 96 * 1.25); }
-  C.BRAKE.IDLE.flip = true;
+  install(all); assert.equal(C.BRAKE.IDLE.flip, false, 'redesigned thief: hook already on the viewer\'s right, not mirrored');
+  assert.equal(C.ANGLE.IDLE.flip, true, 'jester still is mirrored (ball on the viewer\'s right like the Canvas jester)');
+  { log = []; s.drawCast(ctx(), 'ANGLE', 300, 500, 0); const e = log[0]; assert.equal(e.dx, 300 + 48 * 1.25); assert.equal(e.dw, -96 * 1.25); }
+  C.ANGLE.IDLE.flip = false;
+  { log = []; s.drawCast(ctx(), 'ANGLE', 300, 500, 0); const e = log[0]; assert.equal(e.dx, 300 - 48 * 1.25); assert.equal(e.dw, 96 * 1.25); }
+  C.ANGLE.IDLE.flip = true;
   // 6) Merchant overlay: SPECIAL_ONLY still at the overlay point and its smaller scale; Canvas when missing.
   for (const loaded of [true, false]) {
     install(loaded ? all : undefined);

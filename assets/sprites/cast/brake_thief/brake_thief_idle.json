@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceImage": "thief_v1b.jpg",
-  "notes": "Transparent RGBA; cyan chroma-key removed; pixel grid 7.78px (phase 0.72,2.35) -> 1 sprite px per block (median colour, majority alpha); feet on pivot."
+  "sourceImage": "thief_r2a.jpg",
+  "notes": "Redesign r2 (design sheet 異世界の盗賊BRAKE): transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 8.0 source px per sprite px (7.78 gave 88px and touched the cell top; 8.0 also matches the still's native grid better) so he is 86px tall incl. hair; boots already centred on the pivot x (no shift); cyan spill on outline pixels and in the hook gaps neutralised (green/blue clamped to red+8); hook on the viewer's right like the Canvas thief, so not mirrored; feet on pivot."
 }

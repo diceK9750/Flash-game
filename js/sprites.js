@@ -85,8 +85,8 @@ Hop.Sprites = {
         KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
       },
-      BRAKE: { // 盗賊 (v1b still delivered: enabled, mirrored: hook on the viewer's right like the Canvas thief)
-        IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
+      BRAKE: { // 盗賊 (redesign r2 still from the design sheet: enabled; hook already on the viewer's right like the Canvas thief, so not mirrored)
+        IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/brake_thief/brake_thief_idle_sheet_96x96.png", metadata: "assets/sprites/cast/brake_thief/brake_thief_idle.json" }
       },
       ANGLE: { // 遊び人 (v1a still delivered: enabled, mirrored: ball on the viewer's right like the Canvas jester)
