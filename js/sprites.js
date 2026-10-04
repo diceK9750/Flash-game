@@ -72,17 +72,22 @@ Hop.Sprites = {
     // asset not delivered yet: never requested (no 404), Canvas figure as before;
     // tests/sprites-cast.cjs enforces flag == files present. scale = sprite px -> canvas px (1.25 =
     // the hero's pixel size; the merchant overlay keeps its Canvas ratio 1.25/1.365 of the
-    // roadside figures). flip mirrors a still that faces the wrong way. BOUNCE.KICK = post-contact
-    // pose (the Canvas fighter raises a kicking leg); a missing KICK falls back to IDLE.
+    // roadside figures). flip mirrors a still that faces the wrong way. A slot with pose: 1 is the
+    // used (post-contact) pose, drawn instead of IDLE once the hero has touched the figure (the same
+    // object.used flag that already sets the 35% opacity / the Canvas fighter's raised leg); one per
+    // character at most. A missing / broken pose-1 still falls back to IDLE. BOUNCE.KICK and
+    // BOOST.USED have one.
     CAST: {
-      BOOST: { // 魔法使い (redesign r1 still from the design sheet: enabled; staff on the viewer's right like the Canvas witch)
+      BOOST: { // 魔法使い (redesign r1 idle + used stills from the design sheet: enabled; idle staff on the viewer's right like the Canvas witch, used pose thrusts it toward the hero; not mirrored)
         IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" }
+          src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" },
+        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/boost_witch/boost_witch_used_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_used.json" }
       },
       BOUNCE: { // 武闘家 (redesign r1 idle + kick stills from the design sheet: enabled; the kick already points to the viewer's right like the Canvas pose, so not mirrored)
         IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle.json" },
-        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
       },
       BRAKE: { // 盗賊 (redesign r2 still from the design sheet: enabled; hook already on the viewer's right like the Canvas thief, so not mirrored)
@@ -184,11 +189,13 @@ Hop.Sprites = {
     finally { ctx.restore(); }
   },
   // CAST still for a roadside character / merchant (pure lookup): { asset, scale, flip } or null.
-  // pose 1 = used (post-contact): BOUNCE uses KICK when loaded, otherwise IDLE.
+  // pose 1 = used (post-contact): the character's pose-1 slot (BOUNCE KICK, BOOST USED) when
+  // loaded, otherwise IDLE.
   castLayer(id, pose = 0) {
     const slots = this.castAssets?.[id], defs = this.definitions.CAST?.[id];
     if (!slots || !defs) return null;
-    const name = pose && slots.KICK?.ready ? "KICK" : "IDLE", asset = slots[name];
+    const used = pose ? Object.keys(defs).find(n => defs[n].pose === 1 && slots[n]?.ready) : null;
+    const name = used || "IDLE", asset = slots[name];
     return asset?.ready ? { name, asset, scale: defs[name].scale, flip: !!defs[name].flip } : null;
   },
   // Draw a CAST still with its feet at (x, feet); false -> caller draws the Canvas figure.

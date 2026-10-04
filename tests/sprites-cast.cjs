@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
 const IDS = ['BOOST', 'BOUNCE', 'BRAKE', 'ANGLE', 'DASH', 'GUARD', 'STOPPER', 'SPECIAL_ONLY'];
+const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED' }; // shipped pose-1 (used / post-contact) slots
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
 if (process.argv.includes('--loader')) {
   (async () => {
@@ -55,7 +56,11 @@ if (process.argv.includes('--loader')) {
   assert.deepEqual(Object.keys(C), IDS);
   for (const id of IDS) {
     assert(H.CAST[id], id + ' is a CAST id');
-    assert.deepEqual(Object.keys(C[id]), id === 'BOUNCE' ? ['IDLE', 'KICK'] : ['IDLE']);
+    assert.deepEqual(Object.keys(C[id]), id === 'BOUNCE' ? ['IDLE', 'KICK'] : id === 'BOOST' ? ['IDLE', 'USED'] : ['IDLE']);
+    // Generic used (post-contact) pose: at most one pose: 1 slot per character, never IDLE.
+    assert(Object.values(C[id]).filter(d => d.pose === 1).length <= 1, id + ': one pose-1 slot at most');
+    assert.notEqual(C[id].IDLE.pose, 1, id + ': IDLE is the pose-0 still');
+    assert.deepEqual(Object.entries(C[id]).filter(([, d]) => d.pose === 1).map(([n]) => n), USED_POSE[id] ? [USED_POSE[id]] : []);
     for (const [name, def] of Object.entries(C[id])) {
       assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, id === 'DASH' || id === 'GUARD']); // mirrored: the warrior (sword right, shield left) and the redesigned sage (staff right, book left), like the Canvas figures; the redesigned fighter kick, thief and jester already face the Canvas way
       assert.equal(def.scale, id === 'SPECIAL_ONLY' ? 1.25 * 1.25 / 1.365 : 1.25);
@@ -88,7 +93,7 @@ if (process.argv.includes('--loader')) {
     const dummy = new Proxy(function () {}, { get: () => dummy, apply: () => dummy });
     return new Proxy(o, { get: (t, k) => k === 'globalAlpha' ? state.globalAlpha : k in t ? t[k] : () => dummy, set: (t, k, v) => { if (k === 'globalAlpha') state.globalAlpha = v; else t[k] = v; return true; } });
   };
-  const install = assets => { for (const id of IDS) s.castAssets[id] = { IDLE: { ready: false }, ...(id === 'BOUNCE' ? { KICK: { ready: false } } : {}), ...(assets?.[id] || {}) }; };
+  const install = assets => { for (const id of IDS) s.castAssets[id] = { IDLE: { ready: false }, ...(USED_POSE[id] ? { [USED_POSE[id]]: { ready: false } } : {}), ...(assets?.[id] || {}) }; };
   const scene = () => {
     const game = launch(3), ui = new H.UI(game, element('canvas'));
     game.objects = IDS.slice(0, 7).map((type, i) => ({ x: game.body.x + 150 + i * 120, type, used: i % 2 === 1 }));
@@ -105,7 +110,7 @@ if (process.argv.includes('--loader')) {
     assert.equal(log.filter(e => e.kind === 'sprite').length, 0);
   }
   // 2) All loaded: sprites replace the Canvas figures at the same feet point; labels and alpha kept.
-  const all = Object.fromEntries(IDS.map(id => [id, { IDLE: fake(id, 'IDLE'), ...(id === 'BOUNCE' ? { KICK: fake(id, 'KICK') } : {}) }]));
+  const all = Object.fromEntries(IDS.map(id => [id, { IDLE: fake(id, 'IDLE'), ...(USED_POSE[id] ? { [USED_POSE[id]]: fake(id, USED_POSE[id]) } : {}) }]));
   install(all);
   {
     const { game, ui } = scene(); const out = render(game, ui);
@@ -116,11 +121,11 @@ if (process.argv.includes('--loader')) {
       const e = sprites[i];
       // The DASH and GUARD IDLE stills are mirrored (flip:true; the redesigned BRAKE hook, BOUNCE KICK and ANGLE cane already point to the viewer's right): the 96px cell is centred on the pivot x, so the feet point stays at ox.
       const flip = o.type === 'DASH' || o.type === 'GUARD';
-      assert.equal(!!C[o.type][o.type === 'BOUNCE' && o.used ? 'KICK' : 'IDLE'].flip, flip, 'manifest flip as expected');
+      assert.equal(!!C[o.type][o.used && USED_POSE[o.type] || 'IDLE'].flip, flip, 'manifest flip as expected');
       assert.equal(e.dx, sxOf(game, o) + (flip ? 48 : -48) * 1.25); assert.equal(e.dy, ground - 88 * 1.25); assert.equal(e.dw, (flip ? -96 : 96) * 1.25);
       assert.equal(e.dx + e.dw / 2, sxOf(game, o), 'feet x unchanged (mirrored or not)');
       assert.equal(e.alpha, o.used ? 0.35 : 1, 'used opacity kept'); assert.equal(e.smoothing, false);
-      assert.equal(e.animation, o.type === 'BOUNCE' && o.used ? 'KICK' : 'IDLE', 'fighter kicks after contact');
+      assert.equal(e.animation, o.used && USED_POSE[o.type] || 'IDLE', 'used pose after contact (fighter KICK, witch USED), IDLE otherwise');
       assert(out.some(t => t.kind === 'text' && t.t === H.CAST[o.type].name), 'name label kept');
     }
   }
@@ -129,6 +134,29 @@ if (process.argv.includes('--loader')) {
   assert.equal(s.castLayer('BOUNCE', 1).name, 'IDLE'); assert.equal(s.castLayer('BOUNCE', 0).name, 'IDLE');
   install({ BOUNCE: { KICK: fake('BOUNCE', 'KICK') } });
   assert.equal(s.castLayer('BOUNCE', 1).name, 'KICK'); assert.equal(s.castLayer('BOUNCE', 0), null, 'unused fighter without IDLE -> Canvas');
+  // 3b) Generic pose-1 mechanism: the witch's USED replaces IDLE only when used (same object.used
+  // flag as the opacity), falls back to IDLE, and any character gains a used pose by adding a
+  // pose: 1 slot (test-only slot on STOPPER), with no per-character code.
+  install(all);
+  assert.equal(s.castLayer('BOOST', 0).name, 'IDLE'); assert.equal(s.castLayer('BOOST', 1).name, 'USED');
+  assert.equal(s.castLayer('BOUNCE', 0).name, 'IDLE'); assert.equal(s.castLayer('BOUNCE', 1).name, 'KICK');
+  for (const id of ['BRAKE', 'ANGLE', 'DASH', 'GUARD', 'STOPPER', 'SPECIAL_ONLY']) assert.equal(s.castLayer(id, 1).name, 'IDLE', id + ' has no used pose yet');
+  install({ BOOST: { IDLE: fake('BOOST', 'IDLE') } }); assert.equal(s.castLayer('BOOST', 1).name, 'IDLE', 'USED missing -> IDLE');
+  install({ BOOST: { IDLE: fake('BOOST', 'IDLE'), USED: { ready: false } } }); assert.equal(s.castLayer('BOOST', 1).name, 'IDLE', 'USED broken -> IDLE');
+  install({ BOOST: { USED: fake('BOOST', 'USED') } }); assert.equal(s.castLayer('BOOST', 1).name, 'USED'); assert.equal(s.castLayer('BOOST', 0), null, 'unused witch without IDLE -> Canvas');
+  {
+    install(all);
+    const { game, ui } = scene(); game.objects.forEach(o => { o.type = 'BOOST'; });
+    const out = render(game, ui).filter(e => e.kind === 'sprite' && e.id === 'BOOST');
+    assert.deepEqual(out.map(e => [e.animation, e.alpha]), game.objects.map(o => [o.used ? 'USED' : 'IDLE', o.used ? 0.35 : 1]), 'witch: USED after contact at 35%, IDLE before');
+    for (const [i, o] of game.objects.entries()) { assert.equal(out[i].dx, sxOf(game, o) - 48 * 1.25); assert.equal(out[i].dy, ground - 88 * 1.25); }
+  }
+  {
+    C.STOPPER.WAVE = { ...C.STOPPER.IDLE, animation: 'WAVE', pose: 1, flip: true };
+    install({ ...all, STOPPER: { IDLE: fake('STOPPER', 'IDLE'), WAVE: fake('STOPPER', 'WAVE') } });
+    assert.equal(s.castLayer('STOPPER', 0).name, 'IDLE'); assert.deepEqual([s.castLayer('STOPPER', 1).name, s.castLayer('STOPPER', 1).flip], ['WAVE', true], 'pose-1 slot picked generically, with its own flip');
+    delete C.STOPPER.WAVE;
+  }
   // 4) Mixed / failure: one loaded, others Canvas; a throwing drawImage falls back to Canvas.
   install({ BOOST: { IDLE: fake('BOOST', 'IDLE') } });
   {
@@ -169,5 +197,5 @@ if (process.argv.includes('--loader')) {
     assert.equal(run(all), run(undefined), 'physics / contacts unchanged by CAST sprites');
   }
   install(); graphics.character = origChar;
-  console.log('Cast sprites PASS: manifest (8 ids, BOUNCE KICK), flag == files, disabled = identical Canvas calls, sprite at the same feet point / 1.25, labels + 35% used opacity, fighter KICK -> IDLE fallback, merchant overlay, flip, draw failure -> Canvas, reduced motion, physics unchanged.');
+  console.log('Cast sprites PASS: manifest (8 ids, pose-1 used slots BOUNCE KICK + BOOST USED), flag == files, disabled = identical Canvas calls, sprite at the same feet point / 1.25, labels + 35% used opacity, generic used pose (fighter KICK, witch USED, test slot) -> IDLE fallback, merchant overlay, flip, draw failure -> Canvas, reduced motion, physics unchanged.');
 }
