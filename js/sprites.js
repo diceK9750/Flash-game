@@ -93,7 +93,7 @@ Hop.Sprites = {
         IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/angle_jester/angle_jester_idle_sheet_96x96.png", metadata: "assets/sprites/cast/angle_jester/angle_jester_idle.json" }
       },
-      DASH: { // 戦士 (v1b still delivered: enabled, mirrored: sword on the viewer's right, shield on the left like the Canvas warrior)
+      DASH: { // 戦士 (redesign r1 still from the design sheet: enabled, mirrored: sword on the viewer's right, shield on the left like the Canvas warrior)
         IDLE: { id: "DASH", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/dash_warrior/dash_warrior_idle_sheet_96x96.png", metadata: "assets/sprites/cast/dash_warrior/dash_warrior_idle.json" }
       },

@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceImage": "warrior_v1b.jpg",
-  "notes": "Transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the fighter/thief/cleric/jester; median colour, majority alpha) so she is 84px tall incl. crest and sword tip; cyan spill on outline pixels neutralised (green/blue clamped to red+8); feet on pivot."
+  "sourceImage": "warrior_r1b.jpg",
+  "notes": "Redesign r1 (design sheet DASH戦士): transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so she is 80px tall incl. helmet wings; boots already centred on the pivot x (no shift); cyan spill on outline pixels and the blade edge neutralised (green/blue clamped to red+8); the still has the sword on the viewer's left and the shield on the right, so it is mirrored (flip:true) to match the Canvas warrior; feet on pivot."
 }
