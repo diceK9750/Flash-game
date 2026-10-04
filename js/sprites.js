@@ -89,8 +89,8 @@ Hop.Sprites = {
         IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/brake_thief/brake_thief_idle_sheet_96x96.png", metadata: "assets/sprites/cast/brake_thief/brake_thief_idle.json" }
       },
-      ANGLE: { // 遊び人 (v1a still delivered: enabled, mirrored: ball on the viewer's right like the Canvas jester)
-        IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
+      ANGLE: { // 遊び人 (redesign r1 still from the design sheet: enabled; cane already on the viewer's right like the Canvas jester's ball, so not mirrored)
+        IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/angle_jester/angle_jester_idle_sheet_96x96.png", metadata: "assets/sprites/cast/angle_jester/angle_jester_idle.json" }
       },
       DASH: { // 戦士 (v1b still delivered: enabled, mirrored: sword on the viewer's right, shield on the left like the Canvas warrior)
