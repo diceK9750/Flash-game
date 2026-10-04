@@ -1,0 +1,16 @@
+{
+  "id": "BRAKE",
+  "animation": "USED",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceImage": "thief_used_r1b.jpg",
+  "notes": "Redesign r1 used pose B (after the hero's contact; design sheet 盗賊ブレーキ, grinning crouch casting the grappling hook toward the hero): transparent RGBA; slightly bluish cyan background (~0,211,254) removed by the standard key (no foreground pixel within distance 60 of the background; the enclosed keyed areas are background gaps inside the rope, between the arms and body and between the legs); resampled from the JPEG still at 11.5 source px per sprite px so the head matches the idle (the head is drawn about 1.45x larger in this still than in thief_r2a.jpg, idle grid 8.0; the art's own pixel grid is ~8, which would give an 84x79 figure with a 1.45x head and the hook clipped by the cell): 58x56 incl. the hook; the boots are already centred on the pivot x, so not shifted; bluish background spill on outline pixels (min(g,b)-r > 20, b >= g-5) neutralised (green/blue clamped to red+8); hook toward the viewer's left (the hero), drawn unmirrored like the idle; feet on pivot."
+}

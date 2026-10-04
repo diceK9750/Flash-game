@@ -75,8 +75,8 @@ Hop.Sprites = {
     // roadside figures). flip mirrors a still that faces the wrong way. A slot with pose: 1 is the
     // used (post-contact) pose, drawn instead of IDLE once the hero has touched the figure (the same
     // object.used flag that already sets the 35% opacity / the Canvas fighter's raised leg); one per
-    // character at most. A missing / broken pose-1 still falls back to IDLE. BOUNCE.KICK and
-    // BOOST.USED have one.
+    // character at most. A missing / broken pose-1 still falls back to IDLE. BOUNCE.KICK,
+    // BOOST.USED and BRAKE.USED have one.
     CAST: {
       BOOST: { // 魔法使い (redesign r1 idle + used stills from the design sheet: enabled; idle staff on the viewer's right like the Canvas witch, used pose thrusts it toward the hero; not mirrored)
         IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
@@ -90,9 +90,11 @@ Hop.Sprites = {
         KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
       },
-      BRAKE: { // 盗賊 (redesign r2 still from the design sheet: enabled; hook already on the viewer's right like the Canvas thief, so not mirrored)
+      BRAKE: { // 盗賊 (redesign r2 idle + r1 used stills from the design sheet: enabled; idle hook already on the viewer's right like the Canvas thief, used pose casts it toward the hero; not mirrored)
         IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/brake_thief/brake_thief_idle_sheet_96x96.png", metadata: "assets/sprites/cast/brake_thief/brake_thief_idle.json" }
+          src: "assets/sprites/cast/brake_thief/brake_thief_idle_sheet_96x96.png", metadata: "assets/sprites/cast/brake_thief/brake_thief_idle.json" },
+        USED: { id: "BRAKE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/brake_thief/brake_thief_used_sheet_96x96.png", metadata: "assets/sprites/cast/brake_thief/brake_thief_used.json" }
       },
       ANGLE: { // 遊び人 (redesign r1 still from the design sheet: enabled; cane already on the viewer's right like the Canvas jester's ball, so not mirrored)
         IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
@@ -189,7 +191,7 @@ Hop.Sprites = {
     finally { ctx.restore(); }
   },
   // CAST still for a roadside character / merchant (pure lookup): { asset, scale, flip } or null.
-  // pose 1 = used (post-contact): the character's pose-1 slot (BOUNCE KICK, BOOST USED) when
+  // pose 1 = used (post-contact): the character's pose-1 slot (BOUNCE KICK, BOOST / BRAKE USED) when
   // loaded, otherwise IDLE.
   castLayer(id, pose = 0) {
     const slots = this.castAssets?.[id], defs = this.definitions.CAST?.[id];
