@@ -57,7 +57,7 @@ if (process.argv.includes('--loader')) {
     assert(H.CAST[id], id + ' is a CAST id');
     assert.deepEqual(Object.keys(C[id]), id === 'BOUNCE' ? ['IDLE', 'KICK'] : ['IDLE']);
     for (const [name, def] of Object.entries(C[id])) {
-      assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, id === 'DASH']); // mirrored: the warrior (sword right, shield left), like the Canvas figure; the redesigned fighter kick, thief and jester already face the Canvas way
+      assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, id === 'DASH' || id === 'GUARD']); // mirrored: the warrior (sword right, shield left) and the redesigned sage (staff right, book left), like the Canvas figures; the redesigned fighter kick, thief and jester already face the Canvas way
       assert.equal(def.scale, id === 'SPECIAL_ONLY' ? 1.25 * 1.25 / 1.365 : 1.25);
       for (const ref of [def.src, def.metadata]) {
         assert(!/^(?:\/|[a-z]+:)/i.test(ref) && ref.startsWith('assets/sprites/cast/'));
@@ -114,8 +114,8 @@ if (process.argv.includes('--loader')) {
     assert.deepEqual(sprites.map(e => e.id), game.objects.map(o => o.type));
     for (const [i, o] of game.objects.entries()) {
       const e = sprites[i];
-      // The DASH IDLE still is mirrored (flip:true; the redesigned BRAKE hook, BOUNCE KICK and ANGLE cane already point to the viewer's right): the 96px cell is centred on the pivot x, so the feet point stays at ox.
-      const flip = o.type === 'DASH';
+      // The DASH and GUARD IDLE stills are mirrored (flip:true; the redesigned BRAKE hook, BOUNCE KICK and ANGLE cane already point to the viewer's right): the 96px cell is centred on the pivot x, so the feet point stays at ox.
+      const flip = o.type === 'DASH' || o.type === 'GUARD';
       assert.equal(!!C[o.type][o.type === 'BOUNCE' && o.used ? 'KICK' : 'IDLE'].flip, flip, 'manifest flip as expected');
       assert.equal(e.dx, sxOf(game, o) + (flip ? 48 : -48) * 1.25); assert.equal(e.dy, ground - 88 * 1.25); assert.equal(e.dw, (flip ? -96 : 96) * 1.25);
       assert.equal(e.dx + e.dw / 2, sxOf(game, o), 'feet x unchanged (mirrored or not)');

@@ -97,8 +97,8 @@ Hop.Sprites = {
         IDLE: { id: "DASH", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/dash_warrior/dash_warrior_idle_sheet_96x96.png", metadata: "assets/sprites/cast/dash_warrior/dash_warrior_idle.json" }
       },
-      GUARD: { // 賢者 (v1a still delivered: enabled)
-        IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
+      GUARD: { // 賢者 (redesign r1 still from the design sheet, no hat: enabled, mirrored: staff on the viewer's right, book on the left like the Canvas sage)
+        IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png", metadata: "assets/sprites/cast/guard_sage/guard_sage_idle.json" }
       },
       STOPPER: { // 僧侶 (v1a still delivered: enabled)

@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceImage": "sage_v1a.jpg",
-  "notes": "Transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so she is 85px tall incl. hat; shifted +4 px so the boots (not the staff tip) are centred on the pivot x; cyan spill on outline pixels neutralised (green/blue clamped to red+8); feet on pivot."
+  "sourceImage": "sage_r1b.jpg",
+  "notes": "Redesign r1 (design sheet 異世界ガード賢者, no hat by design): transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so she is 85px tall incl. the staff orb; boots already centred on the pivot x (the staff tip ends above the boots; no shift); cyan spill neutralised only on outline pixels where green~blue (green/blue clamped to red+8) so the blue cape, hair and orb are kept; the still has the staff on the viewer's left and the book on the right, so it is mirrored (flip:true) to match the Canvas sage; feet on pivot."
 }
