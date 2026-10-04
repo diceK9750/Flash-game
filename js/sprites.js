@@ -79,10 +79,10 @@ Hop.Sprites = {
         IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" }
       },
-      BOUNCE: { // 武闘家 (redesign r1 idle from the design sheet + old kick_v2 still: enabled)
+      BOUNCE: { // 武闘家 (redesign r1 idle + kick stills from the design sheet: enabled; the kick already points to the viewer's right like the Canvas pose, so not mirrored)
         IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle.json" },
-        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
       },
       BRAKE: { // 盗賊 (redesign r2 still from the design sheet: enabled; hook already on the viewer's right like the Canvas thief, so not mirrored)

@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceImage": "fighter_kick_v2.jpg",
-  "notes": "Transparent RGBA; cyan chroma-key removed; resampled at 9.34 source px per sprite px: the kick still is drawn ~1.2x larger than the idle still (head size vs leg length compromise), so this keeps her size steady when the pose switches; supporting foot on pivot."
+  "sourceImage": "fighter_kick_r1a.jpg",
+  "notes": "Redesign r1 kick (design sheet 武闘家バウンス): transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px, the same art scale as the redesigned idle (head size matches, so no size compensation is needed): 71x82, raised boot inside the cell (bbox x 18..88); supporting boot on the pivot; cyan spill on outline pixels neutralised (green/blue clamped to red+8; the blue hair ornaments are kept); kicks toward the viewer's right like the Canvas kick pose, so not mirrored."
 }
