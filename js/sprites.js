@@ -101,7 +101,7 @@ Hop.Sprites = {
         IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png", metadata: "assets/sprites/cast/guard_sage/guard_sage_idle.json" }
       },
-      STOPPER: { // 僧侶 (v1a still delivered: enabled)
+      STOPPER: { // 僧侶 (redesign r3 still from the design sheet: enabled; staff on the viewer's right like the Canvas cleric, so not mirrored)
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png", metadata: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json" }
       },
