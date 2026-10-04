@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceImage": "fighter_v1a.jpg",
-  "notes": "Transparent RGBA; cyan chroma-key removed; resampled from the JPEG still (native grid ~5px, weak) at 7.78 source px per sprite px (median colour, majority alpha) so the body is 76px tall (witch 84 incl. hat); feet on pivot."
+  "sourceImage": "fighter_r1b.jpg",
+  "notes": "Redesign r1 (design sheet 武闘家バウンス): transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so she is 85px tall incl. hair ornaments; boots already centred on the pivot x (no shift); cyan spill on dark outline pixels neutralised (green/blue clamped to red+8; the blue hair ornaments are kept); feet on pivot."
 }
