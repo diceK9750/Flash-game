@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
 const IDS = ['BOOST', 'BOUNCE', 'BRAKE', 'ANGLE', 'DASH', 'GUARD', 'STOPPER', 'SPECIAL_ONLY'];
-const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED' }; // shipped pose-1 (used / post-contact) slots
+const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
 if (process.argv.includes('--loader')) {
   (async () => {
@@ -141,11 +141,14 @@ if (process.argv.includes('--loader')) {
   assert.equal(s.castLayer('BOOST', 0).name, 'IDLE'); assert.equal(s.castLayer('BOOST', 1).name, 'USED');
   assert.equal(s.castLayer('BOUNCE', 0).name, 'IDLE'); assert.equal(s.castLayer('BOUNCE', 1).name, 'KICK');
   assert.equal(s.castLayer('BRAKE', 0).name, 'IDLE'); assert.deepEqual([s.castLayer('BRAKE', 1).name, s.castLayer('BRAKE', 1).flip], ['USED', false], 'thief: USED after contact, hook toward the hero, not mirrored');
-  for (const id of ['ANGLE', 'DASH', 'GUARD', 'STOPPER', 'SPECIAL_ONLY']) assert.equal(s.castLayer(id, 1).name, 'IDLE', id + ' has no used pose yet');
+  assert.equal(s.castLayer('ANGLE', 0).name, 'IDLE'); assert.deepEqual([s.castLayer('ANGLE', 1).name, s.castLayer('ANGLE', 1).flip], ['USED', false], 'jester: USED after contact, cane toward the hero, not mirrored');
+  for (const id of ['DASH', 'GUARD', 'STOPPER', 'SPECIAL_ONLY']) assert.equal(s.castLayer(id, 1).name, 'IDLE', id + ' has no used pose yet');
   install({ BOOST: { IDLE: fake('BOOST', 'IDLE') } }); assert.equal(s.castLayer('BOOST', 1).name, 'IDLE', 'USED missing -> IDLE');
   install({ BOOST: { IDLE: fake('BOOST', 'IDLE'), USED: { ready: false } } }); assert.equal(s.castLayer('BOOST', 1).name, 'IDLE', 'USED broken -> IDLE');
   install({ BRAKE: { IDLE: fake('BRAKE', 'IDLE') } }); assert.equal(s.castLayer('BRAKE', 1).name, 'IDLE', 'thief USED missing -> IDLE');
   install({ BRAKE: { IDLE: fake('BRAKE', 'IDLE'), USED: { ready: false } } }); assert.equal(s.castLayer('BRAKE', 1).name, 'IDLE', 'thief USED broken -> IDLE');
+  install({ ANGLE: { IDLE: fake('ANGLE', 'IDLE') } }); assert.equal(s.castLayer('ANGLE', 1).name, 'IDLE', 'jester USED missing -> IDLE');
+  install({ ANGLE: { IDLE: fake('ANGLE', 'IDLE'), USED: { ready: false } } }); assert.equal(s.castLayer('ANGLE', 1).name, 'IDLE', 'jester USED broken -> IDLE');
   install({ BOOST: { USED: fake('BOOST', 'USED') } }); assert.equal(s.castLayer('BOOST', 1).name, 'USED'); assert.equal(s.castLayer('BOOST', 0), null, 'unused witch without IDLE -> Canvas');
   {
     install(all);
@@ -156,10 +159,12 @@ if (process.argv.includes('--loader')) {
   }
   {
     install(all);
-    const { game, ui } = scene(); game.objects.forEach(o => { o.type = 'BRAKE'; });
-    const out = render(game, ui).filter(e => e.kind === 'sprite' && e.id === 'BRAKE');
-    assert.deepEqual(out.map(e => [e.animation, e.alpha]), game.objects.map(o => [o.used ? 'USED' : 'IDLE', o.used ? 0.35 : 1]), 'thief: USED after contact at 35%, IDLE before');
+    for (const type of ['BRAKE', 'ANGLE']) {
+    const { game, ui } = scene(); game.objects.forEach(o => { o.type = type; });
+    const out = render(game, ui).filter(e => e.kind === 'sprite' && e.id === type);
+    assert.deepEqual(out.map(e => [e.animation, e.alpha]), game.objects.map(o => [o.used ? 'USED' : 'IDLE', o.used ? 0.35 : 1]), type + ': USED after contact at 35%, IDLE before');
     for (const [i, o] of game.objects.entries()) { assert.equal(out[i].dx, sxOf(game, o) - 48 * 1.25); assert.equal(out[i].dw, 96 * 1.25); assert.equal(out[i].dy, ground - 88 * 1.25); }
+    }
   }
   {
     C.STOPPER.WAVE = { ...C.STOPPER.IDLE, animation: 'WAVE', pose: 1, flip: true };
@@ -207,5 +212,5 @@ if (process.argv.includes('--loader')) {
     assert.equal(run(all), run(undefined), 'physics / contacts unchanged by CAST sprites');
   }
   install(); graphics.character = origChar;
-  console.log('Cast sprites PASS: manifest (8 ids, pose-1 used slots BOUNCE KICK + BOOST/BRAKE USED), flag == files, disabled = identical Canvas calls, sprite at the same feet point / 1.25, labels + 35% used opacity, generic used pose (fighter KICK, witch + thief USED, test slot) -> IDLE fallback, merchant overlay, flip, draw failure -> Canvas, reduced motion, physics unchanged.');
+  console.log('Cast sprites PASS: manifest (8 ids, pose-1 used slots BOUNCE KICK + BOOST/BRAKE/ANGLE USED), flag == files, disabled = identical Canvas calls, sprite at the same feet point / 1.25, labels + 35% used opacity, generic used pose (fighter KICK, witch + thief + jester USED, test slot) -> IDLE fallback, merchant overlay, flip, draw failure -> Canvas, reduced motion, physics unchanged.');
 }

@@ -1,0 +1,16 @@
+{
+  "id": "ANGLE",
+  "animation": "USED",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceImage": "jester_used_r1b.jpg",
+  "notes": "Redesign r1 used pose B (after the hero's contact; design sheet 道化師ANGLE, winking with his tongue out and hopping on one foot, cane raised toward the hero): transparent RGBA; cyan background (~0,227,255) removed by the standard key (no foreground pixel within distance 60 of the background; the blue nose and cane stripes stay; the enclosed keyed areas are background gaps inside the cane hook, between the arms and body and between the legs); resampled from the JPEG still at 7.78 source px per sprite px, the idle's grid: 77x83 incl. the cane and the hat bell (97% of the idle's 86px height; the head is about the same size as the idle's, ~1.0-1.05x); shifted +2 px so the lower (standing) boot is centred on the pivot x, the raised boot stays in the air; cyan spill on outline pixels neutralised (green/blue clamped to red+8; blue nose and cane stripes kept); cane toward the viewer's left (the hero), drawn unmirrored like the idle; standing boot on the pivot."
+}
