@@ -1,16 +1,18 @@
 "use strict";
 // Presentation only. IDs, collisions, physics and spawn weights live elsewhere.
 // asset is reserved for a future image renderer; null always uses Canvas shapes.
+// color (name label, contact tag/effect, Canvas fallback body) follows the redesign sprites, darkened for
+// >= 4.8:1 contrast on the label box (#fff9e9) and >= 3.9:1 on the sky behind the contact tag.
 Hop.CAST = Object.freeze({
   HERO: { name: "勇者", gender: "男", color: "#2467ac", shape: "hero", effect: "いざ、空の旅！", asset: null },
-  BOOST: { name: "魔法使い", gender: "女", color: "#287548", shape: "witch", effect: "爆風でひとっ飛び！", asset: null },
-  BOUNCE: { name: "武闘家", gender: "女", color: "#246abd", shape: "fighter", effect: "空まで蹴り上げ！", asset: null },
-  BRAKE: { name: "盗賊", gender: "男", color: "#c63f4f", shape: "thief", effect: "推進力を半分いただき！", asset: null },
-  ANGLE: { name: "遊び人", gender: "男", color: "#9b730a", shape: "jester", effect: "くるりと方向転換！", asset: null },
-  DASH: { name: "戦士", gender: "女", color: "#bd5b13", shape: "warrior", effect: "猛突進！", asset: null },
-  GUARD: { name: "賢者", gender: "女", color: "#7852ad", shape: "sage", effect: "結界をどうぞ！", asset: null },
-  STOPPER: { name: "僧侶", gender: "女", color: "#942840", shape: "cleric", effect: "ここでひと休み！", asset: null },
-  SPECIAL_ONLY: { name: "商人", gender: "女", color: "#8d622f", shape: "merchant", effect: "とっておきの品！", asset: null, spawn: false }
+  BOOST: { name: "魔法使い", gender: "女", color: "#b8460f", shape: "witch", effect: "爆風でひとっ飛び！", asset: null },
+  BOUNCE: { name: "武闘家", gender: "女", color: "#337c2f", shape: "fighter", effect: "空まで蹴り上げ！", asset: null },
+  BRAKE: { name: "盗賊", gender: "男", color: "#866b15", shape: "thief", effect: "推進力を半分いただき！", asset: null },
+  ANGLE: { name: "遊び人", gender: "男", color: "#bf3a6e", shape: "jester", effect: "くるりと方向転換！", asset: null },
+  DASH: { name: "戦士", gender: "女", color: "#a8231b", shape: "warrior", effect: "猛突進！", asset: null },
+  GUARD: { name: "賢者", gender: "女", color: "#2b6cb0", shape: "sage", effect: "結界をどうぞ！", asset: null },
+  STOPPER: { name: "僧侶", gender: "女", color: "#1f44a8", shape: "cleric", effect: "ここでひと休み！", asset: null },
+  SPECIAL_ONLY: { name: "商人", gender: "女", color: "#a3369a", shape: "merchant", effect: "とっておきの品！", asset: null, spawn: false }
 });
 Hop.Graphics = {
   polygon(ctx, points, color) {
