@@ -9,6 +9,29 @@ Hop.UI = class {
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, lastSpecialSuccesses: 0, lastMerchantSuccesses: 0, stopAt: null, frozenAt: null, reducedMotion: motion?.matches || false };
     motion?.addEventListener?.("change", event => { this.visual.reducedMotion = event.matches; });
+    this.initBacking();
+  }
+  // Display-only: the canvas backing store follows its CSS width x devicePixelRatio (clamped to
+  // 1280..2560 wide, 16:9) so DPR2 screens are not upscaled from 1280x720. Game coordinates stay
+  // 1280x720 through a base transform applied at the start of every draw; physics, hit boxes,
+  // CSS layout and input (stage pointerdown, no coordinates) are unaffected.
+  static backingSize(cssWidth, dpr) {
+    const c = Hop.CONFIG, css = Number.isFinite(cssWidth) && cssWidth > 0 ? cssWidth : c.width;
+    const ratio = Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
+    const width = Math.min(c.width * 2, Math.max(c.width, Math.round(css * ratio)));
+    return { width, height: Math.round(width * c.height / c.width) };
+  }
+  resizeBacking() {
+    const size = Hop.UI.backingSize(this.canvas.clientWidth, window.devicePixelRatio);
+    if (this.canvas.width !== size.width || this.canvas.height !== size.height) { this.canvas.width = size.width; this.canvas.height = size.height; }
+    this.backing = size; this.backingDpr = window.devicePixelRatio;
+    return size;
+  }
+  initBacking() {
+    this.resizeBacking();
+    const resize = () => this.resizeBacking();
+    window.addEventListener?.("resize", resize);
+    if (typeof ResizeObserver === "function") new ResizeObserver(resize).observe(this.canvas);
   }
   update() {
     const g = this.game, c = Hop.CONFIG, s = Hop.STATES;
@@ -195,5 +218,11 @@ Hop.UI = class {
     this.notices = { special: g.special, message: g.specialMessage, charge: g.downCharge, guard: g.guardSpecial.active };
   }
   objectColor(type) { return Hop.Graphics.objectColor(type); }
-  draw() { Hop.Graphics.draw(this.ctx, this.game, this.visual); }
+  draw() {
+    // devicePixelRatio can change (zoom, another monitor) without a CSS size change.
+    if (window.devicePixelRatio !== this.backingDpr) this.resizeBacking();
+    const c = Hop.CONFIG, b = this.backing;
+    this.ctx.setTransform(b.width / c.width, 0, 0, b.height / c.height, 0, 0);
+    Hop.Graphics.draw(this.ctx, this.game, this.visual);
+  }
 };
