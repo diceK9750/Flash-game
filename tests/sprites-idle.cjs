@@ -51,7 +51,7 @@ let cases = 0; const test = (n, fn) => { try { fn(); cases++; } catch (e) { e.me
     G.character = origC; s.draw = origD;
   });
   test('shipped files present and JSON matches sheet', () => {
-    const dir = path.join(root, 'assets/sprites/hero/idle');
+    const dir = path.join(root, 'assets/sprites/hero/hero_idle_comic_v1');
     assert(fs.existsSync(path.join(dir, 'hero_idle_sheet_288x288.png')));
     const m = JSON.parse(fs.readFileSync(path.join(dir, 'hero_idle.json'), 'utf8'));
     assert.equal(m.cellW, 288); assert.equal(m.cellH, 288); assert.equal(m.frames, 1);

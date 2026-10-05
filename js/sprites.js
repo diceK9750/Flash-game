@@ -3,11 +3,11 @@
 Hop.Sprites = {
   definitions: {
     HERO: {
-      // HD standing still for READY / AIM (display only). 288 cell; drawn scale = 1.25*96/288 so
+      // HD comic standing still for READY / AIM (display only; previous idle kept in hero/idle/). 288 cell; drawn scale = 1.25*96/288 so
       // on-screen size and feet match FLIGHT_LOOP. Other animations stay on the 96 sheets for now.
       IDLE: {
-        src: "assets/sprites/hero/idle/hero_idle_sheet_288x288.png",
-        metadata: "assets/sprites/hero/idle/hero_idle.json",
+        src: "assets/sprites/hero/hero_idle_comic_v1/hero_idle_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_idle_comic_v1/hero_idle.json",
         animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, enabled: true
       },
       FLIGHT_LOOP: {

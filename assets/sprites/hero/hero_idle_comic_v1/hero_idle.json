@@ -1,0 +1,17 @@
+{
+  "id": "HERO",
+  "animation": "IDLE",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hero_comic_idle_r1a_hl.jpg",
+  "notes": "Comic HD idle (r1a, head enlarged x1.12 in PIL, chin-anchored). 5頭身 target (5.02 measured). Soft-alpha cyan cutout at grid fig_h/74 (693/74) into 288 cell, pivot (144,264)= (cell/2, cell*88/96). Drawn scale = 1.25*96/288 so on-screen size and feet match the previous idle and the 96 FLIGHT_LOOP hero. READY/AIM only. Previous idle kept in ../idle/."
+}
