@@ -1,0 +1,13 @@
+{
+ "id": "BOOST",
+ "animation": "IDLE",
+ "frames": 1,
+ "fps": 1,
+ "loop": false,
+ "frameWidth": 96,
+ "frameHeight": 96,
+ "pivot": {
+  "x": 48,
+  "y": 88
+ }
+}

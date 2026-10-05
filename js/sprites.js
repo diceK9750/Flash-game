@@ -67,7 +67,7 @@ Hop.Sprites = {
       }
     },
     // Phase C: roadside characters (g.objects) and the merchant overlay (SPECIAL_ONLY). One still
-    // per slot (1-frame 96x96 sheet, pivot 48,88) drawn in place of the Canvas figure with its feet
+    // per slot (1-frame 96x96 sheet, pivot 48,88, or an HD cell; see normalizeCell) drawn in place of the Canvas figure with its feet
     // at the same point; the caller keeps the name label and the 35% used opacity. enabled:false =
     // asset not delivered yet: never requested (no 404), Canvas figure as before;
     // tests/sprites-cast.cjs enforces flag == files present. scale = sprite px -> canvas px (1.25 =
@@ -154,9 +154,8 @@ Hop.Sprites = {
       const data = await response.json();
       // HERO animations stay 8 frames; CAST stills declare id and frames: 1.
       if (data.id !== (definition.id || "HERO") || data.animation !== definition.animation ||
-          data.frameWidth !== 96 || data.frameHeight !== 96 || data.frames !== (definition.frames || 8) ||
-          data.fps !== definition.fps || data.loop !== definition.loop ||
-          data.pivot?.x !== 48 || data.pivot?.y !== 88) return asset;
+          data.frames !== (definition.frames || 8) || data.fps !== definition.fps || data.loop !== definition.loop) return asset;
+      if (!this.normalizeCell(data)) return asset;
       // Optional playback order: sheet column indices, played at fps (duration = length / fps).
       if (data.sequence !== undefined && !(Array.isArray(data.sequence) && data.sequence.length >= 1 && data.sequence.length <= 64 &&
           data.sequence.every(i => Number.isInteger(i) && i >= 0 && i < data.frames))) return asset;
@@ -171,6 +170,28 @@ Hop.Sprites = {
     } catch (_) { /* Missing/blocked assets retain the next fallback. */ }
     return asset;
   },
+  // Cell contract (display only). Legacy pixel sheets: 96x96 cells, pivot (48,88), nearest-neighbour.
+  // HD sheets declare cellW / cellH (or frameHeight > 96): cellH 96..1024,
+  // cellW cellH/2..2*cellH (wide poses may use a wider cell), optional pivot inside the cell (default
+  // (cellW/2, cellH*88/96)), drawn with high-quality smoothing (smoothing: false opts out). The
+  // definition scale stays in legacy 96-cell units: drawn scale = scale * 96 / cellH, so an HD
+  // sheet drawn with the same proportions has the same on-screen size and feet point as its 96
+  // version. Normalizes data in place (frameWidth / frameHeight / pivot / unit / smooth); false = reject.
+  normalizeCell(data) {
+    const int = v => Number.isInteger(v);
+    const hd = data.cellW !== undefined || data.cellH !== undefined || data.frameHeight > 96;
+    if (!hd) {
+      if (data.frameWidth !== 96 || data.frameHeight !== 96 || data.pivot?.x !== 48 || data.pivot?.y !== 88) return false;
+      return Object.assign(data, { unit: 1, smooth: data.smoothing === true });
+    }
+    const w = data.cellW ?? data.frameWidth, h = data.cellH ?? data.frameHeight;
+    if (data.frameWidth !== undefined && data.frameWidth !== w || data.frameHeight !== undefined && data.frameHeight !== h) return false;
+    if (!int(w) || !int(h) || h < 96 || h > 1024 || w * 2 < h || w > h * 2) return false;
+    const pivot = data.pivot === undefined ? { x: w / 2, y: h * 88 / 96 } : data.pivot;
+    if (!Number.isFinite(pivot?.x) || !Number.isFinite(pivot?.y) || pivot.x < 0 || pivot.x > w || pivot.y < 0 || pivot.y > h) return false;
+    if (data.smoothing !== undefined && typeof data.smoothing !== "boolean") return false;
+    return Object.assign(data, { frameWidth: w, frameHeight: h, pivot: { x: pivot.x, y: pivot.y }, unit: h / 96, smooth: data.smoothing !== false });
+  },
   // Time-based frame index: identical for any refresh rate. One-shots hold the last frame.
   frameAt(data, time) {
     const index = Math.floor(Math.max(0, Number.isFinite(time) ? time : 0) * data.fps);
@@ -183,9 +204,11 @@ Hop.Sprites = {
     if (!asset?.ready || !asset.image?.complete || !asset.image.naturalWidth || !asset.data?.pivot) return false;
     const d = asset.data;
     const frame = this.frameAt(d, time);
+    scale /= d.unit > 0 ? d.unit : 1; // HD cells: same on-screen size as the 96 version
     ctx.save();
     try {
-      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingEnabled = !!d.smooth;
+      if (d.smooth) ctx.imageSmoothingQuality = "high";
       ctx.drawImage(asset.image, frame * d.frameWidth, 0, d.frameWidth, d.frameHeight,
         x - d.pivot.x * scale, feet - d.pivot.y * scale, d.frameWidth * scale, d.frameHeight * scale);
       return true;

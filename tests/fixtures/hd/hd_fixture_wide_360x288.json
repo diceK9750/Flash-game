@@ -1,0 +1,13 @@
+{
+ "id": "BOOST",
+ "animation": "IDLE",
+ "frames": 1,
+ "fps": 1,
+ "loop": false,
+ "cellW": 360,
+ "cellH": 288,
+ "pivot": {
+  "x": 180,
+  "y": 264
+ }
+}
