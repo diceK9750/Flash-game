@@ -44,8 +44,10 @@ Hop.Sprites = {
       // it after minShow (see oneShotPriority). vy tilt is suppressed while it plays (baked rotation) and eases back.
       // Reduced motion shows one representative frame (stillTime; v2 = sheet 4, the stiff pose) for the same duration.
       HIT: {
-        src: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit.json",
+        // HD Rumiko knockback still (70% of idle on-screen height). 288 cell, 8 identical
+        // frames; timing/suppressTilt unchanged. Drawn scale = 1.25*96/288.
+        src: "assets/sprites/hero/hero_hit_hd_v1/hero_hit_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_hit_hd_v1/hero_hit.json",
         animation: "HIT", fps: 12, loop: false, scale: 1.25, enabled: true,
         suppressTilt: true, tiltEase: 0.12, stillTime: 5.5 / 12
       },
