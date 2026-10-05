@@ -3,6 +3,13 @@
 Hop.Sprites = {
   definitions: {
     HERO: {
+      // HD standing still for READY / AIM (display only). 288 cell; drawn scale = 1.25*96/288 so
+      // on-screen size and feet match FLIGHT_LOOP. Other animations stay on the 96 sheets for now.
+      IDLE: {
+        src: "assets/sprites/hero/idle/hero_idle_sheet_288x288.png",
+        metadata: "assets/sprites/hero/idle/hero_idle.json",
+        animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, enabled: true
+      },
       FLIGHT_LOOP: {
         src: "assets/sprites/hero/flight_loop/hero_flight_loop_sheet_96x96.png",
         metadata: "assets/sprites/hero/flight_loop/hero_flight_loop.json",
@@ -285,6 +292,12 @@ Hop.Sprites = {
     if (!(t >= 0)) return 0;
     return fade > 0 ? Math.min(1, t / fade) : 1;
   },
+  // READY / AIM standing still (pure). Empty when the asset is missing -> Canvas HERO.
+  idleLayers() {
+    const asset = this.heroIdle, def = this.definitions.HERO.IDLE;
+    if (!asset?.ready || !asset.data || def?.enabled === false) return [];
+    return [{ name: "IDLE", asset, time: 0, scale: def.scale }];
+  },
   // Ordered FLYING candidates (pure): active one-shot (AERIAL / GROUND_BOUNCE), then FLIGHT_LOOP.
   // The caller falls back to the Canvas HERO when every candidate fails to draw. RESULT without a
   // STOP_RESULT (mid-air STOPPER stop, missing asset) keeps FLIGHT_LOOP frozen at visual.frozenAt
@@ -304,6 +317,10 @@ Hop.Sprites = {
     return layers;
   }
 };
+Hop.Sprites.idleReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.IDLE).then(asset => {
+  Hop.Sprites.heroIdle = asset;
+  return asset;
+});
 Hop.Sprites.ready = Hop.Sprites.load(Hop.Sprites.definitions.HERO.FLIGHT_LOOP).then(asset => {
   Hop.Sprites.heroFlight = asset;
   return asset;

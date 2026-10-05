@@ -99,7 +99,8 @@ if (process.argv.includes('--loader')) {
 
   // Integration through the real Game/UI with recorded sprite draws.
   const graphics = scope.Hop.Graphics, originalCharacter = graphics.character, originalDraw = s.draw;
-  const saved = { heroFlight: s.heroFlight, heroAerialUp: s.heroAerialUp, heroAerialDown: s.heroAerialDown };
+  const saved = { heroFlight: s.heroFlight, heroAerialUp: s.heroAerialUp, heroAerialDown: s.heroAerialDown, heroIdle: s.heroIdle };
+  s.heroIdle = { ready: false };
   let canvasHero = 0, drawn = [];
   graphics.character = function (cx, id, ...rest) { if (id === 'HERO') canvasHero++; return originalCharacter.call(this, cx, id, ...rest); };
   s.draw = function (_ctx, asset, time, x, feet, scale) {
@@ -107,7 +108,7 @@ if (process.argv.includes('--loader')) {
     if (ok) drawn.push({ name: names.get(asset) || 'OTHER', frame: this.frameAt(asset.data, time), time, scale, x, feet });
     return ok;
   };
-  const install = (up = assets.UP, down = assets.DOWN, loop = assets.LOOP) => { s.heroAerialUp = up; s.heroAerialDown = down; s.heroFlight = loop; };
+  const install = (up = assets.UP, down = assets.DOWN, loop = assets.LOOP) => { s.heroAerialUp = up; s.heroAerialDown = down; s.heroFlight = loop; s.heroIdle = { ready: false }; };
   const frame = (game, ui) => { drawn = []; canvasHero = 0; const before = JSON.stringify(game), vis = JSON.stringify(ui.visual);
     ui.draw(); assert.equal(JSON.stringify(game), before, 'draw must not mutate game'); assert.equal(JSON.stringify(ui.visual), vis, 'draw must not mutate visual');
     return drawn.at(-1) || { name: canvasHero ? 'CANVAS' : 'NONE' }; };

@@ -69,14 +69,29 @@ if (process.argv.includes('--loader')) {
   const graphics = scope.Hop.Graphics, original = graphics.character, originalAsset = s.heroFlight;
   const rendered = []; graphics.character = function(ctx, id, ...rest) { rendered.push(id); return original.call(this, ctx, id, ...rest); };
   s.heroFlight = asset;
+  // With no IDLE asset, READY/AIM fall back to Canvas HERO (legacy).
+  s.heroIdle = { ready: false };
   for (const state of ['READY', 'AIM_ANGLE', 'AIM_POWER', 'FLYING', 'RESULT']) {
     game.state = state; rendered.length = 0;
     const before = JSON.stringify(game); ui.draw();
     assert.equal(JSON.stringify(game), before, 'Drawing must not mutate any game state');
     assert.equal(rendered.includes('HERO'), state !== 'FLYING' && state !== 'RESULT'); // RESULT: frozen FLIGHT_LOOP (Phase B)
   }
-  game.state = 'FLYING'; s.heroFlight = { ready: false }; rendered.length = 0; ui.draw();
-  assert(rendered.includes('HERO'));
+  // HD IDLE still: READY/AIM draw the sprite (no Canvas); FLYING/RESULT unchanged.
+  const idle = { ready: true, image: { complete: true, naturalWidth: 288, naturalHeight: 288 },
+    data: s.normalizeCell({ id: 'HERO', animation: 'IDLE', cellW: 288, cellH: 288, frames: 1, fps: 1, loop: false }) };
+  s.heroIdle = idle; const idleDraws = [];
+  const prevDraw = s.draw; s.draw = function (ctx, a, ...rest) { if (a === idle) idleDraws.push(true); return prevDraw.call(this, ctx, a, ...rest); };
+  for (const state of ['READY', 'AIM_ANGLE', 'AIM_POWER']) {
+    game.state = state; rendered.length = 0; idleDraws.length = 0; ui.draw();
+    assert.equal(rendered.includes('HERO'), false, state + ' uses IDLE not Canvas');
+    assert.equal(idleDraws.length, 1, state + ' draws IDLE once');
+  }
+  game.state = 'FLYING'; rendered.length = 0; idleDraws.length = 0; ui.draw();
+  assert.equal(idleDraws.length, 0, 'FLYING does not draw IDLE'); assert.equal(rendered.includes('HERO'), false);
+  s.draw = prevDraw;
+  game.state = 'FLYING'; s.heroFlight = { ready: false }; s.heroIdle = idle; rendered.length = 0; ui.draw();
+  assert(rendered.includes('HERO'), 'FLYING with no flight asset still falls back to Canvas (IDLE is prelaunch only)');
   const originalDraw = s.draw, times = [];
   s.draw = (ctx, asset, time) => { times.push(time); return true; };
   ui.visual.launchAt = 2; game.phaseTime = 2.375; ui.draw(); ui.draw();
@@ -84,5 +99,5 @@ if (process.argv.includes('--loader')) {
   ui.visual.reducedMotion = true; ui.draw(); assert.equal(times.at(-1), 0);
   s.draw = originalDraw;
   graphics.character = original; s.heroFlight = originalAsset;
-  console.log('Sprites PASS: RGBA/relative assets, 8fps/8 frames at 30/60/120/144Hz, fixed pivot, smoothing isolation, FLYING only, fallback, draw purity.');
+  console.log('Sprites PASS: RGBA/relative assets, 8fps/8 frames at 30/60/120/144Hz, fixed pivot, smoothing isolation, READY/AIM HD IDLE, FLYING only for flight sheets, fallback, draw purity.');
 }

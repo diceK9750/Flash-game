@@ -180,10 +180,12 @@ Hop.Graphics = {
     // Same foot anchor and rotation as the silhouette; physics stays untouched.
     // phaseTime shares the game's pause/hidden-tab handling (no wall-clock jump).
     // Stopped on the ground (FLYING or RESULT): STOP_RESULT. FLYING order: one-shot (priority
-    // table) -> FLIGHT_LOOP; RESULT without STOP_RESULT: frozen FLIGHT_LOOP. Else -> Canvas HERO.
+    // table) -> FLIGHT_LOOP; RESULT without STOP_RESULT: frozen FLIGHT_LOOP. READY / AIM: HD IDLE
+    // still when loaded. Else -> Canvas HERO. Feet at playerRadius; physics untouched.
     const drawLayer = layer => Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
     const spriteDrawn = !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
-      ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer));
+      ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer)) ||
+      (prelaunch && !!Hop.Sprites?.idleLayers?.().some(drawLayer));
     if (!spriteDrawn) this.character(ctx, "HERO", 0, c.playerRadius, 0.936);
     ctx.restore();
     if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }

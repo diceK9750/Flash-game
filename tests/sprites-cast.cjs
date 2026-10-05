@@ -18,8 +18,12 @@ if (process.argv.includes('--loader')) {
     const scope = { Hop: {}, Image, fetch: async url => { requested.push(url); if (mode === 'network') throw new Error('offline');
       return { ok: mode !== '404', json: async () => { if (mode === 'json') throw new SyntaxError('bad'); return meta(url); } }; } };
     // Hero URLs answer valid 8-frame hero metadata so the startup loads behave as in the game.
-    meta = url => url.includes('/cast/') ? still('BOOST', 'IDLE') : { id: 'HERO', animation: url.includes('aerial_up') ? 'AERIAL_UP' : url.includes('aerial_down') ? 'AERIAL_DOWN' : url.includes('hit') ? 'HIT' : url.includes('ground_bounce') ? 'GROUND_BOUNCE' : url.includes('stop_result') ? 'STOP_RESULT' : url.includes('special') ? 'SPECIAL_REACTION' : 'FLIGHT_LOOP',
-      frameWidth: 96, frameHeight: 96, frames: 8, fps: url.includes('flight_loop') ? 8 : 12, loop: url.includes('flight_loop'), pivot: { x: 48, y: 88 } };
+    meta = url => {
+      if (url.includes('/cast/')) return still('BOOST', 'IDLE');
+      if (url.includes('/idle/') || url.includes('hero_idle')) return { id: 'HERO', animation: 'IDLE', cellW: 288, cellH: 288, frames: 1, fps: 1, loop: false, pivot: { x: 144, y: 264 } };
+      return { id: 'HERO', animation: url.includes('aerial_up') ? 'AERIAL_UP' : url.includes('aerial_down') ? 'AERIAL_DOWN' : url.includes('hit') ? 'HIT' : url.includes('ground_bounce') ? 'GROUND_BOUNCE' : url.includes('stop_result') ? 'STOP_RESULT' : url.includes('special') ? 'SPECIAL_REACTION' : 'FLIGHT_LOOP',
+        frameWidth: 96, frameHeight: 96, frames: 8, fps: url.includes('flight_loop') ? 8 : 12, loop: url.includes('flight_loop'), pivot: { x: 48, y: 88 } };
+    };
     width = 768;
     vm.createContext(scope); vm.runInContext(code, scope);
     const s = scope.Hop.Sprites, C = s.definitions.CAST;
