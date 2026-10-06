@@ -16,7 +16,7 @@ if (!process.argv.includes('--serve')) {
     restitution: 0.67, bounceHorizontalRetention: 0.89, groundDeceleration: 155,
     settleBounceSpeed: 75, stopSpeed: 12, physicsStep: 1 / 120, maxFrameDelta: 0.1,
     aerialUpUses: 3, aerialUpImpulse: 800, aerialUpAngle: 45, aerialUpCancelFall: true,
-    aerialDownVertical: 760, aerialDownHorizontal: 35, aerialDownRechargeTime: 1.5,
+    aerialDownLockAngle: true, aerialDownMinAngleDeg: 30, aerialDownSpeedScale: 1, aerialDownRechargeTime: 1.5,
     maxHorizontalSpeed: 2000, maxVerticalSpeed: 1500,
     objectFirstMin: 400, objectFirstMax: 650, objectGapMin: 420, objectGapMax: 850,
     objectWidth: 54, objectHeight: 64, playerRadius: 18,

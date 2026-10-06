@@ -23,7 +23,11 @@ Hop.CONFIG = Object.freeze({
   // aerialUpCancelFall: a falling hero first loses its downward speed, so the kick always lifts (UP is only used
   // while falling). Merchant A / B do not apply (they act on companion contacts only).
   aerialUpUses: 3, aerialUpImpulse: 800, aerialUpAngle: 45, aerialUpCancelFall: true,
-  aerialDownVertical: 760, aerialDownHorizontal: 35, aerialDownRechargeTime: 1.5,
+  // AERIAL DOWN = reflect the current flight angle over the horizontal and lock that dive angle until
+  // ground or character contact (or UP / reset). aerialDownMinAngleDeg floors shallow ascents so the
+  // dive is still clearly stronger than the old -760/+35 kick; speed is kept (|v| * aerialDownSpeedScale).
+  aerialDownLockAngle: true, aerialDownMinAngleDeg: 30, aerialDownSpeedScale: 1,
+  aerialDownRechargeTime: 1.5,
   maxHorizontalSpeed: 2000, maxVerticalSpeed: 1500,
   effectDuration: 0.7, contactDuration: 1.4,
   objectFirstMin: 400, objectFirstMax: 650,
