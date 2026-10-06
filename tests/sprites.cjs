@@ -42,7 +42,11 @@ if (process.argv.includes('--loader')) {
     assert(fs.existsSync(path.join(root, ref)));
   }
   const png = fs.readFileSync(path.join(root, definition.src));
-  assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96);
+  // Shipped FLIGHT_LOOP is the HD comic sheet (8 x 288 cells); the draw checks below keep using the
+  // legacy 96 sheet metadata (still in flight_loop/) to cover the 96 code path.
+  assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288);
+  const shipped = JSON.parse(fs.readFileSync(path.join(root, definition.metadata)));
+  assert.equal(shipped.cellW, 288); assert.equal(shipped.frames, 8); assert.equal(shipped.pivot.x, 144); assert.equal(shipped.pivot.y, 264); assert.equal(shipped.loop, true);
   assert.equal(png[25], 6, 'RGBA PNG');
   const asset = { ready: true, image: { complete: true, naturalWidth: 768 }, data: metadata };
   const calls = [], stack = [];

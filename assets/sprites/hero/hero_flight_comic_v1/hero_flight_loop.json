@@ -1,0 +1,14 @@
+{
+  "id": "HERO",
+  "animation": "FLIGHT_LOOP",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 8,
+  "loop": true,
+  "pivot": { "x": 144, "y": 264 },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hero_comic_flight_r1a_hs_lean15.jpg",
+  "notes": "HD comic flight still (r1a, head shrunk x0.77 in PIL, rotated so the body leans ~15deg forward; the game adds the vy tilt). 頭身 5.04 measured along the body axis. Soft-alpha cyan cutout at grid 812/74 (body-axis length = idle height), lowest boot on the pivot, belt over the pivot x. 8 identical frames as a first pass (cape loop later). Previous 96 sheet kept in ../flight_loop/. Display only."
+}
