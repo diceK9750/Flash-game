@@ -111,10 +111,14 @@ const close = (a, b, label) => { for (const k of ['x0', 'x1', 'y0', 'y1']) asser
     const r = recorder(); s.draw(r.ctx, asset, 3.5 / 8, 0, 18, 1.25);
     assert.equal(r.calls[0].sx, 3 * 288); assert.equal(r.calls[0].sw, 288); assert(Math.abs(r.calls[0].dw - 120) < 1e-9);
   });
-  await test('shipped definitions unchanged (legacy 96 sheets, same scales)', () => {
+  await test('shipped definitions: same scales, legacy 96 cast stills except the HD comic ones', () => {
     for (const d of Object.values(s.definitions.HERO)) assert.equal(d.scale, 1.25);
     assert(Math.abs(s.definitions.CAST.SPECIAL_ONLY.IDLE.scale - 1.25 * 1.25 / 1.365) < 1e-12);
-    for (const slots of Object.values(s.castAssets)) for (const a of Object.values(slots)) if (a.ready) { assert.equal(a.data.unit, 1); assert.equal(a.data.smooth, false); }
+    // Cast: legacy 96 stills except the shipped HD comic ones (288 cell, unit 3, smoothing on).
+    const HD_CAST = ['BOOST.IDLE'];
+    for (const [id, slots] of Object.entries(s.castAssets)) for (const [name, a] of Object.entries(slots)) if (a.ready) {
+      const hd = HD_CAST.includes(id + '.' + name); assert.equal(a.data.unit, hd ? 3 : 1, id + '.' + name); assert.equal(a.data.smooth, hd, id + '.' + name);
+    }
   });
   console.log(JSON.stringify({ spritesHd: 'PASS', cases }));
 })().catch(e => { console.error(e); process.exitCode = 1; });

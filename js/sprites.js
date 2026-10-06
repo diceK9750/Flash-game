@@ -94,10 +94,13 @@ Hop.Sprites = {
     // character at most. A missing / broken pose-1 still falls back to IDLE. BOUNCE.KICK,
     // BOOST.USED, BRAKE.USED and ANGLE.USED have one.
     CAST: {
-      BOOST: { // 魔法使い (redesign r1 idle + used stills from the design sheet: enabled; idle staff on the viewer's right like the Canvas witch, used pose thrusts it toward the hero; not mirrored)
+      BOOST: { // 魔法使い (HD comic idle r1a + redesign r1 96 used still, held back for now; idle staff on the viewer's right like the Canvas witch, used pose thrusts it toward the hero; not mirrored)
         IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" },
-        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle_sheet_288x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle.json" },
+        // HD comic idle (288 cell; 96 r1 still kept in boost_witch/). The 96 USED still is held back
+        // (heldBack, files kept) until the HD used pose exists: switching from the HD idle to the 96 chibi
+        // still at contact changed size and style too much, so a used witch shows the HD idle at 35%.
+        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: false, heldBack: true,
           src: "assets/sprites/cast/boost_witch/boost_witch_used_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_used.json" }
       },
       BOUNCE: { // 武闘家 (redesign r1 idle + kick stills from the design sheet: enabled; the kick already points to the viewer's right like the Canvas pose, so not mirrored)
