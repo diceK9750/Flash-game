@@ -28,10 +28,11 @@ Hop.Sprites = {
       },
       // Normal ground bounce one-shot (merchant Type D BOUND BOOST excluded).
       // enabled:false = asset not delivered yet: never requested, so no 404 in the console.
-      // v1 bundle delivered: enabled. tests/sprites-ground-bounce.cjs enforces flag == files present.
+      // HD comic crouch delivered (288 cell; 96 v1 kept in hero_ground_bounce_v1_bundle/): enabled.
+      // tests/sprites-ground-bounce.cjs enforces flag == files present.
       GROUND_BOUNCE: {
-        src: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce.json",
+        src: "assets/sprites/hero/hero_ground_bounce_comic_v1/hero_ground_bounce_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_ground_bounce_comic_v1/hero_ground_bounce.json",
         animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: true,
         // Display tuning (no game effect). Detection happens after the rebound, so the JSON
         // "sequence" starts at the deepest squash. Tilt is suppressed while it plays and eases
