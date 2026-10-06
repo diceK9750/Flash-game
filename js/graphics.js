@@ -89,6 +89,7 @@ Hop.Graphics = {
     ctx.restore();
   },
   truck(ctx, x, ground) {
+    if (Hop.Sprites?.drawTruck?.(ctx, x, ground)) return; // HD truck still when loaded (display only), else the Canvas truck
     ctx.save(); ctx.translate(x, ground); ctx.scale(1.12, 1.12);
     ctx.fillStyle = "#faf3da"; ctx.fillRect(-110, -91, 91, 70);
     ctx.fillStyle = "#e79748"; ctx.fillRect(-17, -72, 48, 51);

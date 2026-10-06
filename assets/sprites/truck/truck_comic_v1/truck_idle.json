@@ -1,0 +1,17 @@
+{
+  "id": "TRUCK",
+  "animation": "IDLE",
+  "cellW": 576,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 352,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_truck_idle_r1b.jpg",
+  "notes": "HD comic launch truck (r1b: no ground line, detailed wheels, closer to the Canvas truck than r1a: length/height 1.65 vs 1.70 (Canvas 1.59), front wheel at 75% of the length vs 72% (Canvas 83%)). Side view facing right: cream box body, orange cab-over cab, light-blue glass, yellow headlight, grey bumper, two navy tyres with cream wheels. Sky-blue background (5,224,252) shifted to the standard cyan with the edges (fix_bg.py). Soft-alpha cyan cutout at grid 5.04 (mean of length 674/133.5 and height 410/81.5 source px per sprite px) into a 576x288 cell (hd_cutout.py --cell-w 576 --pivot-x 352 --pivot-y 264), tyre bottoms on y264; pivot x = the Canvas truck origin = front minus 37/149 of the length (src x 810.6). On screen (scale 1.25*96/288): 167 x 102 px (Canvas: 167 x 102 above the ground; its tyres dipped 3.4 px below the ground, not copied). The narrow background gap between the cab and the box repainted dark chassis grey (fix_cab_gap.py), left-over teal capped and the outer-edge fringe pulled back with the side window and windshield protected (despill_truck.py), so the glass stays light blue. Used for every state (READY / AIM_ANGLE / AIM_POWER / 0.5 s after launch); no IMPACT still. Display only: the truck has no hit box; positions and timing stay in graphics.js."
+}

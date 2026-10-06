@@ -142,6 +142,15 @@ Hop.Sprites = {
         IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: true,
           src: "assets/sprites/cast/merchant_comic_v1/merchant_idle_sheet_288x288.png", metadata: "assets/sprites/cast/merchant_comic_v1/merchant_idle.json" }
       }
+    },
+    // Launch truck (display only; there is no truck in game.js / physics.js, so no hit box changes). One HD comic still
+    // (r1b, side view facing right) for every state: READY / AIM_ANGLE / AIM_POWER / 0.5 s after launch; Graphics.draw
+    // keeps choosing the x as before. 576x288 cell, pivot (352,264) = the Canvas truck origin (translate x, ground);
+    // drawn scale 1.25*96/288 -> 167 x 102 px on screen, the same length and roof height as the Canvas truck.
+    // Missing / broken asset -> drawTruck returns false and Graphics.truck draws the Canvas truck.
+    TRUCK: {
+      IDLE: { id: "TRUCK", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, enabled: true,
+        src: "assets/sprites/truck/truck_comic_v1/truck_idle_sheet_576x288.png", metadata: "assets/sprites/truck/truck_comic_v1/truck_idle.json" }
     }
   },
   // visual.oneShot.animation -> loaded asset key.
@@ -248,6 +257,12 @@ Hop.Sprites = {
     const used = pose ? Object.keys(defs).find(n => defs[n].pose === 1 && slots[n]?.ready) : null;
     const name = used || "IDLE", asset = slots[name];
     return asset?.ready ? { name, asset, scale: defs[name].scale, flip: !!defs[name].flip } : null;
+  },
+  // Draw the truck still with its origin at (x, ground) (the Canvas truck's translate point); false -> Canvas truck.
+  drawTruck(ctx, x, ground) {
+    const def = this.definitions.TRUCK?.IDLE, asset = this.truckIdle;
+    if (!def || def.enabled === false || !asset?.ready) return false;
+    return this.draw(ctx, asset, 0, x, ground, def.scale);
   },
   // Draw a CAST still with its feet at (x, feet); false -> caller draws the Canvas figure.
   drawCast(ctx, id, x, feet, pose = 0) {
@@ -369,3 +384,7 @@ Hop.Sprites.castReady = Promise.all(Object.entries(Hop.Sprites.definitions.CAST)
     (Hop.Sprites.castAssets[id] ||= {})[name] = asset;
     return asset;
   }))));
+Hop.Sprites.truckReady = Hop.Sprites.load(Hop.Sprites.definitions.TRUCK.IDLE).then(asset => {
+  Hop.Sprites.truckIdle = asset;
+  return asset;
+});
