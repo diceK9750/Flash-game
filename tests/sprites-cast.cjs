@@ -6,7 +6,10 @@ const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
 const IDS = ['BOOST', 'BOUNCE', 'BRAKE', 'ANGLE', 'DASH', 'GUARD', 'STOPPER', 'SPECIAL_ONLY'];
 // Shipped HD comic cast stills (the 96 originals are kept next to them).
-const HD_CAST = { 'BOOST.IDLE': { dir: 'assets/sprites/cast/boost_witch_comic_v1/', legacy: ['assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png', 'assets/sprites/cast/boost_witch/boost_witch_idle.json'] } };
+const HD_CAST = {
+  'BOOST.IDLE': { dir: 'assets/sprites/cast/boost_witch_comic_v1/', w: 288, legacy: ['assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png', 'assets/sprites/cast/boost_witch/boost_witch_idle.json'] },
+  'BOOST.USED': { dir: 'assets/sprites/cast/boost_witch_comic_v1/', w: 384, legacy: ['assets/sprites/cast/boost_witch/boost_witch_used_sheet_96x96.png', 'assets/sprites/cast/boost_witch/boost_witch_used.json'] }
+};
 const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
 if (process.argv.includes('--loader')) {
@@ -75,20 +78,23 @@ if (process.argv.includes('--loader')) {
         assert(new URL(ref, 'https://example.test/Flash-game/').pathname.startsWith('/Flash-game/assets/sprites/cast/'));
       }
       const present = fs.existsSync(path.join(root, def.src)) && fs.existsSync(path.join(root, def.metadata));
-      // heldBack: files present but deliberately not loaded (BOOST USED 96 while the idle is HD; only that slot).
-      assert.equal(!!def.heldBack, id === 'BOOST' && name === 'USED', `${id}.${name}: heldBack only on the witch USED`);
-      if (def.heldBack) { assert(present, 'held-back files kept'); assert.equal(def.enabled, false, 'held back = not loaded'); }
+      // heldBack: files present but deliberately not loaded. Only for a legacy 96 used (pose 1) still whose
+      // IDLE is already HD (the used figure then shows the HD idle at 35% until its HD pose exists).
+      if (def.heldBack) {
+        assert(def.pose === 1 && HD_CAST[id + '.IDLE'] && !HD_CAST[id + '.' + name], `${id}.${name}: heldBack only on a 96 used still next to an HD idle`);
+        assert(present, 'held-back files kept'); assert.equal(def.enabled, false, 'held back = not loaded');
+      }
       else assert.equal(def.enabled !== false, present, `${id}.${name}: ` + (present ? 'bundle found: set enabled: true' : 'enabled but bundle missing'));
       if (present) {
         const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
         const hd = HD_CAST[id + '.' + name], png = fs.readFileSync(path.join(root, def.src));
         if (hd) {
-          // HD comic still: 288 cell (unit 3), pivot (144,264) = the 96 feet point, smoothing on.
+          // HD comic still: 288 high (unit 3), pivot (cellW/2,264) = the 96 feet point, smoothing on.
           assert(def.src.startsWith(hd.dir) && def.metadata.startsWith(hd.dir), id + ' HD dir');
           assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, smoothing: m.smoothing },
-            { id, animation: name, w: 288, h: 288, frames: 1, fps: 1, loop: false, pivot: { x: 144, y: 264 }, smoothing: true });
+            { id, animation: name, w: hd.w, h: 288, frames: 1, fps: 1, loop: false, pivot: { x: hd.w / 2, y: 264 }, smoothing: true });
           assert(s.normalizeCell({ ...m }), id + ' HD cell contract'); assert.equal(m.displayScale, def.scale);
-          assert.equal(png.readUInt32BE(16), 288); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+          assert.equal(png.readUInt32BE(16), hd.w); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
           for (const f of hd.legacy) assert(fs.existsSync(path.join(root, f)), 'legacy kept ' + f);
         } else {
           assert.deepEqual({ id: m.id, animation: m.animation, w: m.frameWidth, h: m.frameHeight, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot },

@@ -1,0 +1,17 @@
+{
+  "id": "BOOST",
+  "animation": "USED",
+  "cellW": 384,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 192,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_witch_use_r1a_hs.jpg",
+  "notes": "HD comic witch used pose (r1a; r1b rejected: head too small, 5.49): staff thrust to the upper left toward the hero, other hand open behind, wide stance, wink. Head and hat shrunk x0.96 about the chin with a smooth warp (no change below the chin or at the staff). 頭身 5.05 = estimated head top -> soles / head, hat excluded; head length = 2.53 x (chin - eye centre), the same estimate as the HD idle. Soft-alpha cyan cutout at grid 8.57 (head 126 / 14.74: on-screen head = HD idle = hero head) into a 384x288 cell (unit 3, wide pose), pivot (192,264), centre between the boots on the pivot x. Same facing as the old 96 USED (staff toward the viewer's left), not mirrored. Previous 96 still kept in ../boost_witch/. Display only."
+}
