@@ -1,0 +1,30 @@
+{
+  "id": "HERO",
+  "animation": "SPECIAL_REACTION",
+  "cellW": 384,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    7,
+    7
+  ],
+  "pivot": {
+    "x": 192,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "nextAnimation": "FLIGHT_LOOP",
+  "sourceImage": "hero_comic_special_reaction_r1b_hs.jpg",
+  "notes": "HD comic SPECIAL_REACTION sword-raise still (r1b; r1a rejected: three arms). Head shrunk x0.81 in PIL about the chin; cape hue +4deg. 頭身 4.96 by the hair->boot body axis / head (torso chin->belt / head 1.03 = 5.21 vs idle 0.99). Sword and shield hands are mirrored vs the idle (accepted for a 0.83 s one-shot). Soft-alpha cyan cutout at grid 9.02 (on-screen head = idle head) into a 384x288 cell (unit 3), lowest boot on pivot y, torso centre (src x 600) on pivot x. 8 identical frames; sequence/fps/next kept from v1 so stillTime 7.5/12 and suppressTilt still match. Previous 96 sheet kept in ../hero_special_reaction_v1_bundle/. Display only."
+}

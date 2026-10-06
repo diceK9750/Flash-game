@@ -4,7 +4,10 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
+// Legacy 96 bundle (kept) drives the mock loader/draw checks; the shipped HD comic bundle is
+// checked in the asset block below.
 const dir = 'assets/sprites/hero/hero_special_reaction_v1_bundle/';
+const hdDir = 'assets/sprites/hero/hero_special_reaction_comic_v1/';
 const meta = (animation, extra) => ({ id: 'HERO', animation, frameWidth: 96, frameHeight: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 }, ...extra });
 const mockMeta = meta('SPECIAL_REACTION');
 if (process.argv.includes('--loader')) {
@@ -48,11 +51,11 @@ if (process.argv.includes('--loader')) {
   const { scope, launch, element } = require('./phase2.cjs');
   const s = scope.Hop.Sprites, H = s.definitions.HERO, def = H.SPECIAL_REACTION, c = scope.Hop.CONFIG, ST = scope.Hop.STATES;
   for (const ref of [def.src, def.metadata]) {
-    assert(!/^(?:\/|[a-z]+:)/i.test(ref)); assert(ref.startsWith(dir));
-    assert(new URL(ref, 'https://example.test/Flash-game/').pathname.startsWith('/Flash-game/' + dir));
+    assert(!/^(?:\/|[a-z]+:)/i.test(ref)); assert(ref.startsWith(hdDir));
+    assert(new URL(ref, 'https://example.test/Flash-game/').pathname.startsWith('/Flash-game/' + hdDir));
   }
-  assert.equal(def.src, dir + 'hero_special_reaction_sheet_96x96.png');
-  assert.equal(def.metadata, dir + 'hero_special_reaction.json');
+  assert.equal(def.src, hdDir + 'hero_special_reaction_sheet_384x288.png');
+  assert.equal(def.metadata, hdDir + 'hero_special_reaction.json');
   assert.deepEqual([def.animation, def.fps, def.loop, def.scale], ['SPECIAL_REACTION', 12, false, 1.25]);
   assert.equal(def.suppressTilt, true); assert.equal(def.tiltEase, 0.12);
   assert.equal(def.stillTime, 7.5 / 12);
@@ -61,11 +64,19 @@ if (process.argv.includes('--loader')) {
     ? 'SPECIAL_REACTION bundle found: set enabled: true in js/sprites.js'
     : 'SPECIAL_REACTION enabled but bundle missing: add the files or set enabled: false');
   if (present) {
+    // Shipped: HD comic still, 8 identical 384x288 cells (unit 3), pivot 192,264, same sequence/fps.
     const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
-    assert.deepEqual({ id: m.id, animation: m.animation, w: m.frameWidth, h: m.frameHeight, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot },
-      { id: 'HERO', animation: 'SPECIAL_REACTION', w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 } });
+    assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, next: m.nextAnimation, smoothing: m.smoothing },
+      { id: 'HERO', animation: 'SPECIAL_REACTION', w: 384, h: 288, frames: 8, fps: 12, loop: false, pivot: { x: 192, y: 264 }, next: 'FLIGHT_LOOP', smoothing: true });
+    assert(s.normalizeCell({ ...m }), 'HD cell contract'); assert.equal(m.displayScale, def.scale);
     const png = fs.readFileSync(path.join(root, def.src));
-    assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96); assert.equal(png[25], 6, 'RGBA PNG');
+    assert.equal(png.readUInt32BE(16), 384 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    // Legacy 96 bundle still present and valid (used by the mock checks).
+    const lm = JSON.parse(fs.readFileSync(path.join(root, dir, 'hero_special_reaction.json')));
+    assert.deepEqual({ id: lm.id, animation: lm.animation, w: lm.frameWidth, h: lm.frameHeight, frames: lm.frames, fps: lm.fps, loop: lm.loop, pivot: lm.pivot, seq: lm.sequence },
+      { id: 'HERO', animation: 'SPECIAL_REACTION', w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 }, seq: [0, 1, 2, 3, 4, 5, 6, 7, 7, 7] });
+    const lpng = fs.readFileSync(path.join(root, dir, 'hero_special_reaction_sheet_96x96.png'));
+    assert.equal(lpng.readUInt32BE(16), 768); assert.equal(lpng.readUInt32BE(20), 96); assert.equal(lpng[25], 6, 'RGBA PNG');
     // v1: every sheet frame once, proud hold (sheet 7) for 3 steps (0.833 s); reduced motion = sheet 7.
     assert.deepEqual([...m.sequence], [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]); assert.equal(s.duration(m), 10 / 12);
     assert.equal(s.frameAt(m, def.stillTime), 7);

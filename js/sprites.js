@@ -60,9 +60,11 @@ Hop.Sprites = {
       // never cut it; it replaces them. Also played for a MERCHANT SPECIAL success. suppressTilt with
       // tiltIn: the vy tilt eases out over 0.12 s at the start instead of snapping upright.
       // Reduced motion shows one representative frame (stillTime -> sheet 7, the proud hold).
+      // HD comic sword-raise still (8 identical 384x288 cells, same sequence/fps); the 96 v1 bundle
+      // is kept in hero_special_reaction_v1_bundle/.
       SPECIAL_REACTION: {
-        src: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction.json",
+        src: "assets/sprites/hero/hero_special_reaction_comic_v1/hero_special_reaction_sheet_384x288.png",
+        metadata: "assets/sprites/hero/hero_special_reaction_comic_v1/hero_special_reaction.json",
         animation: "SPECIAL_REACTION", fps: 12, loop: false, scale: 1.25, enabled: true,
         suppressTilt: true, tiltEase: 0.12, tiltIn: 0.12, stillTime: 7.5 / 12
       },
