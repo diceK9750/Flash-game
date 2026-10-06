@@ -8,7 +8,8 @@ const IDS = ['BOOST', 'BOUNCE', 'BRAKE', 'ANGLE', 'DASH', 'GUARD', 'STOPPER', 'S
 // Shipped HD comic cast stills (the 96 originals are kept next to them).
 const HD_CAST = {
   'BOOST.IDLE': { dir: 'assets/sprites/cast/boost_witch_comic_v1/', w: 288, legacy: ['assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png', 'assets/sprites/cast/boost_witch/boost_witch_idle.json'] },
-  'BOOST.USED': { dir: 'assets/sprites/cast/boost_witch_comic_v1/', w: 384, legacy: ['assets/sprites/cast/boost_witch/boost_witch_used_sheet_96x96.png', 'assets/sprites/cast/boost_witch/boost_witch_used.json'] }
+  'BOOST.USED': { dir: 'assets/sprites/cast/boost_witch_comic_v1/', w: 384, legacy: ['assets/sprites/cast/boost_witch/boost_witch_used_sheet_96x96.png', 'assets/sprites/cast/boost_witch/boost_witch_used.json'] },
+  'BOUNCE.IDLE': { dir: 'assets/sprites/cast/bounce_fighter_comic_v1/', w: 288, legacy: ['assets/sprites/cast/bounce_fighter/bounce_fighter_idle_sheet_96x96.png', 'assets/sprites/cast/bounce_fighter/bounce_fighter_idle.json'] }
 };
 const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
