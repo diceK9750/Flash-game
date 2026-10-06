@@ -115,7 +115,7 @@ const close = (a, b, label) => { for (const k of ['x0', 'x1', 'y0', 'y1']) asser
     for (const d of Object.values(s.definitions.HERO)) assert.equal(d.scale, 1.25);
     assert(Math.abs(s.definitions.CAST.SPECIAL_ONLY.IDLE.scale - 1.25 * 1.25 / 1.365) < 1e-12);
     // Cast: legacy 96 stills except the shipped HD comic ones (288 cell, unit 3, smoothing on).
-    const HD_CAST = ['BOOST.IDLE', 'BOOST.USED', 'BOUNCE.IDLE'];
+    const HD_CAST = ['BOOST.IDLE', 'BOOST.USED', 'BOUNCE.IDLE', 'BOUNCE.KICK'];
     for (const [id, slots] of Object.entries(s.castAssets)) for (const [name, a] of Object.entries(slots)) if (a.ready) {
       const hd = HD_CAST.includes(id + '.' + name); assert.equal(a.data.unit, hd ? 3 : 1, id + '.' + name); assert.equal(a.data.smooth, hd, id + '.' + name);
     }

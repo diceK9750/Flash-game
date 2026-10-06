@@ -102,14 +102,13 @@ Hop.Sprites = {
         USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
           src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used_sheet_384x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used.json" }
       },
-      BOUNCE: { // 武闘家 (HD comic idle r1b + redesign r1 96 kick still, held back for now; the kick already points to the viewer's right like the Canvas pose, so not mirrored)
+      BOUNCE: { // 武闘家 (HD comic idle r1b + kick r1a; the kick points to the viewer's right like the Canvas pose, so not mirrored)
         IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_idle_sheet_288x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_idle.json" },
-        // HD comic idle (288 cell; 96 r1 still kept in bounce_fighter/). The 96 KICK is held back (heldBack,
-        // files kept) until the HD kick exists, so a used fighter shows the HD idle at 35% instead of
-        // jumping to the 96 chibi still.
-        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: false, heldBack: true,
-          src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
+        // HD comic idle (288 cell) and kick (384x288 cell for the high kick, standing foot on the pivot x);
+        // the 96 r1 stills are kept in bounce_fighter/.
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick_sheet_384x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick.json" }
       },
       BRAKE: { // 盗賊 (redesign r2 idle + r1 used stills from the design sheet: enabled; idle hook already on the viewer's right like the Canvas thief, used pose casts it toward the hero; not mirrored)
         IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
