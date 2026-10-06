@@ -1,0 +1,17 @@
+{
+  "id": "ANGLE",
+  "animation": "USED",
+  "cellW": 384,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 192,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_jester_used_r1a_hs.jpg",
+  "notes": "HD comic jester used pose (r1a: swings the cane up to the upper left to flip the hero's flight angle upward, other hand open, standing on the viewer's-left leg with the other lower leg bent back, wink and tongue; r1b rejected: head ~30% too big, 4.09 heads, knee raised forward, bell-like hat balls). Near-cyan background (4,225,253) shifted to the standard cyan first (fix_bg.py). The candidate drew two chest buttons: the old buttons were erased by interpolating along the slanted stripes and the top button was pasted three times (diameter 22 px) evenly between the ruff and the belt (buttons3.py). Then head and hat shrunk x0.845 about the chin with a smooth warp (no change below the chin): 頭身 5.02 from the estimate (head = 2.53 x (chin - eye centre); hat not counted), torso / head (chin to belt centre) 1.22 = the HD idle. Soft-alpha cyan cutout at grid 8.49 (head 125 / 14.74: on-screen head = HD idle head = hero head) into a 384x288 cell, pivot (192,264), standing boot centre (src x574) on the pivot x; teal fringe capped to grey while keeping the blue nose and cane (despill_cell.py). 77 sprite px incl. the hat. Not mirrored. Previous 96 still kept in ../angle_jester/. Display only."
+}
