@@ -4,7 +4,7 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
-const dir = 'assets/sprites/hero/hero_stop_result_v1_bundle/';
+const dir = 'assets/sprites/hero/hero_stop_result_comic_v1/';
 const SEQ = [0, 0, 1, 2, 3, 3, 4, 5, 6, 7];
 const mockMeta = { id: 'HERO', animation: 'STOP_RESULT', frameWidth: 96, frameHeight: 96, frames: 8, fps: 12, loop: false, sequence: SEQ, pivot: { x: 48, y: 88 }, displayScale: 1.25 };
 if (process.argv.includes('--loader')) {
@@ -50,10 +50,13 @@ if (process.argv.includes('--loader')) {
   assert.equal(def.enabled !== false, present, 'STOP_RESULT flag must match the bundle files');
   if (present) {
     const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
-    assert.deepEqual({ id: m.id, animation: m.animation, w: m.frameWidth, h: m.frameHeight, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, sequence: m.sequence },
-      { id: 'HERO', animation: 'STOP_RESULT', w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 }, sequence: SEQ });
+    // HD comic sheet: 8 identical 384 cells; pivot y 372 (not the default 352) leaves headroom for
+    // the raised sword. v1 sequence/fps/hold kept.
+    assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, sequence: m.sequence, next: m.nextAnimation, smoothing: m.smoothing },
+      { id: 'HERO', animation: 'STOP_RESULT', w: 384, h: 384, frames: 8, fps: 12, loop: false, pivot: { x: 192, y: 372 }, sequence: SEQ, next: 'HOLD_LAST_FRAME', smoothing: true });
+    assert.equal(def.src, dir + 'hero_stop_result_sheet_384x384.png'); assert(s.normalizeCell({ ...m }), 'HD cell contract');
     const png = fs.readFileSync(path.join(root, def.src));
-    assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96); assert.equal(png[25], 6, 'RGBA PNG');
+    assert.equal(png.readUInt32BE(16), 384 * 8); assert.equal(png.readUInt32BE(20), 384); assert.equal(png[25], 6, 'RGBA PNG');
   }
   const fake = data => ({ ready: true, image: { complete: true, naturalWidth: 768 }, data });
   const loopMeta = JSON.parse(fs.readFileSync(path.join(root, 'assets/sprites/hero/flight_loop/hero_flight_loop.json')));

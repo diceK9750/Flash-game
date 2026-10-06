@@ -1,0 +1,30 @@
+{
+  "id": "HERO",
+  "animation": "STOP_RESULT",
+  "cellW": 384,
+  "cellH": 384,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "sequence": [
+    0,
+    0,
+    1,
+    2,
+    3,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "pivot": {
+    "x": 192,
+    "y": 372
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "nextAnimation": "HOLD_LAST_FRAME",
+  "sourceImage": "hero_comic_stop_result_r1a_hs.jpg",
+  "notes": "HD comic victory pose still (r1a, head shrunk x0.79 in PIL about the chin, cape hue +9deg to the idle magenta). 頭身 5.04 (hair->sole / head, sword excluded). Soft-alpha cyan cutout at grid 7.70 (= hair->sole 570 / 74, same sprite height and head as the idle) into a 384 cell (unit 4). Pivot y 372 instead of the default 352 so the raised sword fits (headroom 93 sprite px; soles on the pivot). 8 identical frames; sequence/fps kept from v1 (0.83 s, then the last frame is held in RESULT). Previous 96 sheet kept in ../hero_stop_result_v1_bundle/. Display only."
+}

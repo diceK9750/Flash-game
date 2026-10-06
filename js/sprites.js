@@ -68,8 +68,10 @@ Hop.Sprites = {
       // or RESULT), then the last frame is held until RETRY. Same flag pattern as GROUND_BOUNCE.
       // A stop above the ground (STOPPER contact in mid-air) keeps the previous drawing.
       STOP_RESULT: {
-        src: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result.json",
+        // HD comic victory pose (384 cell, pivot 192,372 for the raised sword); 96 v1 kept in
+        // hero_stop_result_v1_bundle/.
+        src: "assets/sprites/hero/hero_stop_result_comic_v1/hero_stop_result_sheet_384x384.png",
+        metadata: "assets/sprites/hero/hero_stop_result_comic_v1/hero_stop_result.json",
         animation: "STOP_RESULT", fps: 12, loop: false, scale: 1.25, enabled: true, maxGroundY: 0.5,
         // RESULT overlay (display only): transparent while STOP_RESULT plays, then fades in over
         // overlayFade s. Only when the animation really plays; input/RETRY timing is unchanged.
