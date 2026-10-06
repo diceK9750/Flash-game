@@ -130,9 +130,9 @@ Hop.Sprites = {
         IDLE: { id: "DASH", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle_sheet_288x288.png", metadata: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle.json" }
       },
-      GUARD: { // 賢者 (redesign r1 still from the design sheet, no hat: enabled, mirrored: staff on the viewer's right, book on the left like the Canvas sage)
+      GUARD: { // 賢者 (HD comic idle r1b, no hat by design, drawn like sage_r1b with the staff on the viewer's left; mirrored: staff on the viewer's right, book on the left like the Canvas sage; the 96 r1 still is kept in guard_sage/)
         IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
-          src: "assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png", metadata: "assets/sprites/cast/guard_sage/guard_sage_idle.json" }
+          src: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle.json" }
       },
       STOPPER: { // 僧侶 (redesign r3 still from the design sheet: enabled; staff on the viewer's right like the Canvas cleric, so not mirrored)
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,

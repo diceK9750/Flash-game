@@ -1,0 +1,17 @@
+{
+  "id": "GUARD",
+  "animation": "IDLE",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_sage_idle_r1b_hl.jpg",
+  "notes": "HD comic sage idle (r1b: blue cape with a gold border and gold ornaments like the design sheet; r1a rejected: plain cape border, 7.03 heads). Both candidates had small heads (r1a 7.03, r1b 6.97 heads: estimate 7.15 / measured 6.78); a head-only enlargement of about x1.45 would look wrong, so: slightly sky-blue background (4,217,251) shifted to the standard cyan with the edges (fix_bg.py) -> body below the neck squashed vertically x0.87 with a 40 px smooth ramp from 10 px under the chin (soles fixed, width unchanged; squash.py) -> head and hair enlarged x1.29 about the chin with a smooth warp (warp_head.py; the staff is outside the warped band). 頭身 5.03 = mean of the estimate 5.18 (head = 2.53 x (chin - eye centre), the hero idle ratio) and the measured hair top 4.88; long hair and the staff orb not counted; no hat by design. Soft-alpha cyan cutout at grid 8.48 (head 125.0 / 14.74: on-screen head = hero head) into a 288 cell, pivot (144,264), centre between the boots (src x603) on the pivot x; left-over teal capped to grey with the filter that keeps true blues (despill_cell.py), then the sky-blue fringe on the outer edge of the lavender hair (within 2 px of transparency, bright and green-heavy only) pulled back to lavender (despill_edge.py); the blue cape, eyes and orb are kept. 76 sprite px incl. the staff orb (old 96 still: 85). Drawn like sage_r1b with the staff on the viewer's left and the book on the right; the manifest keeps flip:true so in game the staff is on the viewer's right and the book on the left like the Canvas sage (the book cross is symmetric). Height 100% of the hero idle at the same head size. Previous 96 still kept in ../guard_sage/. Display only."
+}
