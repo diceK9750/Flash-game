@@ -1,0 +1,17 @@
+{
+  "id": "DASH",
+  "animation": "IDLE",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_warrior_idle_r1b_hl.jpg",
+  "notes": "HD comic warrior idle (r1b: near-cyan background, shield emblem symmetric about the vertical axis so it reads the same when mirrored; r1a rejected: sky-blue background, radial emblem, 6.04 heads). Both candidates had small heads (r1a 6.04, r1b 6.25 heads); a head-only x1.29 would thin the neck, so: background (13,236,246) shifted to the standard cyan with the edges (fix_bg.py) -> body below the neck squashed vertically x0.94 with a 40 px smooth ramp from just under the chin (soles fixed, width unchanged; squash.py) -> head, helmet and wings enlarged x1.22 about the chin with a smooth warp (warp_head.py). 頭身 5.06 from the estimate (head = 2.53 x (chin - eye centre), the hero idle ratio; the winged helmet hides the head top and is not counted; helmet thickness about 10 px consistent). Soft-alpha cyan cutout at grid 8.74 (head 128.8 / 14.74: on-screen head = hero head) into a 288 cell, pivot (144,264), centre between the boots (src x618) on the pivot x; left-over teal fringe capped to grey (despill_cell.py). Drawn with the sword on the viewer's left and the shield on the right like the design sheet; the manifest keeps flip:true so in game the sword is on the viewer's right and the shield on the left like the Canvas warrior. Height 101% of the hero idle at the same head size. Previous 96 still kept in ../dash_warrior/. Display only."
+}
