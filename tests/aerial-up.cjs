@@ -1,5 +1,5 @@
 // AERIAL UP strength: a BOOST-strength kick (same impulse / angle as a BOOST contact). A falling hero first loses its
-// downward speed, so the kick always lifts. Uses (3), AERIAL DOWN, the speed caps and merchant effects are unchanged;
+// downward speed, so the kick always lifts. Uses (3), the speed caps and merchant effects are unchanged; AERIAL DOWN is the reflection-lock dive;
 // merchant A / B do not apply to AERIAL UP (they act on companion contacts).
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -22,7 +22,8 @@ let cases = 0;
 // Config: the BOOST values, 3 uses, no hard-coded numbers left from the old 620 / 85 kick.
 assert.deepEqual([c.aerialUpUses, c.aerialUpImpulse, c.aerialUpAngle, c.aerialUpCancelFall], [3, c.boostImpulse, c.boostAngle, true]);
 assert.equal(c.aerialUpVertical, undefined); assert.equal(c.aerialUpHorizontal, undefined);
-assert.deepEqual([c.aerialDownVertical, c.aerialDownHorizontal, c.maxHorizontalSpeed, c.maxVerticalSpeed, c.boostImpulse, c.boostAngle], [760, 35, 2000, 1500, 800, 45]);
+assert.deepEqual([c.aerialDownLockAngle, c.aerialDownMinAngleDeg, c.aerialDownSpeedScale, c.maxHorizontalSpeed, c.maxVerticalSpeed, c.boostImpulse, c.boostAngle], [true, 30, 1, 2000, 1500, 800, 45]);
+assert.equal(c.aerialDownVertical, undefined); assert.equal(c.aerialDownHorizontal, undefined);
 const src = fs.readFileSync(path.join(root, 'js/game.js'), 'utf8'), up = src.slice(src.indexOf('if (direction === "UP")'), src.indexOf('} else if (direction === "DOWN")'));
 assert(!/\b\d{2,}\b/.test(up.replace(/180/g, '')), 'no literal strengths in aerial("UP")'); cases++;
 // Falling: downward speed cancelled, then +boost on both axes; mode flips to DOWN (rising).
@@ -45,8 +46,12 @@ assert(!/\b\d{2,}\b/.test(up.replace(/180/g, '')), 'no literal strengths in aeri
   const s = flying({}); s.special = { type: 'BOOST' }; assert.equal(s.aerial('UP'), false);
   const t = flying({}); t.merchant = { type: 'C' }; assert.equal(t.aerial('UP'), false);
   const gr = flying({ y: 0, grounded: true, vy: 0 }); assert.equal(gr.aerial('UP'), false); cases++; }
-// AERIAL DOWN unchanged.
-{ const g = flying({ vy: 300 }); g.updateAerialMode(); assert.equal(g.aerial('DOWN'), true); near(g.body.vy, 300 - 760, 'down vy'); near(g.body.vx, 600 + 35, 'down vx'); cases++; }
+// AERIAL DOWN: reflection + angle lock (see aerial-down.cjs); still arms BRAKE.
+{ const g = flying({ vy: 300 }); g.updateAerialMode(); assert.equal(g.aerial('DOWN'), true);
+  // Reflection of atan2(300,600) is below the 30° floor, so dive is -30° at the same |v|.
+  const sp = Math.hypot(600, 300), ang = -30 * Math.PI / 180;
+  near(g.body.vx, sp * Math.cos(ang), 'down vx'); near(g.body.vy, sp * Math.sin(ang), 'down vy');
+  assert.equal(g.aerialDownLock, ang); assert(g.specialArmed.brake); cases++; }
 // Merchant A / B: not applied to AERIAL UP and not consumed / charged by it; BOOST contacts still use them.
 { const a = flying({ vy: -400 }); a.merchant = { type: 'A', remaining: 3 }; a.aerial('UP');
   near(a.body.vx, 600 + kx, 'A not doubled'); near(a.body.vy, ky, 'A not doubled vy'); assert.deepEqual(a.merchant, { type: 'A', remaining: 3 });

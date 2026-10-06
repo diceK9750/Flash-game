@@ -18,7 +18,7 @@ Hop.Game = class {
     this.normalGuard = 0; this.guardSpecial = { active: false, remaining: 0 };
     this.special = null; this.specialMessage = null;
     this.specialArmed = { dash: false, stopper: false, brake: false };
-    this.aerialMode = "DOWN"; this.successVisual = null; this.soundEvent = null;
+    this.aerialMode = "DOWN"; this.aerialDownLock = null; this.successVisual = null; this.soundEvent = null;
     this.merchant = null; this.merchantVisual = null;
     this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
@@ -75,6 +75,18 @@ Hop.Game = class {
     b.vy = Math.max(-c.maxVerticalSpeed, Math.min(c.maxVerticalSpeed, b.vy));
     this.maxSpeed = Math.max(this.maxSpeed, Math.hypot(b.vx, b.vy));
   }
+  clearAerialDownLock() { this.aerialDownLock = null; }
+  // Re-project velocity onto the locked dive angle after gravity / drag, without exceeding the speed caps.
+  applyAerialDownLock() {
+    if (this.aerialDownLock == null || !Hop.CONFIG.aerialDownLockAngle) return;
+    const c = Hop.CONFIG, b = this.body, ang = this.aerialDownLock;
+    const cos = Math.cos(ang), sin = Math.sin(ang);
+    let speed = Math.hypot(b.vx, b.vy);
+    if (cos > 1e-9) speed = Math.min(speed, c.maxHorizontalSpeed / cos);
+    else if (cos < -1e-9) speed = 0;
+    if (Math.abs(sin) > 1e-9) speed = Math.min(speed, c.maxVerticalSpeed / Math.abs(sin));
+    b.vx = speed * cos; b.vy = speed * sin;
+  }
   aerial(direction) {
     if (this.special || this.merchant?.type === "C" || !this.airborne()) return false;
     const c = Hop.CONFIG;
@@ -82,6 +94,7 @@ Hop.Game = class {
       if (this.upRemaining <= 0) return false;
       this.upRemaining--;
       this.specialArmed.brake = false;
+      this.clearAerialDownLock();
       // BOOST-strength kick (same impulse / angle as a BOOST contact); a falling hero first stops falling.
       const angle = c.aerialUpAngle * Math.PI / 180;
       if (c.aerialUpCancelFall) this.body.vy = Math.max(0, this.body.vy);
@@ -90,9 +103,17 @@ Hop.Game = class {
       if (this.downCharge < 1) return false;
       this.downCharge = 0;
       this.specialArmed.brake = true;
-      this.body.vy -= c.aerialDownVertical; this.body.vx += c.aerialDownHorizontal;
+      // Reflect the flight angle over the horizontal (ascent +θ → descent −θ), floor shallow dives, keep |v|.
+      const b = this.body;
+      let ang = -Math.atan2(b.vy, b.vx);
+      const minAng = -(c.aerialDownMinAngleDeg * Math.PI / 180);
+      if (ang > minAng) ang = minAng;
+      const speed = Math.hypot(b.vx, b.vy) * c.aerialDownSpeedScale;
+      b.vx = speed * Math.cos(ang); b.vy = speed * Math.sin(ang);
+      this.aerialDownLock = c.aerialDownLockAngle ? ang : null;
     } else return false;
     this.limitSpeed();
+    if (direction === "DOWN") this.applyAerialDownLock();
     this.updateAerialMode();
     this.effect = { label: `AERIAL ${direction}`, remaining: c.effectDuration };
     return true;
@@ -147,6 +168,7 @@ Hop.Game = class {
     for (const object of this.objects) {
       if (object.used || !this.touches(object, previous)) continue;
       object.used = true; // Single use per run, including a later re-entry.
+      this.clearAerialDownLock();
       this.counts[object.type]++;
       const entry = { type: object.type, label: object.type };
       this.history.push(entry);
@@ -254,6 +276,7 @@ Hop.Game = class {
     return true;
   }
   groundImpact(impact) {
+    this.clearAerialDownLock();
     this.specialArmed.stopper = false;
     this.specialArmed.brake = false;
     if (this.merchant?.type !== "D") return;
@@ -370,6 +393,7 @@ Hop.Game = class {
       else {
         const impact = Hop.Physics.step(this.body, c.physicsStep);
         if (impact) this.groundImpact(impact);
+        else this.applyAerialDownLock();
         this.contactObjects(previous);
       }
       this.accumulator -= c.physicsStep;
