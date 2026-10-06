@@ -16,14 +16,16 @@ Hop.Sprites = {
         animation: "FLIGHT_LOOP", fps: 8, loop: true, scale: 1.25
       },
       // One-shot poses shown after a successful AERIAL, then FLIGHT_LOOP resumes.
+      // HD comic stills (8 identical cells, 288 high; DOWN uses a 384-wide cell for the dive).
+      // The 96 v1 bundles are kept in hero_aerial_{up,down}_v1_bundle/.
       AERIAL_UP: {
-        src: "assets/sprites/hero/hero_aerial_up_v1_bundle/hero_aerial_up_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_aerial_up_v1_bundle/hero_aerial_up.json",
+        src: "assets/sprites/hero/hero_aerial_up_comic_v1/hero_aerial_up_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_aerial_up_comic_v1/hero_aerial_up.json",
         animation: "AERIAL_UP", fps: 12, loop: false, scale: 1.25
       },
       AERIAL_DOWN: {
-        src: "assets/sprites/hero/hero_aerial_down_v1_bundle/hero_aerial_down_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_aerial_down_v1_bundle/hero_aerial_down.json",
+        src: "assets/sprites/hero/hero_aerial_down_comic_v1/hero_aerial_down_sheet_384x288.png",
+        metadata: "assets/sprites/hero/hero_aerial_down_comic_v1/hero_aerial_down.json",
         animation: "AERIAL_DOWN", fps: 12, loop: false, scale: 1.25
       },
       // Normal ground bounce one-shot (merchant Type D BOUND BOOST excluded).

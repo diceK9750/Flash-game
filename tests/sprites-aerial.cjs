@@ -3,7 +3,10 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
+// Legacy 96 bundles (kept) drive the mock loader/draw behaviour checks; the shipped HD comic
+// bundles are checked in the asset block below.
 const dirs = { UP: 'assets/sprites/hero/hero_aerial_up_v1_bundle/', DOWN: 'assets/sprites/hero/hero_aerial_down_v1_bundle/' };
+const hd = { UP: { dir: 'assets/sprites/hero/hero_aerial_up_comic_v1/', w: 288 }, DOWN: { dir: 'assets/sprites/hero/hero_aerial_down_comic_v1/', w: 384 } };
 const meta = {
   UP: JSON.parse(fs.readFileSync(path.join(root, dirs.UP, 'hero_aerial_up.json'))),
   DOWN: JSON.parse(fs.readFileSync(path.join(root, dirs.DOWN, 'hero_aerial_down.json'))),
@@ -50,15 +53,24 @@ if (process.argv.includes('--loader')) {
   assert.equal(child.status, 0, child.stderr); process.stdout.write(child.stdout);
   const { scope, launch, element } = require('./phase2.cjs');
   const s = scope.Hop.Sprites, H = s.definitions.HERO, c = scope.Hop.CONFIG;
-  // Assets: relative, present, RGBA 768x96 sheets, metadata matches the spec.
+  // Assets: relative, present; shipped = HD comic sheets (8 identical cells, 288 high; DOWN is a
+  // 384-wide cell for the dive), legacy 96 sheets still valid for the mock checks.
   for (const dir of ['UP', 'DOWN']) {
-    const def = H['AERIAL_' + dir], m = meta[dir];
+    const def = H['AERIAL_' + dir], m = meta[dir], name = 'hero_aerial_' + dir.toLowerCase();
+    assert.equal(def.src, hd[dir].dir + name + '_sheet_' + hd[dir].w + 'x288.png'); assert.equal(def.metadata, hd[dir].dir + name + '.json');
+    const hm = JSON.parse(fs.readFileSync(path.join(root, def.metadata))), hpng = fs.readFileSync(path.join(root, def.src));
+    assert.deepEqual({ id: hm.id, animation: hm.animation, w: hm.cellW, h: hm.cellH, frames: hm.frames, fps: hm.fps, loop: hm.loop, pivot: hm.pivot, next: hm.nextAnimation, smoothing: hm.smoothing },
+      { id: 'HERO', animation: 'AERIAL_' + dir, w: hd[dir].w, h: 288, frames: 8, fps: 12, loop: false, pivot: { x: hd[dir].w / 2, y: 264 }, next: 'FLIGHT_LOOP', smoothing: true });
+    assert.equal(hpng.readUInt32BE(16), hd[dir].w * 8); assert.equal(hpng.readUInt32BE(20), 288); assert.equal(hpng[25], 6, 'RGBA PNG');
+    assert(s.normalizeCell({ ...hm }), 'HD cell contract ' + dir); assert.equal(hm.displayScale, def.scale);
+    const lsrc = dirs[dir] + name + '_sheet_96x96.png';
+    assert(fs.existsSync(path.join(root, lsrc)), 'legacy kept ' + lsrc);
     for (const ref of [def.src, def.metadata]) {
       assert(!/^(?:\/|[a-z]+:)/i.test(ref), 'relative ' + ref);
       assert(new URL(ref, 'https://example.test/Flash-game/').pathname.startsWith('/Flash-game/assets/sprites/hero/'));
       assert(fs.existsSync(path.join(root, ref)), 'exists ' + ref);
     }
-    const png = fs.readFileSync(path.join(root, def.src));
+    const png = fs.readFileSync(path.join(root, lsrc));
     assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96); assert.equal(png[25], 6, 'RGBA PNG');
     assert.deepEqual({ id: m.id, animation: m.animation, w: m.frameWidth, h: m.frameHeight, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot },
       { id: 'HERO', animation: 'AERIAL_' + dir, w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 } });
