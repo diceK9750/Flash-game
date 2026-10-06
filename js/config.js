@@ -19,7 +19,10 @@ Hop.CONFIG = Object.freeze({
   maxFrameDelta: 0.1, // discard long background gaps; never teleport
   cameraAnchorX: 420, cameraFollowRate: 7,
   markerMeters: 50, trailLength: 22,
-  aerialUpUses: 3, aerialUpVertical: 620, aerialUpHorizontal: 85,
+  // AERIAL UP = a BOOST-strength kick: the same impulse and angle as a BOOST contact (boostImpulse / boostAngle below).
+  // aerialUpCancelFall: a falling hero first loses its downward speed, so the kick always lifts (UP is only used
+  // while falling). Merchant A / B do not apply (they act on companion contacts only).
+  aerialUpUses: 3, aerialUpImpulse: 800, aerialUpAngle: 45, aerialUpCancelFall: true,
   aerialDownVertical: 760, aerialDownHorizontal: 35, aerialDownRechargeTime: 1.5,
   maxHorizontalSpeed: 2000, maxVerticalSpeed: 1500,
   effectDuration: 0.7, contactDuration: 1.4,

@@ -8,7 +8,7 @@
 
 1. READYでタップ → 角度をタップで固定 → パワーをタップで確定して発射。
 2. 飛行中のタップは上昇中ならAERIAL DOWN、下降中ならAERIAL UPを自動選択。
-3. UPは3回。DOWNは初期100%、使用後0%となり、通常飛行中に自動充電して100%で再使用可能です。初期充電時間は1.5秒（`aerialDownRechargeTime`で調整）。SPECIAL受付・成功／失敗表示・商人登場（merchantVisual）・Type C浮遊中は充電が止まります。ANGLE / POWER / RESULT中も充電しません。使えないときは何も発動しません。地面・浮遊中も使用不可。
+3. UPは3回。UPは魔法使い（BOOST）と同じ強さで、落下中の下向きの速度を0にしてから45°へ800px/s加算します（`aerialUpImpulse`・`aerialUpAngle`・`aerialUpCancelFall`。商人A・Bの効果はUPにはかかりません）。DOWNは初期100%、使用後0%となり、通常飛行中に自動充電して100%で再使用可能です。初期充電時間は1.5秒（`aerialDownRechargeTime`で調整）。SPECIAL受付・成功／失敗表示・商人登場（merchantVisual）・Type C浮遊中は充電が止まります。ANGLE / POWER / RESULT中も充電しません。使えないときは何も発動しません。地面・浮遊中も使用不可。
 4. SPECIAL受付は1.0秒。タップはSPECIALだけを成功させ、AERIALは同時発動しません。
 5. RESULT画面をタップするとRETRYして角度選択から再開します。
 

@@ -15,7 +15,7 @@ if (!process.argv.includes('--serve')) {
     powerMin: 0.3, powerMax: 1, powerPeriod: 1.7, gravity: 820, airDrag: 0.075,
     restitution: 0.67, bounceHorizontalRetention: 0.89, groundDeceleration: 155,
     settleBounceSpeed: 75, stopSpeed: 12, physicsStep: 1 / 120, maxFrameDelta: 0.1,
-    aerialUpUses: 3, aerialUpVertical: 620, aerialUpHorizontal: 85,
+    aerialUpUses: 3, aerialUpImpulse: 800, aerialUpAngle: 45, aerialUpCancelFall: true,
     aerialDownVertical: 760, aerialDownHorizontal: 35, aerialDownRechargeTime: 1.5,
     maxHorizontalSpeed: 2000, maxVerticalSpeed: 1500,
     objectFirstMin: 400, objectFirstMax: 650, objectGapMin: 420, objectGapMax: 850,
