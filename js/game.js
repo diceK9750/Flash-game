@@ -82,7 +82,10 @@ Hop.Game = class {
       if (this.upRemaining <= 0) return false;
       this.upRemaining--;
       this.specialArmed.brake = false;
-      this.body.vy += c.aerialUpVertical; this.body.vx += c.aerialUpHorizontal;
+      // BOOST-strength kick (same impulse / angle as a BOOST contact); a falling hero first stops falling.
+      const angle = c.aerialUpAngle * Math.PI / 180;
+      if (c.aerialUpCancelFall) this.body.vy = Math.max(0, this.body.vy);
+      this.body.vx += c.aerialUpImpulse * Math.cos(angle); this.body.vy += c.aerialUpImpulse * Math.sin(angle);
     } else if (direction === "DOWN") {
       if (this.downCharge < 1) return false;
       this.downCharge = 0;
