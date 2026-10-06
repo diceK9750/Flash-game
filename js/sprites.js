@@ -134,9 +134,9 @@ Hop.Sprites = {
         IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle.json" }
       },
-      STOPPER: { // 僧侶 (redesign r3 still from the design sheet: enabled; staff on the viewer's right like the Canvas cleric, so not mirrored)
+      STOPPER: { // 僧侶 (HD comic idle r1a, same facing as the r3 still: staff on the viewer's right like the Canvas cleric, so not mirrored; the 96 r3 still is kept in stopper_cleric/)
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png", metadata: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json" }
+          src: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle.json" }
       },
       SPECIAL_ONLY: { // 商人 (redesign r1 still from the design sheet: enabled; bag on the viewer's right under the item orb like the Canvas box, facing the hero, so not flipped)
         IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: true,
