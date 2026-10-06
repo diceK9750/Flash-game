@@ -1,0 +1,17 @@
+{
+  "id": "BRAKE",
+  "animation": "USED",
+  "cellW": 384,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 192,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_thief_used_r1a_hl.jpg",
+  "notes": "HD comic thief used pose (r1a: snags the passer-by with the three-pronged hook thrown to the upper left and holds the taut chain in the right-hand fist, dagger in the other hand, braced stance; same 3/4-left facing and leftward gaze as the HD idle. r1b rejected: face closer to a front view, sky-blue background, navy back cloth, head ~9% small). Near-cyan background (9,235,249) shifted to the standard cyan first (fix_bg.py), then head enlarged x1.06 about the chin with a smooth warp (no change below the chin) so that torso / head (chin to belt centre) = 1.20, the same as the HD idle; 頭身 4.93 (estimate 2.53 x (chin - eye centre): 5.10, measured hair top: 4.76; spiky tips not counted). Soft-alpha cyan cutout at grid 9.08 (head 133.8 / 14.74: on-screen head = HD idle head = hero head) into a 384x288 cell, pivot (192,264), centre between the boots (src x639) on the pivot x, lower (back) sole on the pivot y; left-over cyan in the chain-link holes and hair tips capped to grey (despill_cell.py). 72 sprite px tall = 97% of the HD idle (wide stance without a deep knee bend). Not mirrored. Previous 96 still kept in ../brake_thief/. Display only."
+}

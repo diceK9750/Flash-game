@@ -1,0 +1,17 @@
+{
+  "id": "SPECIAL_ONLY",
+  "animation": "IDLE",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.1446886446886446,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_merchant_idle_r1b_hl.jpg",
+  "notes": "HD comic merchant idle (r1b: pink hair closest to the design sheet, hue about 7 deg off the sheet vs 17 deg for the purple-magenta r1a). r1b had a slightly small head (5.34 heads: estimate 5.33 / measured hair top 5.34; r1a 5.00 but its wide-open mouth inflates the estimate, 4.76 / 5.24). Sky-blue background (2,194,255) shifted to the standard cyan with the edges (fix_bg.py) -> head and hair enlarged x1.07 about the chin with a smooth warp (warp_head.py; no change below the chin, the raised pouch is outside the warped band and the ponytail tip tapers out); no body squash needed. 頭身 5.04 = mean of the estimate 5.05 (head = 2.53 x (chin - eye centre), the hero idle ratio) and the measured hair top 5.03; the ponytail and the pouch are not counted. Soft-alpha cyan cutout at grid 9.30 (head 137.1 / 14.74: drawn head = hero head before the merchant scale) into a 288 cell, pivot (144,264), centre between the boots (src x611) on the pivot x; left-over teal capped (despill_cell.py) and the outer-edge fringe pulled back (despill_edge.py); the narrow background gap between the pouch and its drawstring repainted as dark cord (fix_pouch_gap.py) and the bluish outer-edge pixels of the pink hair recoloured pink at 40% alpha (fix_hair_edge.py); the blue top is kept. 76 sprite px incl. the ponytail (old 96 still: 86). Same facing as merchant_r1a (towards the hero on the viewer's left, pouch in the viewer-left hand, bag on the viewer-right hip under the item orb), not mirrored. Drawn as the MERCHANT SPECIAL overlay at the unchanged manifest scale 1.25*1.25/1.365 (about 92% of the roadside cast). Previous 96 still kept in ../merchant/. Display only."
+}

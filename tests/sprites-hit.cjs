@@ -4,14 +4,14 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
-const dir = 'assets/sprites/hero/hero_hit_v1_bundle/';
-const meta = (animation, extra) => ({ id: 'HERO', animation, frameWidth: 96, frameHeight: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 }, ...extra });
+const dir = 'assets/sprites/hero/hero_hit_hd_v1/';
+const meta = (animation, extra) => ({ id: 'HERO', animation, cellW: 288, cellH: 288, frames: 8, fps: 12, loop: false, pivot: { x: 144, y: 264 }, smoothing: true, ...extra });
 if (process.argv.includes('--loader')) {
   (async () => {
     let mode = 'ok'; const requested = [];
     class Image {
-      constructor() { this.complete = true; this.naturalWidth = 768; this.naturalHeight = 96; }
-      set src(value) { requested.push(value); if (mode === 'image-error') this.onerror(new Error('missing')); else { if (mode === 'size') this.naturalWidth = 760; this.onload(); } }
+      constructor() { this.complete = true; this.naturalWidth = 2304; this.naturalHeight = 288; }
+      set src(value) { requested.push(value); if (mode === 'image-error') this.onerror(new Error('missing')); else { if (mode === 'size') this.naturalWidth = 2200; this.onload(); } }
     }
     const scope = { Hop: {}, Image, fetch: async url => {
       requested.push(url);
@@ -21,7 +21,7 @@ if (process.argv.includes('--loader')) {
         if (mode === 'json') throw new SyntaxError('bad');
         if (mode === 'swap') return meta('AERIAL_UP');
         if (mode === 'loop') return meta('HIT', { loop: true });
-        if (mode === 'pivot') return meta('HIT', { pivot: { x: 40, y: 88 } });
+        if (mode === 'pivot') return meta('HIT', { pivot: { x: 300, y: 264 } });
         return meta('HIT');
       } };
     } };
@@ -46,23 +46,25 @@ if (process.argv.includes('--loader')) {
   assert.equal(def.enabled !== false, present, 'HIT flag must match the bundle files');
   if (present) {
     const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
-    assert.deepEqual({ id: m.id, animation: m.animation, w: m.frameWidth, h: m.frameHeight, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot },
-      { id: 'HERO', animation: 'HIT', w: 96, h: 96, frames: 8, fps: 12, loop: false, pivot: { x: 48, y: 88 } });
+    const cellW = m.cellW ?? m.frameWidth, cellH = m.cellH ?? m.frameHeight;
+    assert.deepEqual({ id: m.id, animation: m.animation, w: cellW, h: cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot },
+      { id: 'HERO', animation: 'HIT', w: 288, h: 288, frames: 8, fps: 12, loop: false, pivot: { x: 144, y: 264 } });
+    assert.equal(m.smoothing, true);
     const png = fs.readFileSync(path.join(root, def.src));
-    assert.equal(png.readUInt32BE(16), 768); assert.equal(png.readUInt32BE(20), 96); assert.equal(png[25], 6, 'RGBA PNG');
+    assert.equal(png.readUInt32BE(16), 2304); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
     // v2: jolt held for 2 steps, then every sheet frame once (0.75 s); reduced motion = stiff pose (sheet 4).
     assert.deepEqual([...m.sequence], [0, 0, 1, 2, 3, 4, 5, 6, 7]); assert.equal(s.duration(m), 9 / 12);
     assert.equal(s.frameAt(m, def.stillTime), 4);
     for (const hz of [30, 60, 120, 144]) for (let i = 0; i <= hz; i++) assert.equal(s.frameAt(m, i / hz), m.sequence[Math.min(8, Math.floor(i / hz * 12))]);
   }
   assert.equal(c.playerRadius, 18);
-  const fake = data => ({ ready: true, image: { complete: true, naturalWidth: 768 }, data });
+  const fake = data => ({ ready: true, image: { complete: true, naturalWidth: (data.frameWidth || data.cellW || 96) * data.frames }, data: data.frameWidth ? data : Object.assign({}, data, { frameWidth: data.cellW, frameHeight: data.cellH, unit: (data.cellH || 96) / 96, smooth: true }) });
   const loopMeta = JSON.parse(fs.readFileSync(path.join(root, 'assets/sprites/hero/flight_loop/hero_flight_loop.json')));
   const A = { HIT: fake(meta('HIT')), LOOP: fake(loopMeta), UP: fake(meta('AERIAL_UP')), DOWN: fake(meta('AERIAL_DOWN')), GB: fake(meta('GROUND_BOUNCE')) };
   const names = new Map(Object.entries({ HIT: A.HIT, FLIGHT_LOOP: A.LOOP, AERIAL_UP: A.UP, AERIAL_DOWN: A.DOWN, GROUND_BOUNCE: A.GB }).map(([k, v]) => [v, k]));
   const graphics = scope.Hop.Graphics, originalCharacter = graphics.character, originalDraw = s.draw;
   const saved = Object.fromEntries(['heroHit', 'heroFlight', 'heroAerialUp', 'heroAerialDown', 'heroGroundBounce', 'heroStopResult'].map(k => [k, s[k]]));
-  const stack = [], ctx = { imageSmoothingEnabled: true, save() { stack.push(this.imageSmoothingEnabled); }, restore() { this.imageSmoothingEnabled = stack.pop(); }, drawImage() { assert.equal(this.imageSmoothingEnabled, false); } };
+  const stack = [], ctx = { imageSmoothingEnabled: true, save() { stack.push(this.imageSmoothingEnabled); }, restore() { this.imageSmoothingEnabled = stack.pop(); }, drawImage() { /* HD HIT smooth on, 96 LOOP smooth off — both OK */ } };
   let canvasHero = 0, drawn = [], failHit = false;
   graphics.character = function (cx, id, ...rest) { if (id === 'HERO') canvasHero++; return originalCharacter.call(this, cx, id, ...rest); };
   s.draw = function (_ctx, asset, time, x, feet, scale) {

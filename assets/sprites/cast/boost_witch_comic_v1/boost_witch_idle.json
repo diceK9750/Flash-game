@@ -1,0 +1,17 @@
+{
+  "id": "BOOST",
+  "animation": "IDLE",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_witch_idle_r1a_hl.jpg",
+  "notes": "HD comic witch idle (r1a; r1b rejected: grey under-tunic and green trousers not in the design sheet). Head and hat enlarged x1.07 about the chin with a smooth warp (no change below the chin or at the staff; 40 px cyan added on top so the hat stays inside). 頭身 5.08 = estimated head top -> soles / head, hat excluded; the head top is hidden by the hat, so head length = 2.53 x (chin - eye centre), the hero idle's ratio (139 / 55). Soft-alpha cyan cutout at grid 8.64 (head 127 / 14.74: on-screen head = hero head) into a 288 cell, pivot (144,264), boots (not the staff tip) centred on the pivot x. 83 sprite px tall incl. the hat (old 96 still: 82). Same facing as the old still (open hand toward the viewer's left / the hero, staff on the right), not mirrored. Previous 96 still kept in ../boost_witch/. Display only."
+}

@@ -10,7 +10,7 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const arg = (name, fallback) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : fallback; };
-const KEYS = { heroFlight: 'FLIGHT_LOOP', heroAerialUp: 'AERIAL_UP', heroAerialDown: 'AERIAL_DOWN', heroGroundBounce: 'GROUND_BOUNCE', heroHit: 'HIT', heroSpecialReaction: 'SPECIAL_REACTION', heroStopResult: 'STOP_RESULT' };
+const KEYS = { heroIdle: 'IDLE', heroFlight: 'FLIGHT_LOOP', heroAerialUp: 'AERIAL_UP', heroAerialDown: 'AERIAL_DOWN', heroGroundBounce: 'GROUND_BOUNCE', heroHit: 'HIT', heroSpecialReaction: 'SPECIAL_REACTION', heroStopResult: 'STOP_RESULT' };
 
 function context({ offline = false } = {}) {
   const elements = new Map();
@@ -63,7 +63,7 @@ function rng(seed) { return () => ((seed = (Math.imul(seed, 1664525) + 101390422
 async function simulate({ runs = 60, seed0 = 1, log = null } = {}) {
   const { scope, element } = context();
   const H = scope.Hop, S = H.Sprites, ST = H.STATES;
-  await Promise.all([S.ready, S.aerialReady, S.groundBounceReady, S.stopResultReady, S.hitReady, S.specialReactionReady]);
+  await Promise.all([S.idleReady, S.ready, S.aerialReady, S.groundBounceReady, S.stopResultReady, S.hitReady, S.specialReactionReady]);
   for (const key of Object.keys(KEYS)) assert(S[key]?.ready, key + ' loads from the real files');
   const real = Object.fromEntries(Object.keys(KEYS).map(k => [k, S[k]]));
   const bySrc = Object.fromEntries(Object.keys(KEYS).map(k => [real[k].image._src, k]));
@@ -79,7 +79,7 @@ async function simulate({ runs = 60, seed0 = 1, log = null } = {}) {
     const hz = [30, 60, 120, 144][run % 4]; inc(stats.byHz, hz);
     const reduced = R() < 0.15, debug = R() < 0.3, mash = R() < 0.35;
     // Missing-asset runs: drop one or all optional assets (FLIGHT_LOOP included) for this run.
-    const missing = R() < 0.2 ? (R() < 0.25 ? Object.keys(KEYS) : [Object.keys(KEYS)[Math.floor(R() * 7)]]) : [];
+    const keys = Object.keys(KEYS); const missing = R() < 0.2 ? (R() < 0.25 ? keys : [keys[Math.floor(R() * keys.length)]]) : [];
     for (const k of Object.keys(KEYS)) S[k] = missing.includes(k) ? { ready: false, image: null, data: null } : real[k];
     if (missing.length) stats.missingRuns++;
     const game = new H.Game(rng(seed)), ui = new H.UI(game, element('canvas'));
@@ -120,22 +120,24 @@ async function simulate({ runs = 60, seed0 = 1, log = null } = {}) {
       const d = heroDraws[0] || {};
       const key = d.src === 'CANVAS' ? null : bySrc[d.src];
       const layer = key ? KEYS[key] : 'CANVAS';
-      const frame = key ? Math.round(d.sx / 96) : -1;
+      const frame = key ? Math.round(d.sx / (S[key].data?.frameWidth || 96)) : -1;
       const shot = v.oneShot?.animation || '';
       stats.frames++; inc(stats.shown, layer); if (reduced) stats.reducedFrames++;
       if (out) out.write(`${run},${flight},${hz},${g.phaseTime.toFixed(4)},${st},${layer},${frame},${(d.rot || 0).toFixed(3)},${shot}\n`);
       // Expected layer (independent model of the documented rules).
       let expect = 'CANVAS';
       const stopOk = S.heroStopResult.ready && S.stopResultEligible(g);
+      const prelaunch = st === ST.READY || st === ST.AIM_ANGLE || st === ST.AIM_POWER;
       if (stopOk) expect = 'STOP_RESULT';
       else if (st === ST.FLYING) {
         const name = v.oneShot?.animation, asset = name && S[S.oneShots[name]];
         const age = name ? g.phaseTime - v.oneShot.at : -1;
         expect = name && asset?.ready && age >= 0 && age < S.duration(asset.data) ? name : S.heroFlight.ready ? 'FLIGHT_LOOP' : 'CANVAS';
       } else if (st === ST.RESULT && S.heroFlight.ready) expect = 'FLIGHT_LOOP'; // frozen (Phase B)
+      else if (prelaunch && S.heroIdle?.ready) expect = 'IDLE';
       if (layer !== expect) issue('layer', { seed, t, st, layer, expect });
       if (st === ST.RESULT && prev?.run === run && prev.st === ST.RESULT && layer === 'FLIGHT_LOOP' && prev.layer === layer && frame !== prev.frame) issue('result-not-frozen', { seed });
-      if ((st === ST.READY || st === ST.AIM_ANGLE || st === ST.AIM_POWER) && layer !== 'CANVAS') issue('sprite-before-launch', { seed, st, layer });
+      if (prelaunch && layer !== expect) issue('sprite-before-launch', { seed, st, layer, expect });
       if (reduced && key && layer !== 'STOP_RESULT') {
         const still = layer === 'FLIGHT_LOOP' ? 0 : S.frameAt(S[key].data, S.definitions.HERO[layer].stillTime || 0);
         if (frame !== still) issue('reduced-frame', { seed, layer, frame, still });
@@ -158,7 +160,7 @@ async function simulate({ runs = 60, seed0 = 1, log = null } = {}) {
           }
         }
         // One-shot frame order: inside one shot instance the sequence step never goes back.
-        if (key && layer === prev.layer && prev.shotAt === v.oneShot?.at && layer !== 'FLIGHT_LOOP' && layer !== 'STOP_RESULT' && !reduced) {
+        if (key && v.oneShot && layer === prev.layer && prev.shotAt === v.oneShot.at && layer !== 'FLIGHT_LOOP' && layer !== 'STOP_RESULT' && layer !== 'IDLE' && !reduced) {
           const seq = S[key].data.sequence || [...Array(8).keys()];
           const step = Math.min(seq.length - 1, Math.floor((g.phaseTime - v.oneShot.at) * 12));
           if (seq[step] !== frame) issue('frame', { seed, layer, frame, want: seq[step] });

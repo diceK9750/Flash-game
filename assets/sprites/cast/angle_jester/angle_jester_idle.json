@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceImage": "jester_v1a.jpg",
-  "notes": "Transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the fighter/thief/cleric; median colour, majority alpha) so he is 78px tall incl. hat bells; cyan-tinted outline pixels set to the neighbouring ink; feet on pivot."
+  "sourceImage": "jester_r1b.jpg",
+  "notes": "Redesign r1 (design sheet 道化師ANGLE): transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so he is 86px tall incl. hat bells; shifted +8 px so the boots (not the cane tip) are centred on the pivot x; cyan spill on outline pixels neutralised (green/blue clamped to red+8; the blue nose and cane stripes are kept); cane on the viewer's right like the Canvas jester's ball, so not mirrored; feet on pivot."
 }

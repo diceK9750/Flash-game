@@ -1,16 +1,18 @@
 "use strict";
 // Presentation only. IDs, collisions, physics and spawn weights live elsewhere.
 // asset is reserved for a future image renderer; null always uses Canvas shapes.
+// color (name label, contact tag/effect, Canvas fallback body) follows the redesign sprites, darkened for
+// >= 4.8:1 contrast on the label box (#fff9e9) and >= 3.9:1 on the sky behind the contact tag.
 Hop.CAST = Object.freeze({
   HERO: { name: "勇者", gender: "男", color: "#2467ac", shape: "hero", effect: "いざ、空の旅！", asset: null },
-  BOOST: { name: "魔法使い", gender: "女", color: "#287548", shape: "witch", effect: "爆風でひとっ飛び！", asset: null },
-  BOUNCE: { name: "武闘家", gender: "女", color: "#246abd", shape: "fighter", effect: "空まで蹴り上げ！", asset: null },
-  BRAKE: { name: "盗賊", gender: "男", color: "#c63f4f", shape: "thief", effect: "推進力を半分いただき！", asset: null },
-  ANGLE: { name: "遊び人", gender: "男", color: "#9b730a", shape: "jester", effect: "くるりと方向転換！", asset: null },
-  DASH: { name: "戦士", gender: "女", color: "#bd5b13", shape: "warrior", effect: "猛突進！", asset: null },
-  GUARD: { name: "賢者", gender: "女", color: "#7852ad", shape: "sage", effect: "結界をどうぞ！", asset: null },
-  STOPPER: { name: "僧侶", gender: "女", color: "#942840", shape: "cleric", effect: "ここでひと休み！", asset: null },
-  SPECIAL_ONLY: { name: "商人", gender: "女", color: "#8d622f", shape: "merchant", effect: "とっておきの品！", asset: null, spawn: false }
+  BOOST: { name: "魔法使い", gender: "女", color: "#b8460f", shape: "witch", effect: "爆風でひとっ飛び！", asset: null },
+  BOUNCE: { name: "武闘家", gender: "女", color: "#337c2f", shape: "fighter", effect: "空まで蹴り上げ！", asset: null },
+  BRAKE: { name: "盗賊", gender: "男", color: "#866b15", shape: "thief", effect: "推進力を半分いただき！", asset: null },
+  ANGLE: { name: "遊び人", gender: "男", color: "#bf3a6e", shape: "jester", effect: "くるりと方向転換！", asset: null },
+  DASH: { name: "戦士", gender: "女", color: "#a8231b", shape: "warrior", effect: "猛突進！", asset: null },
+  GUARD: { name: "賢者", gender: "女", color: "#2b6cb0", shape: "sage", effect: "結界をどうぞ！", asset: null },
+  STOPPER: { name: "僧侶", gender: "女", color: "#1f44a8", shape: "cleric", effect: "ここでひと休み！", asset: null },
+  SPECIAL_ONLY: { name: "商人", gender: "女", color: "#a3369a", shape: "merchant", effect: "とっておきの品！", asset: null, spawn: false }
 });
 Hop.Graphics = {
   polygon(ctx, points, color) {
@@ -87,6 +89,7 @@ Hop.Graphics = {
     ctx.restore();
   },
   truck(ctx, x, ground) {
+    if (Hop.Sprites?.drawTruck?.(ctx, x, ground)) return; // HD truck still when loaded (display only), else the Canvas truck
     ctx.save(); ctx.translate(x, ground); ctx.scale(1.12, 1.12);
     ctx.fillStyle = "#faf3da"; ctx.fillRect(-110, -91, 91, 70);
     ctx.fillStyle = "#e79748"; ctx.fillRect(-17, -72, 48, 51);
@@ -178,10 +181,12 @@ Hop.Graphics = {
     // Same foot anchor and rotation as the silhouette; physics stays untouched.
     // phaseTime shares the game's pause/hidden-tab handling (no wall-clock jump).
     // Stopped on the ground (FLYING or RESULT): STOP_RESULT. FLYING order: one-shot (priority
-    // table) -> FLIGHT_LOOP; RESULT without STOP_RESULT: frozen FLIGHT_LOOP. Else -> Canvas HERO.
+    // table) -> FLIGHT_LOOP; RESULT without STOP_RESULT: frozen FLIGHT_LOOP. READY / AIM: HD IDLE
+    // still when loaded. Else -> Canvas HERO. Feet at playerRadius; physics untouched.
     const drawLayer = layer => Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
     const spriteDrawn = !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
-      ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer));
+      ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer)) ||
+      (prelaunch && !!Hop.Sprites?.idleLayers?.().some(drawLayer));
     if (!spriteDrawn) this.character(ctx, "HERO", 0, c.playerRadius, 0.936);
     ctx.restore();
     if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }

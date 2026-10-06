@@ -1,0 +1,9 @@
+{
+ "id": "BOOST",
+ "animation": "IDLE",
+ "frames": 1,
+ "fps": 1,
+ "loop": false,
+ "cellW": 288,
+ "cellH": 288
+}

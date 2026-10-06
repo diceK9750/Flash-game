@@ -11,6 +11,6 @@
     "y": 88
   },
   "displayScale": 1.25,
-  "sourceImage": "witch_v1b.png",
-  "notes": "Transparent RGBA; cyan chroma-key removed; pixel grid 10.35px (phase 9.2,2.75) -> 1 sprite px per block (median colour, majority alpha); feet on pivot; nearest-resized 59x87 -> height 84."
+  "sourceImage": "witch_r1a.jpg",
+  "notes": "Redesign r1 (design sheet 異世界ブースト魔法使い): transparent RGBA; cyan chroma-key removed; resampled from the JPEG still at 7.78 source px per sprite px (same art scale as the rest of the cast; median colour, majority alpha) so she is 82px tall incl. hat; shifted +3 px so the boots (not the staff tip) are centred on the pivot x; cyan spill on outline pixels neutralised (green/blue clamped to red+8); feet on pivot."
 }

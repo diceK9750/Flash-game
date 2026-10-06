@@ -1,0 +1,18 @@
+{
+  "id": "HERO",
+  "animation": "AERIAL_DOWN",
+  "cellW": 384,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "pivot": {
+    "x": 192,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "nextAnimation": "FLIGHT_LOOP",
+  "sourceImage": "hero_comic_aerial_down_r1b_hs.jpg",
+  "notes": "HD comic AERIAL_DOWN dive still (r1b, head shrunk x0.70 in PIL about the chin; cape behind the old hair inpainted; cape hue +5deg). 頭身 5.08 as head+torso+legs straight segments / head (the straight hair->boot axis reads 4.66 because the legs are bent and foreshortened and the head is tilted back). Soft-alpha cyan cutout at grid 10.55 (on-screen head = idle head) into a 384x288 cell (unit 3, wide dive), lowest point (shield) on the pivot, bbox centred on the pivot x. 8 identical frames; fps/next kept from v1. The game still adds the vy tilt. Previous 96 sheet kept in ../hero_aerial_down_v1_bundle/. Display only."
+}

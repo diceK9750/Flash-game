@@ -1,0 +1,18 @@
+{
+  "id": "HERO",
+  "animation": "AERIAL_UP",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "nextAnimation": "FLIGHT_LOOP",
+  "sourceImage": "hero_comic_aerial_up_r1b_hs.jpg",
+  "notes": "HD comic AERIAL_UP still (r1b, head shrunk x0.73 in PIL about the chin, cape value/hue nudged to the idle magenta). 頭身 5.08 along the body axis (hair tip -> lowest boot / head); torso/head 1.02 (idle 0.99). Soft-alpha cyan cutout at grid 8.68 (on-screen head = idle head), lowest boot on the pivot, bbox centred on the pivot x. 8 identical frames; fps/next kept from v1. The game still adds the vy tilt. Previous 96 sheet kept in ../hero_aerial_up_v1_bundle/. Display only."
+}

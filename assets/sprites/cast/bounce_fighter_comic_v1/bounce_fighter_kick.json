@@ -1,0 +1,17 @@
+{
+  "id": "BOUNCE",
+  "animation": "KICK",
+  "cellW": 384,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 192,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_fighter_kick_r1a_hl.jpg",
+  "notes": "HD comic fighter kick (r1a; r1b rejected: head too small, 5.52, and a short front flap). Sky-blue background (5,207,252) shifted to the standard cyan first (fix_bg.py, same ramp as hd_cutout), then head enlarged x1.04 about the chin with a smooth warp (no change below the chin). 頭身 5.05 = mean of the estimate (head = 2.53 x (chin - eye centre), the hero idle ratio: 5.10) and the measured hair top (4.99), head top to the standing sole; buns and twin tails not counted (both tails stream to the viewer's left, kept as motion). Soft-alpha cyan cutout at grid 9.05 (head 133 / 14.74: on-screen head = HD idle head = hero head) into a 384x288 cell, pivot (192,264), standing boot centre on the pivot x. 75 sprite px from head top to standing sole (HD idle: 75). Kick points to the viewer's right like the old still, not mirrored. Previous 96 still kept in ../bounce_fighter/. Display only."
+}

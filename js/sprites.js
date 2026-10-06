@@ -3,28 +3,38 @@
 Hop.Sprites = {
   definitions: {
     HERO: {
+      // HD comic standing still for READY / AIM (display only; previous idle kept in hero/idle/). 288 cell; drawn scale = 1.25*96/288 so
+      // on-screen size and feet match FLIGHT_LOOP. Other animations stay on the 96 sheets for now.
+      IDLE: {
+        src: "assets/sprites/hero/hero_idle_comic_v1/hero_idle_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_idle_comic_v1/hero_idle.json",
+        animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, enabled: true
+      },
       FLIGHT_LOOP: {
-        src: "assets/sprites/hero/flight_loop/hero_flight_loop_sheet_96x96.png",
-        metadata: "assets/sprites/hero/flight_loop/hero_flight_loop.json",
+        src: "assets/sprites/hero/hero_flight_comic_v1/hero_flight_loop_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_flight_comic_v1/hero_flight_loop.json",
         animation: "FLIGHT_LOOP", fps: 8, loop: true, scale: 1.25
       },
       // One-shot poses shown after a successful AERIAL, then FLIGHT_LOOP resumes.
+      // HD comic stills (8 identical cells, 288 high; DOWN uses a 384-wide cell for the dive).
+      // The 96 v1 bundles are kept in hero_aerial_{up,down}_v1_bundle/.
       AERIAL_UP: {
-        src: "assets/sprites/hero/hero_aerial_up_v1_bundle/hero_aerial_up_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_aerial_up_v1_bundle/hero_aerial_up.json",
+        src: "assets/sprites/hero/hero_aerial_up_comic_v1/hero_aerial_up_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_aerial_up_comic_v1/hero_aerial_up.json",
         animation: "AERIAL_UP", fps: 12, loop: false, scale: 1.25
       },
       AERIAL_DOWN: {
-        src: "assets/sprites/hero/hero_aerial_down_v1_bundle/hero_aerial_down_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_aerial_down_v1_bundle/hero_aerial_down.json",
+        src: "assets/sprites/hero/hero_aerial_down_comic_v1/hero_aerial_down_sheet_384x288.png",
+        metadata: "assets/sprites/hero/hero_aerial_down_comic_v1/hero_aerial_down.json",
         animation: "AERIAL_DOWN", fps: 12, loop: false, scale: 1.25
       },
       // Normal ground bounce one-shot (merchant Type D BOUND BOOST excluded).
       // enabled:false = asset not delivered yet: never requested, so no 404 in the console.
-      // v1 bundle delivered: enabled. tests/sprites-ground-bounce.cjs enforces flag == files present.
+      // HD comic crouch delivered (288 cell; 96 v1 kept in hero_ground_bounce_v1_bundle/): enabled.
+      // tests/sprites-ground-bounce.cjs enforces flag == files present.
       GROUND_BOUNCE: {
-        src: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_ground_bounce_v1_bundle/hero_ground_bounce.json",
+        src: "assets/sprites/hero/hero_ground_bounce_comic_v1/hero_ground_bounce_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_ground_bounce_comic_v1/hero_ground_bounce.json",
         animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: true,
         // Display tuning (no game effect). Detection happens after the rebound, so the JSON
         // "sequence" starts at the deepest squash. Tilt is suppressed while it plays and eases
@@ -37,8 +47,10 @@ Hop.Sprites = {
       // it after minShow (see oneShotPriority). vy tilt is suppressed while it plays (baked rotation) and eases back.
       // Reduced motion shows one representative frame (stillTime; v2 = sheet 4, the stiff pose) for the same duration.
       HIT: {
-        src: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_hit_v1_bundle/hero_hit.json",
+        // HD Rumiko knockback still (70% of idle on-screen height). 288 cell, 8 identical
+        // frames; timing/suppressTilt unchanged. Drawn scale = 1.25*96/288.
+        src: "assets/sprites/hero/hero_hit_hd_v1/hero_hit_sheet_288x288.png",
+        metadata: "assets/sprites/hero/hero_hit_hd_v1/hero_hit.json",
         animation: "HIT", fps: 12, loop: false, scale: 1.25, enabled: true,
         suppressTilt: true, tiltEase: 0.12, stillTime: 5.5 / 12
       },
@@ -48,9 +60,11 @@ Hop.Sprites = {
       // never cut it; it replaces them. Also played for a MERCHANT SPECIAL success. suppressTilt with
       // tiltIn: the vy tilt eases out over 0.12 s at the start instead of snapping upright.
       // Reduced motion shows one representative frame (stillTime -> sheet 7, the proud hold).
+      // HD comic sword-raise still (8 identical 384x288 cells, same sequence/fps); the 96 v1 bundle
+      // is kept in hero_special_reaction_v1_bundle/.
       SPECIAL_REACTION: {
-        src: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_special_reaction_v1_bundle/hero_special_reaction.json",
+        src: "assets/sprites/hero/hero_special_reaction_comic_v1/hero_special_reaction_sheet_384x288.png",
+        metadata: "assets/sprites/hero/hero_special_reaction_comic_v1/hero_special_reaction.json",
         animation: "SPECIAL_REACTION", fps: 12, loop: false, scale: 1.25, enabled: true,
         suppressTilt: true, tiltEase: 0.12, tiltIn: 0.12, stillTime: 7.5 / 12
       },
@@ -58,8 +72,10 @@ Hop.Sprites = {
       // or RESULT), then the last frame is held until RETRY. Same flag pattern as GROUND_BOUNCE.
       // A stop above the ground (STOPPER contact in mid-air) keeps the previous drawing.
       STOP_RESULT: {
-        src: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result_sheet_96x96.png",
-        metadata: "assets/sprites/hero/hero_stop_result_v1_bundle/hero_stop_result.json",
+        // HD comic victory pose (384 cell, pivot 192,372 for the raised sword); 96 v1 kept in
+        // hero_stop_result_v1_bundle/.
+        src: "assets/sprites/hero/hero_stop_result_comic_v1/hero_stop_result_sheet_384x384.png",
+        metadata: "assets/sprites/hero/hero_stop_result_comic_v1/hero_stop_result.json",
         animation: "STOP_RESULT", fps: 12, loop: false, scale: 1.25, enabled: true, maxGroundY: 0.5,
         // RESULT overlay (display only): transparent while STOP_RESULT plays, then fades in over
         // overlayFade s. Only when the animation really plays; input/RETRY timing is unchanged.
@@ -67,48 +83,74 @@ Hop.Sprites = {
       }
     },
     // Phase C: roadside characters (g.objects) and the merchant overlay (SPECIAL_ONLY). One still
-    // per slot (1-frame 96x96 sheet, pivot 48,88) drawn in place of the Canvas figure with its feet
+    // per slot (1-frame 96x96 sheet, pivot 48,88, or an HD cell; see normalizeCell) drawn in place of the Canvas figure with its feet
     // at the same point; the caller keeps the name label and the 35% used opacity. enabled:false =
     // asset not delivered yet: never requested (no 404), Canvas figure as before;
     // tests/sprites-cast.cjs enforces flag == files present. scale = sprite px -> canvas px (1.25 =
     // the hero's pixel size; the merchant overlay keeps its Canvas ratio 1.25/1.365 of the
-    // roadside figures). flip mirrors a still that faces the wrong way. BOUNCE.KICK = post-contact
-    // pose (the Canvas fighter raises a kicking leg); a missing KICK falls back to IDLE.
+    // roadside figures). flip mirrors a still that faces the wrong way. A slot with pose: 1 is the
+    // used (post-contact) pose, drawn instead of IDLE once the hero has touched the figure (the same
+    // object.used flag that already sets the 35% opacity / the Canvas fighter's raised leg); one per
+    // character at most. A missing / broken pose-1 still falls back to IDLE. BOUNCE.KICK,
+    // BOOST.USED, BRAKE.USED and ANGLE.USED have one.
     CAST: {
-      BOOST: { // 魔法使い (v1b still delivered: enabled)
+      BOOST: { // 魔法使い (HD comic idle r1a + used r1a; idle staff on the viewer's right like the Canvas witch, used pose thrusts it toward the hero; not mirrored)
         IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/boost_witch/boost_witch_idle_sheet_96x96.png", metadata: "assets/sprites/cast/boost_witch/boost_witch_idle.json" }
+          src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle_sheet_288x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle.json" },
+        // HD comic idle (288 cell) and used pose (384x288 cell for the wide stance); the 96 r1 stills are
+        // kept in boost_witch/.
+        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used_sheet_384x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used.json" }
       },
-      BOUNCE: { // 武闘家 (v1a idle + kick_v2 stills delivered: enabled)
+      BOUNCE: { // 武闘家 (HD comic idle r1b + kick r1a; the kick points to the viewer's right like the Canvas pose, so not mirrored)
         IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_idle.json" },
-        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
-          src: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick_sheet_96x96.png", metadata: "assets/sprites/cast/bounce_fighter/bounce_fighter_kick.json" }
+          src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_idle_sheet_288x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_idle.json" },
+        // HD comic idle (288 cell) and kick (384x288 cell for the high kick, standing foot on the pivot x);
+        // the 96 r1 stills are kept in bounce_fighter/.
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick_sheet_384x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick.json" }
       },
-      BRAKE: { // 盗賊 (v1b still delivered: enabled, mirrored: hook on the viewer's right like the Canvas thief)
-        IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
-          src: "assets/sprites/cast/brake_thief/brake_thief_idle_sheet_96x96.png", metadata: "assets/sprites/cast/brake_thief/brake_thief_idle.json" }
+      BRAKE: { // 盗賊 (HD comic idle r1b + used r1a; idle hook on the viewer's right like the Canvas thief, used pose throws it toward the hero; not mirrored)
+        IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
+          src: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_idle_sheet_288x288.png", metadata: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_idle.json" },
+        // HD comic idle (288 cell) and used pose (384x288 cell for the thrown hook and chain); the 96 r2 idle
+        // and r1 used stills are kept in brake_thief/.
+        USED: { id: "BRAKE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used_sheet_384x288.png", metadata: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used.json" }
       },
-      ANGLE: { // 遊び人 (v1a still delivered: enabled, mirrored: ball on the viewer's right like the Canvas jester)
-        IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
-          src: "assets/sprites/cast/angle_jester/angle_jester_idle_sheet_96x96.png", metadata: "assets/sprites/cast/angle_jester/angle_jester_idle.json" }
+      ANGLE: { // 遊び人 (HD comic idle r1a + used r1a; idle cane on the viewer's right like the Canvas jester's ball, used pose swings it up toward the hero; not mirrored)
+        IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
+          src: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_idle_sheet_288x288.png", metadata: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_idle.json" },
+        // HD comic idle (288 cell) and used pose (384x288 cell for the raised cane and open hand, standing foot on
+        // the pivot x); the 96 r1 stills are kept in angle_jester/.
+        USED: { id: "ANGLE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used_sheet_384x288.png", metadata: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used.json" }
       },
-      DASH: { // 戦士 (v1b still delivered: enabled, mirrored: sword on the viewer's right, shield on the left like the Canvas warrior)
+      DASH: { // 戦士 (HD comic idle r1b, drawn like the design sheet with the sword on the viewer's left; mirrored: sword on the viewer's right, shield on the left like the Canvas warrior; the 96 r1 still is kept in dash_warrior/)
         IDLE: { id: "DASH", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
-          src: "assets/sprites/cast/dash_warrior/dash_warrior_idle_sheet_96x96.png", metadata: "assets/sprites/cast/dash_warrior/dash_warrior_idle.json" }
+          src: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle_sheet_288x288.png", metadata: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle.json" }
       },
-      GUARD: { // 賢者 (v1a still delivered: enabled)
-        IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png", metadata: "assets/sprites/cast/guard_sage/guard_sage_idle.json" }
+      GUARD: { // 賢者 (HD comic idle r1b, no hat by design, drawn like sage_r1b with the staff on the viewer's left; mirrored: staff on the viewer's right, book on the left like the Canvas sage; the 96 r1 still is kept in guard_sage/)
+        IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
+          src: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle.json" }
       },
-      STOPPER: { // 僧侶 (v1a still delivered: enabled)
+      STOPPER: { // 僧侶 (HD comic idle r1a, same facing as the r3 still: staff on the viewer's right like the Canvas cleric, so not mirrored; the 96 r3 still is kept in stopper_cleric/)
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png", metadata: "assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json" }
+          src: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle.json" }
       },
-      SPECIAL_ONLY: { // 商人 (v1a still delivered: enabled; box on the viewer's right under the item orb, so never flipped)
+      SPECIAL_ONLY: { // 商人 (HD comic idle r1b, same facing as the r1 still: pouch in the viewer-left hand, bag on the viewer's right under the item orb like the Canvas box, facing the hero, so not flipped; MERCHANT SPECIAL overlay at the Canvas ratio 1.25/1.365; the 96 r1 still is kept in merchant/)
         IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: true,
-          src: "assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png", metadata: "assets/sprites/cast/merchant/merchant_idle.json" }
+          src: "assets/sprites/cast/merchant_comic_v1/merchant_idle_sheet_288x288.png", metadata: "assets/sprites/cast/merchant_comic_v1/merchant_idle.json" }
       }
+    },
+    // Launch truck (display only; there is no truck in game.js / physics.js, so no hit box changes). One HD comic still
+    // (r1b, side view facing right) for every state: READY / AIM_ANGLE / AIM_POWER / 0.5 s after launch; Graphics.draw
+    // keeps choosing the x as before. 576x288 cell, pivot (352,264) = the Canvas truck origin (translate x, ground);
+    // drawn scale 1.25*96/288 -> 167 x 102 px on screen, the same length and roof height as the Canvas truck.
+    // Missing / broken asset -> drawTruck returns false and Graphics.truck draws the Canvas truck.
+    TRUCK: {
+      IDLE: { id: "TRUCK", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, enabled: true,
+        src: "assets/sprites/truck/truck_comic_v1/truck_idle_sheet_576x288.png", metadata: "assets/sprites/truck/truck_comic_v1/truck_idle.json" }
     }
   },
   // visual.oneShot.animation -> loaded asset key.
@@ -145,9 +187,8 @@ Hop.Sprites = {
       const data = await response.json();
       // HERO animations stay 8 frames; CAST stills declare id and frames: 1.
       if (data.id !== (definition.id || "HERO") || data.animation !== definition.animation ||
-          data.frameWidth !== 96 || data.frameHeight !== 96 || data.frames !== (definition.frames || 8) ||
-          data.fps !== definition.fps || data.loop !== definition.loop ||
-          data.pivot?.x !== 48 || data.pivot?.y !== 88) return asset;
+          data.frames !== (definition.frames || 8) || data.fps !== definition.fps || data.loop !== definition.loop) return asset;
+      if (!this.normalizeCell(data)) return asset;
       // Optional playback order: sheet column indices, played at fps (duration = length / fps).
       if (data.sequence !== undefined && !(Array.isArray(data.sequence) && data.sequence.length >= 1 && data.sequence.length <= 64 &&
           data.sequence.every(i => Number.isInteger(i) && i >= 0 && i < data.frames))) return asset;
@@ -162,6 +203,28 @@ Hop.Sprites = {
     } catch (_) { /* Missing/blocked assets retain the next fallback. */ }
     return asset;
   },
+  // Cell contract (display only). Legacy pixel sheets: 96x96 cells, pivot (48,88), nearest-neighbour.
+  // HD sheets declare cellW / cellH (or frameHeight > 96): cellH 96..1024,
+  // cellW cellH/2..2*cellH (wide poses may use a wider cell), optional pivot inside the cell (default
+  // (cellW/2, cellH*88/96)), drawn with high-quality smoothing (smoothing: false opts out). The
+  // definition scale stays in legacy 96-cell units: drawn scale = scale * 96 / cellH, so an HD
+  // sheet drawn with the same proportions has the same on-screen size and feet point as its 96
+  // version. Normalizes data in place (frameWidth / frameHeight / pivot / unit / smooth); false = reject.
+  normalizeCell(data) {
+    const int = v => Number.isInteger(v);
+    const hd = data.cellW !== undefined || data.cellH !== undefined || data.frameHeight > 96;
+    if (!hd) {
+      if (data.frameWidth !== 96 || data.frameHeight !== 96 || data.pivot?.x !== 48 || data.pivot?.y !== 88) return false;
+      return Object.assign(data, { unit: 1, smooth: data.smoothing === true });
+    }
+    const w = data.cellW ?? data.frameWidth, h = data.cellH ?? data.frameHeight;
+    if (data.frameWidth !== undefined && data.frameWidth !== w || data.frameHeight !== undefined && data.frameHeight !== h) return false;
+    if (!int(w) || !int(h) || h < 96 || h > 1024 || w * 2 < h || w > h * 2) return false;
+    const pivot = data.pivot === undefined ? { x: w / 2, y: h * 88 / 96 } : data.pivot;
+    if (!Number.isFinite(pivot?.x) || !Number.isFinite(pivot?.y) || pivot.x < 0 || pivot.x > w || pivot.y < 0 || pivot.y > h) return false;
+    if (data.smoothing !== undefined && typeof data.smoothing !== "boolean") return false;
+    return Object.assign(data, { frameWidth: w, frameHeight: h, pivot: { x: pivot.x, y: pivot.y }, unit: h / 96, smooth: data.smoothing !== false });
+  },
   // Time-based frame index: identical for any refresh rate. One-shots hold the last frame.
   frameAt(data, time) {
     const index = Math.floor(Math.max(0, Number.isFinite(time) ? time : 0) * data.fps);
@@ -174,9 +237,11 @@ Hop.Sprites = {
     if (!asset?.ready || !asset.image?.complete || !asset.image.naturalWidth || !asset.data?.pivot) return false;
     const d = asset.data;
     const frame = this.frameAt(d, time);
+    scale /= d.unit > 0 ? d.unit : 1; // HD cells: same on-screen size as the 96 version
     ctx.save();
     try {
-      ctx.imageSmoothingEnabled = false;
+      ctx.imageSmoothingEnabled = !!d.smooth;
+      if (d.smooth) ctx.imageSmoothingQuality = "high";
       ctx.drawImage(asset.image, frame * d.frameWidth, 0, d.frameWidth, d.frameHeight,
         x - d.pivot.x * scale, feet - d.pivot.y * scale, d.frameWidth * scale, d.frameHeight * scale);
       return true;
@@ -184,12 +249,20 @@ Hop.Sprites = {
     finally { ctx.restore(); }
   },
   // CAST still for a roadside character / merchant (pure lookup): { asset, scale, flip } or null.
-  // pose 1 = used (post-contact): BOUNCE uses KICK when loaded, otherwise IDLE.
+  // pose 1 = used (post-contact): the character's pose-1 slot (BOUNCE KICK, BOOST / BRAKE / ANGLE USED) when
+  // loaded, otherwise IDLE.
   castLayer(id, pose = 0) {
     const slots = this.castAssets?.[id], defs = this.definitions.CAST?.[id];
     if (!slots || !defs) return null;
-    const name = pose && slots.KICK?.ready ? "KICK" : "IDLE", asset = slots[name];
+    const used = pose ? Object.keys(defs).find(n => defs[n].pose === 1 && slots[n]?.ready) : null;
+    const name = used || "IDLE", asset = slots[name];
     return asset?.ready ? { name, asset, scale: defs[name].scale, flip: !!defs[name].flip } : null;
+  },
+  // Draw the truck still with its origin at (x, ground) (the Canvas truck's translate point); false -> Canvas truck.
+  drawTruck(ctx, x, ground) {
+    const def = this.definitions.TRUCK?.IDLE, asset = this.truckIdle;
+    if (!def || def.enabled === false || !asset?.ready) return false;
+    return this.draw(ctx, asset, 0, x, ground, def.scale);
   },
   // Draw a CAST still with its feet at (x, feet); false -> caller draws the Canvas figure.
   drawCast(ctx, id, x, feet, pose = 0) {
@@ -251,6 +324,12 @@ Hop.Sprites = {
     if (!(t >= 0)) return 0;
     return fade > 0 ? Math.min(1, t / fade) : 1;
   },
+  // READY / AIM standing still (pure). Empty when the asset is missing -> Canvas HERO.
+  idleLayers() {
+    const asset = this.heroIdle, def = this.definitions.HERO.IDLE;
+    if (!asset?.ready || !asset.data || def?.enabled === false) return [];
+    return [{ name: "IDLE", asset, time: 0, scale: def.scale }];
+  },
   // Ordered FLYING candidates (pure): active one-shot (AERIAL / GROUND_BOUNCE), then FLIGHT_LOOP.
   // The caller falls back to the Canvas HERO when every candidate fails to draw. RESULT without a
   // STOP_RESULT (mid-air STOPPER stop, missing asset) keeps FLIGHT_LOOP frozen at visual.frozenAt
@@ -270,6 +349,10 @@ Hop.Sprites = {
     return layers;
   }
 };
+Hop.Sprites.idleReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.IDLE).then(asset => {
+  Hop.Sprites.heroIdle = asset;
+  return asset;
+});
 Hop.Sprites.ready = Hop.Sprites.load(Hop.Sprites.definitions.HERO.FLIGHT_LOOP).then(asset => {
   Hop.Sprites.heroFlight = asset;
   return asset;
@@ -301,3 +384,7 @@ Hop.Sprites.castReady = Promise.all(Object.entries(Hop.Sprites.definitions.CAST)
     (Hop.Sprites.castAssets[id] ||= {})[name] = asset;
     return asset;
   }))));
+Hop.Sprites.truckReady = Hop.Sprites.load(Hop.Sprites.definitions.TRUCK.IDLE).then(asset => {
+  Hop.Sprites.truckIdle = asset;
+  return asset;
+});

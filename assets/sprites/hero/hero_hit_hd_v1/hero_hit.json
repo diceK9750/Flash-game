@@ -1,0 +1,16 @@
+{
+  "id": "HERO",
+  "animation": "HIT",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "sequence": [0, 0, 1, 2, 3, 4, 5, 6, 7],
+  "pivot": { "x": 144, "y": 264 },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "nextAnimation": "FLIGHT_LOOP",
+  "sourceImage": "hero_rumiko_edit_r1a_hs_70.jpg",
+  "notes": "HD Rumiko-style knockback (留美子飛び) still, adopted 70% of idle on-screen height. Soft-alpha cyan cutout into 288 cell, pivot (144,264). 8 identical frames (sheet) so timing matches prior HIT (sequence 9 steps @12fps = 0.75s, then FLIGHT_LOOP). suppressTilt stays on (comic upright pose). 頭身 ~5.10 PASS. Display only."
+}

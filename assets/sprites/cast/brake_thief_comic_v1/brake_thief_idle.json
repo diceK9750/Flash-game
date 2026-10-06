@@ -1,0 +1,17 @@
+{
+  "id": "BRAKE",
+  "animation": "IDLE",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_thief_idle_r1b_hl.jpg",
+  "notes": "HD comic thief idle (r1b; r1a has the same small head, 6.68 heads, and a sky-blue background). Both candidates came out with a small head (r1b 6.76 heads), so: off-cyan background (9,231,249) shifted to the standard cyan first (fix_bg.py, same ramp as hd_cutout), body below the neck squashed vertically x0.914 with a smooth ramp from just under the chin (squash.py, soles fixed, widths unchanged), then head enlarged x1.27 about the chin with a smooth warp (warp_head.py). 頭身 5.08 = mean of the estimate (head = 2.53 x (chin - eye centre), the hero idle ratio: 4.92) and the measured hair top (5.23); spiky hair tips not counted. Soft-alpha cyan cutout at grid 8.92 (head 131.5 / 14.74: on-screen head = hero head) into a 288 cell, pivot (144,264), centre between the boots (src x618) on the pivot x; left-over cyan in the chain-link holes and hair tips capped to grey (despill_cell.py; the design has no cyan). 75 sprite px tall (old 96 still: 86). Same facing as the old still (dagger on the viewer's left, hook on the viewer's right), not mirrored. Previous 96 still kept in ../brake_thief/. Display only."
+}

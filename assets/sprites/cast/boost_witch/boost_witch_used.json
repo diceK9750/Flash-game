@@ -1,0 +1,16 @@
+{
+  "id": "BOOST",
+  "animation": "USED",
+  "frameWidth": 96,
+  "frameHeight": 96,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 48,
+    "y": 88
+  },
+  "displayScale": 1.25,
+  "sourceImage": "witch_used_r1a.jpg",
+  "notes": "Redesign r1 used pose (after the hero's contact; design sheet 異世界ブースト魔法使い, comical wink with the staff thrust up toward the hero): transparent RGBA; cyan background (~0,240,255) removed by the standard key (the only enclosed keyed areas are background gaps between the staff and the arm and between the legs); resampled from the JPEG still at 8.4 source px per sprite px so the head matches the idle (her hat is 1.07-1.10x larger in this still than in witch_r1a.jpg, idle grid 7.78; at 7.78 the wide pose would be 97px wide, wider than the cell): 90x74 incl. the staff and the cape; shifted -1 px so the centre between the boots is on the pivot x; cyan spill on outline pixels neutralised (green/blue clamped to red+8); staff toward the viewer's left (the hero), drawn unmirrored like the idle; feet on pivot."
+}
