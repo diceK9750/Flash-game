@@ -138,9 +138,9 @@ Hop.Sprites = {
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle.json" }
       },
-      SPECIAL_ONLY: { // 商人 (redesign r1 still from the design sheet: enabled; bag on the viewer's right under the item orb like the Canvas box, facing the hero, so not flipped)
+      SPECIAL_ONLY: { // 商人 (HD comic idle r1b, same facing as the r1 still: pouch in the viewer-left hand, bag on the viewer's right under the item orb like the Canvas box, facing the hero, so not flipped; MERCHANT SPECIAL overlay at the Canvas ratio 1.25/1.365; the 96 r1 still is kept in merchant/)
         IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: true,
-          src: "assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png", metadata: "assets/sprites/cast/merchant/merchant_idle.json" }
+          src: "assets/sprites/cast/merchant_comic_v1/merchant_idle_sheet_288x288.png", metadata: "assets/sprites/cast/merchant_comic_v1/merchant_idle.json" }
       }
     }
   },

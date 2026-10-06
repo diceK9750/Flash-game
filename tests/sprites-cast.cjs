@@ -17,7 +17,8 @@ const HD_CAST = {
   'ANGLE.USED': { dir: 'assets/sprites/cast/angle_jester_comic_v1/', w: 384, legacy: ['assets/sprites/cast/angle_jester/angle_jester_used_sheet_96x96.png', 'assets/sprites/cast/angle_jester/angle_jester_used.json'] },
   'DASH.IDLE': { dir: 'assets/sprites/cast/dash_warrior_comic_v1/', w: 288, legacy: ['assets/sprites/cast/dash_warrior/dash_warrior_idle_sheet_96x96.png', 'assets/sprites/cast/dash_warrior/dash_warrior_idle.json'] },
   'GUARD.IDLE': { dir: 'assets/sprites/cast/guard_sage_comic_v1/', w: 288, legacy: ['assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png', 'assets/sprites/cast/guard_sage/guard_sage_idle.json'] },
-  'STOPPER.IDLE': { dir: 'assets/sprites/cast/stopper_cleric_comic_v1/', w: 288, legacy: ['assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png', 'assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json'] }
+  'STOPPER.IDLE': { dir: 'assets/sprites/cast/stopper_cleric_comic_v1/', w: 288, legacy: ['assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png', 'assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json'] },
+  'SPECIAL_ONLY.IDLE': { dir: 'assets/sprites/cast/merchant_comic_v1/', w: 288, legacy: ['assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png', 'assets/sprites/cast/merchant/merchant_idle.json'] }
 };
 const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
