@@ -118,10 +118,13 @@ Hop.Sprites = {
         USED: { id: "BRAKE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
           src: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used_sheet_384x288.png", metadata: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used.json" }
       },
-      ANGLE: { // 遊び人 (redesign r1 idle + used stills from the design sheet: enabled; idle cane already on the viewer's right like the Canvas jester's ball, used pose raises it toward the hero; not mirrored)
+      ANGLE: { // 遊び人 (HD comic idle r1a + redesign r1 96 used still, held back for now; idle cane on the viewer's right like the Canvas jester's ball, used pose raises it toward the hero; not mirrored)
         IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/angle_jester/angle_jester_idle_sheet_96x96.png", metadata: "assets/sprites/cast/angle_jester/angle_jester_idle.json" },
-        USED: { id: "ANGLE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+          src: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_idle_sheet_288x288.png", metadata: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_idle.json" },
+        // HD comic idle (288 cell; 96 r1 still kept in angle_jester/). The 96 USED is held back (heldBack,
+        // files kept) until the HD used pose exists, so a used jester shows the HD idle at 35% instead of
+        // jumping to the 96 chibi still.
+        USED: { id: "ANGLE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: false, heldBack: true,
           src: "assets/sprites/cast/angle_jester/angle_jester_used_sheet_96x96.png", metadata: "assets/sprites/cast/angle_jester/angle_jester_used.json" }
       },
       DASH: { // 戦士 (redesign r1 still from the design sheet: enabled, mirrored: sword on the viewer's right, shield on the left like the Canvas warrior)
