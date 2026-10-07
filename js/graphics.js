@@ -213,9 +213,9 @@ Hop.Graphics = {
       const fall = !face ? Hop.Sprites?.castLayer?.(cut.castId, 0) : null;
       let drawn = false;
       if (face?.asset?.ready) {
-        const scale = (face.scale || 1.15) * c.specialCutinFaceScale * style.portraitPop;
-        // Pivot is cell center: draw at band center so the face fills the strip.
-        drawn = !!Hop.Sprites.draw(ctx, face.asset, 0, 0, 0, scale);
+        // Drawn height = FaceFill x band height (Sprites.draw: on-screen height = 96 x scale); centre pivot.
+        const scale = (face.scale || 1) * bandH * c.specialCutinFaceFill / 96 * style.portraitPop;
+        drawn = !!Hop.Sprites.draw(ctx, face.asset, 0, c.width * (c.specialCutinFaceCenterX - 0.5), 0, scale);
       } else if (fall?.asset?.ready) {
         const feetY = hh - 14;
         const scale = (fall.scale || 1.25) * c.specialCutinPortraitScale * style.portraitPop;
@@ -241,9 +241,9 @@ Hop.Graphics = {
     ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
     ctx.closePath(); ctx.stroke();
     ctx.restore(); // band transform + wipe
-    // Skill name at band trailing edge / outside (large)
-    const nameX = c.width * (0.10 + reveal * 0.52);
-    const nameY = cy + bandH * 0.38 + 40;
+    // Skill name rides the band's right end, over the edge of the face (slides in with the wipe).
+    const nameX = c.width * (c.specialCutinNameX - (1 - reveal) * c.specialCutinNameSlide);
+    const nameY = cy + bandH * c.specialCutinNameY;
     ctx.save();
     ctx.translate(nameX, nameY);
     ctx.rotate(-tilt * 0.55);

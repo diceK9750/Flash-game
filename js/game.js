@@ -341,7 +341,8 @@ Hop.Game = class {
         remaining: c.specialCutinDuration,
         total: c.specialCutinDuration
       };
-      this.soundEvent = strong ? "STOPPER" : pending.type === "GUARD" ? "GUARD" : "SPECIAL";
+      // Per-SPECIAL SE (Hop.Audio.specialRecipes): SPECIAL_BOOST ... SPECIAL_GUARD, merchant = SPECIAL_MERCHANT. MISS = none.
+      this.soundEvent = pending.merchantType ? "SPECIAL_MERCHANT" : `SPECIAL_${pending.type}`;
       this.contact = { label: pending.type, remaining: c.contactDuration };
     } else this.normalContact(pending.type, pending.entry, pending.guardAtContact);
     this.updateAerialMode();

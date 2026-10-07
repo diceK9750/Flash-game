@@ -19,14 +19,14 @@ const HD_CAST = {
   'GUARD.IDLE': { dir: 'assets/sprites/cast/guard_sage_comic_v1/', w: 288, legacy: ['assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png', 'assets/sprites/cast/guard_sage/guard_sage_idle.json'] },
   'STOPPER.IDLE': { dir: 'assets/sprites/cast/stopper_cleric_comic_v1/', w: 288, legacy: ['assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png', 'assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json'] },
   'SPECIAL_ONLY.IDLE': { dir: 'assets/sprites/cast/merchant_comic_v1/', w: 288, legacy: ['assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png', 'assets/sprites/cast/merchant/merchant_idle.json'] },
-  'BOOST.CUTIN_FACE': { dir: 'assets/sprites/cast/boost_witch_cutin_face/', w: 256 },
-  'BOUNCE.CUTIN_FACE': { dir: 'assets/sprites/cast/bounce_fighter_cutin_face/', w: 256 },
-  'BRAKE.CUTIN_FACE': { dir: 'assets/sprites/cast/brake_thief_cutin_face/', w: 256 },
-  'ANGLE.CUTIN_FACE': { dir: 'assets/sprites/cast/angle_jester_cutin_face/', w: 256 },
-  'DASH.CUTIN_FACE': { dir: 'assets/sprites/cast/dash_warrior_cutin_face/', w: 256 },
-  'GUARD.CUTIN_FACE': { dir: 'assets/sprites/cast/guard_sage_cutin_face/', w: 256 },
-  'STOPPER.CUTIN_FACE': { dir: 'assets/sprites/cast/stopper_cleric_cutin_face/', w: 256 },
-  'SPECIAL_ONLY.CUTIN_FACE': { dir: 'assets/sprites/cast/merchant_cutin_face/', w: 256 }
+  'BOOST.CUTIN_FACE': { dir: 'assets/sprites/cast/boost_witch_cutin_face_v2/', w: 640 },
+  'BOUNCE.CUTIN_FACE': { dir: 'assets/sprites/cast/bounce_fighter_cutin_face_v2/', w: 640 },
+  'BRAKE.CUTIN_FACE': { dir: 'assets/sprites/cast/brake_thief_cutin_face_v2/', w: 640 },
+  'ANGLE.CUTIN_FACE': { dir: 'assets/sprites/cast/angle_jester_cutin_face_v2/', w: 640 },
+  'DASH.CUTIN_FACE': { dir: 'assets/sprites/cast/dash_warrior_cutin_face_v2/', w: 640 },
+  'GUARD.CUTIN_FACE': { dir: 'assets/sprites/cast/guard_sage_cutin_face_v2/', w: 640 },
+  'STOPPER.CUTIN_FACE': { dir: 'assets/sprites/cast/stopper_cleric_cutin_face_v2/', w: 640 },
+  'SPECIAL_ONLY.CUTIN_FACE': { dir: 'assets/sprites/cast/merchant_cutin_face_v2/', w: 640 }
 };
 const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
@@ -92,7 +92,7 @@ if (process.argv.includes('--loader')) {
     for (const [name, def] of Object.entries(C[id])) {
       if (name === 'CUTIN_FACE') {
         assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, 'CUTIN_FACE', 1, 1, false, false]);
-        assert.equal(def.scale, 2.8);
+        assert.equal(def.scale, 1);
       } else {
         assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, id === 'DASH' || id === 'GUARD']); // mirrored: the warrior (sword right, shield left) and the redesigned sage (staff right, book left), like the Canvas figures; the redesigned fighter kick, thief and jester already face the Canvas way
         assert.equal(def.scale, id === 'SPECIAL_ONLY' ? 1.25 * 1.25 / 1.365 : 1.25);
@@ -113,12 +113,15 @@ if (process.argv.includes('--loader')) {
         const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
         const hd = HD_CAST[id + '.' + name], png = fs.readFileSync(path.join(root, def.src));
         if (hd && name === 'CUTIN_FACE') {
-          // Dedicated face close-up plate: 256 square, center pivot, nearest-neighbour.
+          // Face close-up plate v2: 640x320 (2:1 = widest allowed cell), center pivot, smoothed (Lanczos source).
           assert(def.src.startsWith(hd.dir) && def.metadata.startsWith(hd.dir), id + ' face dir');
           assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, smoothing: m.smoothing },
-            { id, animation: 'CUTIN_FACE', w: 256, h: 256, frames: 1, fps: 1, loop: false, pivot: { x: 128, y: 128 }, smoothing: false });
+            { id, animation: 'CUTIN_FACE', w: 640, h: 320, frames: 1, fps: 1, loop: false, pivot: { x: 320, y: 160 }, smoothing: true });
           assert(s.normalizeCell({ ...m }), id + ' face cell contract');
-          assert.equal(png.readUInt32BE(16), 256); assert.equal(png.readUInt32BE(20), 256); assert.equal(png[25], 6, 'RGBA PNG');
+          assert.equal(png.readUInt32BE(16), 640); assert.equal(png.readUInt32BE(20), 320); assert.equal(png[25], 6, 'RGBA PNG');
+          // v1 256 plate kept next to it (not deleted).
+          const v1 = hd.dir.replace('_cutin_face_v2/', '_cutin_face/');
+          assert(fs.readdirSync(path.join(root, v1)).some(f => f.endsWith('_sheet_256x256.png')), id + ' v1 face plate kept');
         } else if (hd) {
           // HD comic still: 288 high (unit 3), pivot (cellW/2,264) = the 96 feet point, smoothing on.
           assert(def.src.startsWith(hd.dir) && def.metadata.startsWith(hd.dir), id + ' HD dir');

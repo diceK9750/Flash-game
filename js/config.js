@@ -45,13 +45,15 @@ Hop.CONFIG = Object.freeze({
   stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
   specialTrailDuration: 1.2,
-  // Display-only early-Tales-feel band cut-in with decisive face close-up (resolveSpecial true only).
+  // Display-only early-Tales-feel band cut-in with a decisive face close-up (resolveSpecial true only).
   // Original layout — not a copy of any ToE / Destiny 2 / Symphonia / nicovideo frame.
-  // Timeline: short flash → band wipe → hold → fade. Face plates are dedicated CUTIN_FACE crops.
-  // reducedMotion: short still, no shake/flash/wipe motion.
+  // Timeline: short flash → band wipe → hold → fade. reducedMotion: short still, no shake/flash/wipe motion.
+  // Face: CUTIN_FACE v2 plate (2:1, crop eye-1.4d .. chin+0.45d baked per JSON "crop") drawn at
+  // FaceFill x band height, centred at FaceCenterX of the canvas width, so brows..chin fill the band.
   specialCutinDuration: 1.0, specialCutinImpact: 0.07, specialCutinWipe: 0.24, specialCutinHold: 0.46,
-  specialCutinReducedDuration: 0.40, specialCutinBandHeight: 300, specialCutinBandTiltDeg: 7,
-  specialCutinFaceScale: 1.35, specialCutinPortraitScale: 3.2, specialCutinNameSize: 62,
+  specialCutinReducedDuration: 0.40, specialCutinBandHeight: 340, specialCutinBandTiltDeg: 7,
+  specialCutinFaceFill: 1.2, specialCutinFaceCenterX: 0.37, specialCutinPortraitScale: 3.2,
+  specialCutinNameSize: 62, specialCutinNameX: 0.64, specialCutinNameY: 0.30, specialCutinNameSlide: 0.4,
   specialCutinShakePx: 5, specialCutinFlashPeak: 0.70, specialCutinPortraitPop: 1.10,
   // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({

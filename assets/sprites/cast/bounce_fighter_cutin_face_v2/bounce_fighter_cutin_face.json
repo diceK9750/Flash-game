@@ -1,0 +1,23 @@
+{
+  "id": "BOUNCE",
+  "animation": "CUTIN_FACE",
+  "cellW": 640,
+  "cellH": 320,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 320,
+    "y": 160
+  },
+  "smoothing": true,
+  "sourceImage": "hd_party_comic_fighter_kick_r1a_hl.jpg",
+  "crop": [
+    399.8,
+    29.2,
+    696.2,
+    177.4
+  ],
+  "flip": false,
+  "notes": "SPECIAL cut-in face close-up v2: cropped from the 1280px HD comic source (eye->chin based), cyan keyed + despill, Lanczos to 640x320, mild unsharp. Drawn at 1.2x the band height so brows..chin fill the band. Original crop of this game's art (no Tales frames). Display only."
+}
