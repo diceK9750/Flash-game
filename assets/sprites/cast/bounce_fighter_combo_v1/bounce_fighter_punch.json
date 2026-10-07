@@ -1,0 +1,26 @@
+{
+  "id": "BOUNCE",
+  "animation": "PUNCH",
+  "cellW": 384,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 192,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_fighter_punch_r1.jpg",
+  "facing": "right",
+  "heightRatio": {
+    "standing": 4.93,
+    "vertical": 4.35,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Combo-scene pose: fighter rush punch (right fist forward, toward the viewer's right). Background (6,236,252) shifted to the standard cyan (fix_bg.py), then head (with buns and tails) shrunk x0.86 about the chin (610,202) with the smooth warp (warp_head.py; no change below the chin or at the punching arm). 頭身: wide stance, so the head top -> sole vertical (mean of both soles) is short; measured the same way as the existing poses but along the legs (head top -> hip vertical + hip -> sole along each leg, the standing-equivalent height): 4.93 = mean of the estimate (head = 2.53 x (chin - eye centre): 5.22) and the measured hair top (4.64); before the warp 4.38. Vertical head top -> sole after the warp: 4.35 (estimate 4.59 / hair top 4.10). Torso check: chin -> sash bottom = 1.09 heads (HD idle 1.07). Buns and twin tails not counted. Soft-alpha cyan cutout (hd_cutout --spill-strong) at grid 9.95 (head 146.7 / 14.74: on-screen head = HD idle head = hero head) into a 384x288 cell (unit 3), pivot (192,264) = centre between the boots, lowest sole on the pivot y. Teal edge pixels near the alpha edge replaced by nearby opaque colours (defringe.py). Facing right (flip in the combo scene to face the hero). Display only."
+}

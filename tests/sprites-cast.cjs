@@ -28,7 +28,30 @@ const HD_CAST = {
   'STOPPER.CUTIN_FACE': { dir: 'assets/sprites/cast/stopper_cleric_cutin_face_v2/', w: 640 },
   'SPECIAL_ONLY.CUTIN_FACE': { dir: 'assets/sprites/cast/merchant_cutin_face_v2/', w: 640 }
 };
+// Combo-scene poses (drawn only by the combo SPECIAL scenes): HD comic stills, unit 3, head = HD idle head, 頭身 4.75..5.25.
+const COMBO_POSE = {
+  'BOOST.CAST': { dir: 'assets/sprites/cast/boost_witch_combo_v1/', w: 288, pivot: { x: 144, y: 278 }, facing: 'left', ratio: 'value' },
+  'BOUNCE.PUNCH': { dir: 'assets/sprites/cast/bounce_fighter_combo_v1/', w: 384, pivot: { x: 192, y: 264 }, facing: 'right', ratio: 'standing' },
+  'BOUNCE.UPPER': { dir: 'assets/sprites/cast/bounce_fighter_combo_v1/', w: 288, pivot: { x: 144, y: 264 }, facing: 'right', ratio: 'value' }
+};
 const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
+// Minimal PNG decoder (8-bit RGBA, non-interlaced) -> alpha channel; test-only.
+function pngAlpha(buf) {
+  const zlib = require('node:zlib'); const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+  assert(buf[24] === 8 && buf[25] === 6 && buf[28] === 0, 'RGBA8 non-interlaced');
+  const parts = []; for (let o = 8; o < buf.length;) { const len = buf.readUInt32BE(o), type = buf.toString('ascii', o + 4, o + 8); if (type === 'IDAT') parts.push(buf.subarray(o + 8, o + 8 + len)); o += 12 + len; }
+  const raw = zlib.inflateSync(Buffer.concat(parts)), stride = w * 4, out = Buffer.alloc(h * stride), alpha = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (stride + 1)], row = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let i = 0; i < stride; i++) {
+      const a = i >= 4 ? out[y * stride + i - 4] : 0, b = y ? out[(y - 1) * stride + i] : 0, c = y && i >= 4 ? out[(y - 1) * stride + i - 4] : 0;
+      const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+      out[y * stride + i] = (row[i] + [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][f]) & 255;
+    }
+    for (let x = 0; x < w; x++) alpha[y * w + x] = out[y * stride + x * 4 + 3];
+  }
+  return { w, h, alpha };
+}
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
 if (process.argv.includes('--loader')) {
   (async () => {
@@ -83,7 +106,7 @@ if (process.argv.includes('--loader')) {
   assert.deepEqual(Object.keys(C), IDS);
   for (const id of IDS) {
     assert(H.CAST[id], id + ' is a CAST id');
-    const expectedKeys = id === 'BOUNCE' ? ['IDLE', 'KICK', 'CUTIN_FACE'] : USED_POSE[id] ? ['IDLE', USED_POSE[id], 'CUTIN_FACE'] : ['IDLE', 'CUTIN_FACE'];
+    const expectedKeys = id === 'BOUNCE' ? ['IDLE', 'KICK', 'PUNCH', 'UPPER', 'CUTIN_FACE'] : id === 'BOOST' ? ['IDLE', 'USED', 'CAST', 'CUTIN_FACE'] : USED_POSE[id] ? ['IDLE', USED_POSE[id], 'CUTIN_FACE'] : ['IDLE', 'CUTIN_FACE'];
     assert.deepEqual(Object.keys(C[id]), expectedKeys);
     // Generic used (post-contact) pose: at most one pose: 1 slot per character, never IDLE.
     assert(Object.values(C[id]).filter(d => d.pose === 1).length <= 1, id + ': one pose-1 slot at most');
@@ -111,8 +134,24 @@ if (process.argv.includes('--loader')) {
       else assert.equal(def.enabled !== false, present, `${id}.${name}: ` + (present ? 'bundle found: set enabled: true' : 'enabled but bundle missing'));
       if (present) {
         const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
-        const hd = HD_CAST[id + '.' + name], png = fs.readFileSync(path.join(root, def.src));
-        if (hd && name === 'CUTIN_FACE') {
+        const hd = HD_CAST[id + '.' + name], png = fs.readFileSync(path.join(root, def.src)), combo = COMBO_POSE[id + '.' + name];
+        if (combo) {
+          // Combo pose: own folder, never a roadside pose (no pose: 1), facing recorded, 頭身 in range, feet pivot.
+          assert(def.comboPose === true && def.pose === undefined && def.enabled !== false, id + '.' + name + ' combo-only slot');
+          assert(def.src.startsWith(combo.dir) && def.metadata.startsWith(combo.dir), id + '.' + name + ' combo dir');
+          assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, smoothing: m.smoothing },
+            { id, animation: name, w: combo.w, h: 288, frames: 1, fps: 1, loop: false, pivot: combo.pivot, smoothing: true });
+          assert(s.normalizeCell({ ...m }), id + '.' + name + ' cell contract'); assert.equal(m.displayScale, def.scale);
+          assert.equal(m.facing, combo.facing); assert.equal(def.facing, combo.facing);
+          const ratio = m.heightRatio[combo.ratio]; assert(ratio >= 4.75 && ratio <= 5.25 && /頭身/.test(m.notes), `${id}.${name} 頭身 ${ratio}`);
+          assert.deepEqual(m.heightRatio.pass, [4.75, 5.25]);
+          assert.equal(png.readUInt32BE(16), combo.w); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+          // Feet on the pivot: the lowest opaque row of the sheet sits on pivot.y; nothing clipped at the cell edges.
+          const { w: pw, h: ph, alpha } = pngAlpha(png); let lowest = -1, top = ph, edge = false;
+          for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) if (alpha[y * pw + x] > 128) { lowest = y; top = Math.min(top, y); if (x === 0 || x === pw - 1 || y === 0) edge = true; }
+          assert(Math.abs(lowest + 1 - combo.pivot.y) <= 1, `${id}.${name} sole on pivot y (${lowest + 1} vs ${combo.pivot.y})`);
+          assert(!edge && top > 0, id + '.' + name + ' not clipped');
+        } else if (hd && name === 'CUTIN_FACE') {
           // Face close-up plate v2: 640x320 (2:1 = widest allowed cell), center pivot, smoothed (Lanczos source).
           assert(def.src.startsWith(hd.dir) && def.metadata.startsWith(hd.dir), id + ' face dir');
           assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, smoothing: m.smoothing },

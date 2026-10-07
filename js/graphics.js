@@ -426,37 +426,49 @@ Hop.Graphics = {
     return from + (to - from) * (1 + 2.70158 * x ** 3 + 1.70158 * x ** 2);
   },
   // Actor placements in world x / pose / scale for a scene time (pure). Used by the drawing and by tests.
+  // pose = CAST slot name (combo poses PUNCH / UPPER / CAST, else IDLE / KICK / USED); face = "left" / "right"
+  // (Sprites.drawCastScaled mirrors a slot whose drawn facing differs, about the feet).
   comboActors(st) {
     const c = Hop.CONFIG, H = st.heroWX, t = st.t, lerp = (a, b, u) => a + (b - a) * this.ease(u);
     const src = st.source?.x ?? H, par = st.partner?.x ?? H + 500;
     const out = { hero: { dx: 0, dy: 0, hit: t >= 0 }, witch: null, fighter: null };
     if (st.type === "BOOST") {
       const W = c.comboWitchTimes, hits = c.comboWitchHits, step = (W.rushEnd - W.dash) / hits;
-      out.witch = { x: st.short && t >= 0 ? H - 120 : lerp(src, H - 120, t / W.dash), pose: st.short ? (t >= 0 ? 1 : 0) : t >= W.liftEnd - 0.05 ? 1 : 0, flip: false, scale: 1 };
+      // Witch: chants with the staff raised (CAST), fires the big spell with the staff thrust (USED).
+      const witchPose = st.short ? (t >= 0 ? "CAST" : "IDLE") : t < 0.15 ? "IDLE" : t < W.liftEnd - 0.05 ? "CAST" : "USED";
+      out.witch = { x: st.short && t >= 0 ? H - 120 : lerp(src, H - 120, t / W.dash), pose: witchPose, scale: 1 };
+      out.witch.face = out.witch.x < H ? "right" : "left";
       if (st.short) {
-        out.fighter = t >= 0 ? { x: H + 75, pose: 1, flip: true, scale: 1, rotate: 0 } : { x: par, pose: 0, flip: true, scale: 1, rotate: 0 };
+        out.fighter = t >= 0 ? { x: H - 40, pose: "UPPER", face: "right", scale: 1, rotate: 0 } : { x: par, pose: "IDLE", face: "left", scale: 1, rotate: 0 };
         out.hits = t >= 0 ? hits : 0; out.hero.dy = 0; return out;
       }
-      if (t < W.dash) out.fighter = { x: lerp(par, H + 75, t / W.dash), pose: 0, flip: true, scale: 1, rotate: 0, dash: Math.max(0, t) / W.dash };
+      if (t < W.dash) out.fighter = { x: lerp(par, H + 75, t / W.dash), pose: "IDLE", face: "left", scale: 1, rotate: 0, dash: Math.max(0, t) / W.dash };
       else if (t < W.rushEnd) {
+        // Rush: PUNCH (every third blow the old KICK), teleporting left / right every two blows, always facing the hero.
         const k = Math.min(hits - 1, Math.floor((t - W.dash) / step)), u = (t - W.dash - k * step) / step, right = Math.floor(k / 2) % 2 === 0;
-        out.fighter = { x: H + (right ? 1 : -1) * (75 - 14 * (1 - u)), pose: k % 3 === 2 ? 0 : 1, flip: right, scale: 1, rotate: 0, ghost: k > 0 && k % 2 === 0 ? (right ? -1 : 1) : 0, ghostU: u };
+        out.fighter = { x: H + (right ? 1 : -1) * (75 - 14 * (1 - u)), pose: k % 3 === 2 ? "KICK" : "PUNCH", face: right ? "left" : "right", scale: 1, rotate: 0,
+          ghost: k > 0 && k % 2 === 0 ? (right ? -1 : 1) : 0, ghostU: u };
         out.hits = k + 1; out.hitU = u;
         out.hero.dx = Math.sin(t * 73) * 4; out.hero.dy = Math.cos(t * 59) * 3;
       } else {
+        // Finisher: UPPER from the hero's left, launching the hero; then she hops back out of the blast.
         const u = (t - W.rushEnd) / (W.liftEnd - W.rushEnd);
-        out.fighter = { x: t < W.liftEnd ? H - 30 : lerp(H - 30, H - 170, (t - W.liftEnd) / 0.2), pose: 1, flip: false, scale: 1, rotate: -0.95 * this.ease(u * 1.6) };
+        out.fighter = { x: t < W.liftEnd ? H - 40 : lerp(H - 40, H - 170, (t - W.liftEnd) / 0.2), pose: "UPPER", face: "right", scale: 1, rotate: -0.12 * this.ease(u * 1.6) };
         out.hits = hits; out.finish = true;
         out.hero.dy = -c.comboWitchLiftPx * this.ease(u) + (t > W.liftEnd ? Math.sin((t - W.liftEnd) * 9) * 3 : 0);
       }
       return out;
     }
     const F = c.comboFighterTimes;
-    out.fighter = { x: st.short && t >= 0 ? H - 150 : lerp(src, H - 150, t / F.arrive), pose: 0, flip: false, rotate: 0,
+    // Fighter faces the hero; giant UPPER with a short lunge (uniform scale, feet on the ground).
+    const lunge = st.short ? (t >= 0 ? 1 : 0) : this.ease((t - (F.upper - 0.08)) / 0.08);
+    out.fighter = { x: (st.short && t >= 0 ? H - 150 : lerp(src, H - 150, t / F.arrive)) + 80 * lunge, pose: "IDLE", rotate: 0,
       scale: st.short ? (t >= 0 ? c.comboFighterScale : 1) : this.comboFighterScale(t) };
+    out.fighter.face = out.fighter.x < H ? "right" : "left";
     const arrived = st.short ? t >= 0 : t >= F.arrive;
-    out.witch = { x: st.short && t >= 0 ? H - 330 : lerp(par, H - 330, t / F.arrive), pose: arrived && (st.short || t < F.growEnd) ? 1 : 0, flip: !arrived, scale: 1 };
-    if (st.short ? t >= 0 : t >= F.upper) { out.fighter.pose = 1; out.fighter.rotate = -0.45; }
+    // Witch comes from the right (facing her way), then turns to the fighter and casts the buff (CAST).
+    out.witch = { x: st.short && t >= 0 ? H - 330 : lerp(par, H - 330, t / F.arrive), pose: arrived && (st.short || t < F.growEnd) ? "CAST" : "IDLE", face: arrived ? "right" : "left", scale: 1 };
+    if (st.short ? t >= 0 : t >= F.upper - 0.04) out.fighter.pose = "UPPER";
     if (!st.short && t >= F.upper + F.hitstop) out.hero.dy = -c.comboFighterLiftPx * this.ease((t - F.upper - F.hitstop) / 0.18);
     if (!st.short && t >= F.growEnd && t < F.upper) out.fighter.charge = (t - F.growEnd) / (F.upper - F.growEnd);
     if (st.after !== null && !st.short) out.fighter.scale = 1 + (out.fighter.scale - 1) * (1 - this.ease(st.after / 0.35)); // back to normal size
@@ -524,8 +536,9 @@ Hop.Graphics = {
   },
   comboCast(ctx, id, a, sx, ground, alpha = 1) {
     if (!a) return;
-    const ok = Hop.Sprites?.drawCastScaled?.(ctx, id, sx(a.x), ground, a.pose, a.scale || 1, { flip: a.flip, rotate: a.rotate, alpha });
-    if (!ok) { ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(sx(a.x), ground); if (a.rotate) ctx.rotate(a.rotate); if (a.flip) ctx.scale(-1, 1); this.character(ctx, id, 0, 0, 1.365 * (a.scale || 1), a.pose); ctx.restore(); }
+    const ok = Hop.Sprites?.drawCastScaled?.(ctx, id, sx(a.x), ground, a.pose, a.scale || 1, { face: a.face, rotate: a.rotate, alpha });
+    // Canvas fallback (no sprite): pose 0 / 1, the Canvas figures face the viewer's left.
+    if (!ok) { ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(sx(a.x), ground); if (a.rotate) ctx.rotate(a.rotate); if (a.face === "right") ctx.scale(-1, 1); this.character(ctx, id, 0, 0, 1.365 * (a.scale || 1), a.pose === "IDLE" ? 0 : 1); ctx.restore(); }
   },
   spark(ctx, x, y, r, color, rot = 0) {
     const pts = Array.from({ length: 16 }, (_, i) => { const a = rot + i * Math.PI / 8, rr = i % 2 ? r * 0.38 : r; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; });
@@ -559,7 +572,7 @@ Hop.Graphics = {
       this.comboCast(ctx, "BOOST", A.witch, sx, ground);
       const f = A.fighter;
       if (f.dash !== undefined && !st.short) for (let i = 3; i >= 1; i--) this.comboCast(ctx, "BOUNCE", { ...f, x: f.x + i * 55 }, sx, ground, 0.18 * (4 - i) * fade);
-      if (f.ghost) this.comboCast(ctx, "BOUNCE", { ...f, x: st.heroWX + f.ghost * 75, flip: f.ghost > 0 }, sx, ground, 0.35 * (1 - f.ghostU) * fade);
+      if (f.ghost) this.comboCast(ctx, "BOUNCE", { ...f, x: st.heroWX + f.ghost * 75, face: f.ghost > 0 ? "left" : "right" }, sx, ground, 0.35 * (1 - f.ghostU) * fade);
       this.comboCast(ctx, "BOUNCE", f, sx, ground);
     } else {
       const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x), mid = ground - 70 * f.scale;
@@ -644,7 +657,7 @@ Hop.Graphics = {
         if (!st.short) for (let i = 0; i < 14; i++) { const ang = i * Math.PI / 7 + 0.2; this.line(ctx, [[heroX + Math.cos(ang) * R * 0.5, heroY + Math.sin(ang) * R * 0.5], [heroX + Math.cos(ang) * R * 0.95, heroY + Math.sin(ang) * R * 0.95]], "#ffe680", 5); }
         this.spark(ctx, heroX, heroY, st.short ? 50 : 70 * Math.max(0.3, 1 - u), "#fff3a0", 0.3);
         ctx.restore();
-        if (st.short || u < 0.6) label("連天蹴り!!", heroX, heroY - 70, 54, "#e9ffd8", "#1f4d1c", 0, -60);
+        if (st.short || u < 0.6) label("連天蹴り!!", heroX, heroY - 70, 54, "#e9ffd8", "#1f4d1c", 150, -70);
       }
     }
     if (st.after === null && !st.short) overlay.push({ kind: "hint", text: "タップでスキップ ▶▶" });
