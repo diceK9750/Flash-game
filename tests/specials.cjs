@@ -15,8 +15,9 @@ function hit(g, type, options = {}) {
   g.contactObjects({ x: x - 70, y: 10 });
   return source;
 }
+// The merchant also needs its rare draw (random() < merchantChance); 0 always wins it.
 function merchant(type) {
-  const g = isolated(); g.normalGuard = 1;
+  const g = isolated(); g.normalGuard = 1; g.random = () => 0;
   hit(g, type, { x: 800 });
   assert.equal(g.special.merchantType, c.merchantTypes[type]);
   assert.equal(g.normalGuard, 0); g.act(); assert.equal(g.normalGuard, 0);
@@ -79,7 +80,7 @@ test('ordinary SPECIAL before GUARD BLOCK, miss uses remaining shield', () => {
 });
 for (const type of Object.keys(c.merchantTypes)) {
   for (const success of [true, false]) test(`merchant ${type} priority and ${success ? 'success' : 'miss'}`, () => {
-    const g = isolated(); g.normalGuard = 1; g.specialArmed.dash = g.specialArmed.stopper = true;
+    const g = isolated(); g.normalGuard = 1; g.specialArmed.dash = g.specialArmed.stopper = true; g.random = () => 0;
     const partner = { x: 1100, type: c.specials[type].partner || 'BRAKE', used: false };
     hit(g, type, { x: 800, next: [partner] });
     assert.equal(g.special.merchantType, c.merchantTypes[type]); assert.equal(g.specialCount, 0);
@@ -96,9 +97,9 @@ for (const type of Object.keys(c.merchantTypes)) {
 }
 test('merchant requires guard, supported type, and exact positive boundary', () => {
   for (const [guard, type, x] of [[0, 'BOOST', 800], [1, 'BOOST', 760], [1, 'BOOST', 801], [1, 'BRAKE', 800], [1, 'GUARD', 800], [1, 'ANGLE', 800], [1, 'STOPPER', 0]]) {
-    const g = isolated(); g.normalGuard = guard; hit(g, type, { x }); assert(!g.special?.merchantType);
+    const g = isolated(); g.normalGuard = guard; g.random = () => 0; hit(g, type, { x }); assert(!g.special?.merchantType);
   }
-  for (const x of [800, 1600, 6400, 80000]) { const g = isolated(); g.normalGuard = 1; hit(g, 'BOOST', { x }); assert.equal(g.special.merchantType, 'C'); }
+  for (const x of [800, 1600, 6400, 80000]) { const g = isolated(); g.normalGuard = 1; g.random = () => 0; hit(g, 'BOOST', { x }); assert.equal(g.special.merchantType, 'C'); }
 });
 test('A doubles incremental acceleration for exactly three events', () => {
   const g = merchant('STOPPER');
@@ -221,14 +222,14 @@ test('retry clears all new state and preserves BEST', () => {
   }
 });
 for (const fps of [30, 60, 120, 144]) test('merchant window, input isolation at ' + fps + 'fps', () => {
-  const g = isolated(); g.normalGuard = 1; hit(g, 'STOPPER', { x: 800 });
+  const g = isolated(); g.normalGuard = 1; g.random = () => 0; hit(g, 'STOPPER', { x: 800 });
   const x = g.body.x;
   for (let i = 0; i < fps - 1; i++) g.update(1 / fps);
   assert(g.special); near(g.body.x, x); g.update(1 / fps);
   assert.equal(g.special, null); assert.equal(g.specialMessage.label, 'SPECIAL MISS'); assert.equal(g.normalGuard, 0);
 });
 test('merchant pointer priority, HUD, result', () => {
-  const g = isolated(), ui = new UI(g, element('canvas')); scope.Hop.bindInput(g, ui);
+  const g = isolated(), ui = new UI(g, element('canvas')); scope.Hop.bindInput(g, ui); g.random = () => 0;
   for (const type of ['DASH', 'BOUNCE']) {
     g.normalGuard = 1; hit(g, type, { x: 800 }); ui.update(); ui.draw();
     assert.equal(element('special-title').textContent, 'MERCHANT SPECIAL!');
