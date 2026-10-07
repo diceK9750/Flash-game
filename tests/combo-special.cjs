@@ -262,4 +262,65 @@ function play(seed, mode) {
   cases++;
 }
 
+// 11) Combo camera (display only): zoom in during the scene, actors framed, back to normal after; skip /
+// short / reducedMotion -> normal camera at once.
+{
+  assert.equal(c.comboZoomMax, 2.4); assert(c.comboZoomIn >= 0.2 && c.comboZoomIn <= 0.4 && c.comboZoomOut >= 0.4 && c.comboZoomOut <= 0.6);
+  const camOf = (g, reduced = false) => {
+    const ground = c.groundY + g.cameraY, sx = x => c.launchX + x - g.cameraX, sy = y => ground - c.playerRadius - y;
+    return { cam: G.comboCamera(G.comboState(g), reduced, sx, sy, ground, sx(g.body.x), sy(g.body.y)), sx, sy, ground };
+  };
+  const inView = (cam, x, y) => { const X = cam.ax + cam.z * (x - cam.fx), Y = cam.ay + cam.z * (y - cam.fy); return X >= -1 && X <= c.width + 1 && Y >= -1 && Y <= c.height + 1; };
+  for (const [type, p] of [['BOOST', 'BOUNCE'], ['BOUNCE', 'BOOST']]) {
+    const { g } = scene(type, p); g.cameraX = Math.max(0, c.launchX + g.body.x - c.cameraAnchorX);
+    const S0 = G.comboSceneStart(false), end = g.combo.total;
+    g.combo.elapsed = S0 - 0.1; assert.equal(camOf(g).cam.w, 0, 'normal camera while the cut-in covers');
+    g.combo.elapsed = S0 + c.comboZoomIn * 0.4; const mid = camOf(g).cam; assert(mid.w > 0 && mid.w < 1 && mid.z > 1, 'zooming in');
+    let minZ = 9, maxZ = 0;
+    for (let e = S0 + c.comboZoomIn; e < end; e += 0.02) {
+      g.combo.elapsed = e; const { cam, sx, sy, ground } = camOf(g);
+      assert(Math.abs(cam.w - 1) < 1e-9 && cam.z > 1.3 && cam.z <= c.comboZoomMax + 1e-9, type + ' zoomed at ' + e.toFixed(2));
+      // The whole normal-camera view rectangle stays inside the drawn canvas (no blank edges).
+      const L = cam.fx + (0 - cam.ax) / cam.z, R = cam.fx + (c.width - cam.ax) / cam.z, T = cam.fy + (0 - cam.ay) / cam.z, B = cam.fy + (c.height - cam.ay) / cam.z;
+      assert(L >= -1e-6 && R <= c.width + 1e-6 && T >= -1e-6 && B <= c.height + 1e-6, 'view inside canvas');
+      // Actors (hero, witch, fighter feet / head) are inside the zoomed view.
+      const st = G.comboState(g), A = G.comboActors(st);
+      assert(inView(cam, sx(st.heroWX) + A.hero.dx, sy(st.heroY) + A.hero.dy), 'hero in view');
+      assert(inView(cam, sx(A.witch.x), ground) && inView(cam, sx(A.witch.x), ground - 110), 'witch in view');
+      if (type === 'BOUNCE') assert(inView(cam, sx(A.fighter.x), ground - 110 * A.fighter.scale), 'giant fighter head in view');
+      minZ = Math.min(minZ, cam.z); maxZ = Math.max(maxZ, cam.z);
+    }
+    if (type === 'BOUNCE') {
+      const T = c.comboFighterTimes; g.combo.elapsed = S0 + T.arrive + 0.1; const zBuff = camOf(g).cam.z; g.combo.elapsed = S0 + T.growEnd + 0.05; const zGiant = camOf(g).cam.z;
+      assert(zGiant < zBuff - 0.3, `camera pulls back for the giant (${zBuff.toFixed(2)} -> ${zGiant.toFixed(2)})`);
+    } else {
+      const W = c.comboWitchTimes; g.combo.elapsed = S0 + (W.dash + W.rushEnd) / 2; assert(camOf(g).cam.z >= 2, 'rush close-up (>= 2x)');
+      // Launch: the camera follows the hero up.
+      g.combo.elapsed = S0 + W.rushEnd - 0.05; const fy0 = camOf(g).cam.fy; g.combo.elapsed = S0 + W.liftEnd; assert(camOf(g).cam.fy < fy0 - 20, 'follows the launched hero');
+    }
+    // Natural end: afterglow zooms back, normal camera after comboZoomOut.
+    step(g, (end - g.combo.elapsed) + 0.01); assert.equal(g.combo, null);
+    const a0 = camOf(g).cam; assert(a0.w > 0.8 && a0.z > 1, 'still zoomed right after the launch');
+    step(g, c.comboZoomOut * 0.5); const a1 = camOf(g).cam; assert(a1.w > 0 && a1.w < a0.w, 'zooming back');
+    step(g, c.comboZoomOut * 0.5 + 0.02); assert.equal(camOf(g).cam.w, 0, 'normal camera after the zoom-out'); assert.equal(camOf(g).cam.z, 1);
+    // Skip: normal camera at once.
+    const s = scene(type, p).g; s.combo.elapsed = S0 + 0.8; assert(camOf(s).cam.w === 1); s.act();
+    assert.equal(s.combo, null); const sc = camOf(s).cam; assert.deepEqual([sc.w, sc.z], [0, 1], 'skip -> normal camera');
+    // Short version / reducedMotion: no zoom.
+    const r = scene(type, p, { short: true }).g; for (let e = 0; e < 0.8; e += 0.05) { r.combo.elapsed = e; assert.equal(camOf(r).cam.w, 0); }
+    const q = scene(type, p).g; q.combo.elapsed = S0 + 1; assert.equal(camOf(q, true).cam.w, 0, 'reducedMotion: no zoom');
+  }
+  // Texts are screen-space overlay items with readable sizes (grow at most ~25% with the zoom).
+  const { g } = scene('BOOST', 'BOUNCE'); g.combo.elapsed = G.comboSceneStart(false) + 1.0;
+  const ground = c.groundY + g.cameraY, sx = x => c.launchX + x - g.cameraX, sy = y => ground - c.playerRadius - y;
+  const nullCtx = new Proxy({}, { get: (o, k) => k in o ? o[k] : k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
+  const items = G.comboFront(nullCtx, G.comboState(g), sx, sy, ground);
+  assert(items.some(i => i.kind === 'label' && /HIT/.test(i.text)) && items.some(i => i.kind === 'gauge') && items.some(i => i.kind === 'hint'));
+  const fonts = []; const rec = new Proxy({}, { get: (o, k) => k in o ? o[k] : () => {}, set: (o, k, v) => { if (k === 'font') fonts.push(v); o[k] = v; return true; } });
+  G.comboOverlay(rec, items, { w: 1, z: 2.4, fx: 600, fy: 500, ax: 640, ay: 360 });
+  const sizes = fonts.map(f => +/(\d+)px/.exec(f)[1]);
+  assert(Math.max(...sizes) <= Math.round(40 * 1.26) && Math.min(...sizes) >= 20, 'readable text sizes ' + sizes);
+  cases++;
+}
+
 console.log(JSON.stringify({ comboSpecial: 'PASS', cases }));
