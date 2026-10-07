@@ -154,6 +154,14 @@ Hop.Graphics = {
     }
     return { visible: alpha > 0.01, alpha, wipe, portraitPop, shakeX, shakeY, flash };
   },
+  // Display-only (pure): true while the cut-in covers the stage — until its fade-out starts, or for the
+  // reducedMotion still. The SPECIAL SUCCESS panel waits for this (UI), so it never sits on the face.
+  specialCutinCovering(cut, reducedMotion = false) {
+    if (!cut) return false;
+    const c = Hop.CONFIG, age = cut.total - cut.remaining;
+    if (!(age >= 0)) return false;
+    return age < (reducedMotion ? c.specialCutinReducedDuration : c.specialCutinImpact + c.specialCutinWipe + c.specialCutinHold);
+  },
   // Early-Tales band insert (original) with decisive face close-up. Skill name at the edge.
   specialCutin(ctx, g, visual) {
     const cut = g.specialCutin; if (!cut) return;

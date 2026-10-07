@@ -89,11 +89,29 @@ Hop.UI = class {
     document.getElementById("guard-status").textContent = `GUARD × ${g.normalGuard}`;
     document.getElementById("debug-status").hidden = !g.debug;
     document.getElementById("history").textContent = `CONTACT / ${g.history.slice(-8).map(entry => `${Hop.CAST[entry.type]?.name || entry.type} (${entry.label})`).join(" → ") || "—"}`;
+    // Display only: a SPECIAL SUCCESS panel (normal or merchant) waits while the cut-in covers the stage
+    // (Graphics.specialCutinCovering: until its fade-out / the reducedMotion still ends), then stays for
+    // specialMessageDuration of game time — the same length as before — even after game.specialMessage
+    // expires. MISS / other messages are unchanged. The aria-live announcement is not delayed.
+    if (g.specialMessage && g.specialMessage !== this.panelMessage) {
+      this.panelMessage = g.specialMessage;
+      this.successPanel = g.specialMessage.label === "SPECIAL SUCCESS" && g.specialCutin
+        ? { title: "SPECIAL SUCCESS!", detail: g.specialMessage.detail || "", waiting: true, remaining: c.specialMessageDuration, clock: g.phaseTime } : null;
+    }
+    const held = this.successPanel;
+    if (held) {
+      const dt = Math.max(0, g.phaseTime - held.clock); held.clock = g.phaseTime;
+      if (held.waiting) held.waiting = !!Hop.Graphics?.specialCutinCovering?.(g.specialCutin, this.visual.reducedMotion);
+      else held.remaining -= dt;
+      if (g.special || g.state !== s.FLYING || held.remaining <= 0) this.successPanel = null;
+    }
+    const success = this.successPanel;
     const specialPanel = document.getElementById("special-panel");
     specialPanel.className = g.special ? "special-panel" : "special-panel resolved";
-    specialPanel.hidden = (g.state !== s.FLYING && !(g.state === s.RESULT && g.specialMessage?.label === "SPECIAL MISS" && Date.now() < this.messageUntil)) || (!g.special && !g.specialMessage);
-    document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : (g.specialMessage?.label === "SPECIAL SUCCESS" ? "SPECIAL SUCCESS!" : g.specialMessage?.label || "");
-    document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : g.specialMessage?.detail || "";
+    specialPanel.hidden = !g.special && success ? success.waiting
+      : (g.state !== s.FLYING && !(g.state === s.RESULT && g.specialMessage?.label === "SPECIAL MISS" && Date.now() < this.messageUntil)) || (!g.special && !g.specialMessage);
+    document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : success ? success.title : (g.specialMessage?.label === "SPECIAL SUCCESS" ? "SPECIAL SUCCESS!" : g.specialMessage?.label || "");
+    document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : success ? success.detail : g.specialMessage?.detail || "";
     document.getElementById("special-track").hidden = !g.special;
     document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
     document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL、BOUNCE→BOOST隣接でBOUNCE SPECIAL（未使用キャラのx順）。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL。通常GUARDまたはGUARD SPECIAL中、各${c.boundaryMeters}m区間の最後${c.merchantZoneMeters}mから、その境界ちょうどのBOOST・BOUNCE・DASH・STOPPERに当たると商人SPECIAL。BRAKE：AERIAL DOWN成功後、地面・他キャラ・UPなしで接触。ANGLE：接触時10%抽選。GUARD：通常GUARDを持って再GUARD。`;
@@ -103,7 +121,7 @@ Hop.UI = class {
     set("down-status", floating ? "AERIAL / 浮遊中は使用不可" : g.special ? "DOWN / SPECIAL受付中" : g.state === s.RESULT ? "DOWN / 終了" : `AERIAL ↓ ${chargeText}`);
     set("contact-status", `CONTACT / ${g.contact ? Hop.CAST[g.contact.label.split(" ")[0]]?.name || g.contact.label : "—"}`);
     const contactTag = document.getElementById("contact-tag");
-    contactTag.hidden = g.state !== s.FLYING || !g.contact || !!g.special || !!g.specialMessage;
+    contactTag.hidden = g.state !== s.FLYING || !g.contact || !!g.special || !!g.specialMessage || !!this.successPanel;
     const contactType = g.contact?.label.split(" ")[0];
     contactTag.textContent = g.contact ? `${Hop.CAST[contactType]?.name || contactType} · ${g.contact.label.includes("GUARD BLOCK") ? "結界でガード！" : Hop.CAST[contactType]?.effect || g.contact.label}` : "";
     contactTag.style.color = this.objectColor(g.contact?.label);
