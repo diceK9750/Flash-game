@@ -1,7 +1,7 @@
 "use strict";
 Hop.Game = class {
   constructor(random = Math.random) {
-    this.random = random; this.debug = false;
+    this.random = random; this.debug = false; this.debugKind = null;
     // Combo scene preferences (kept across RETRY): comboEnabled (config default) and comboShort (the UI mirrors
     // prefers-reduced-motion here so the short version is chosen when the scene starts).
     this.comboEnabled = Hop.CONFIG.comboEnabled !== false; this.comboShort = false;
@@ -33,6 +33,7 @@ Hop.Game = class {
     this.nextBoundaryX = Hop.CONFIG.boundaryMeters * Hop.CONFIG.pixelsPerMeter;
     this.nextObjectX = this.debug ? Hop.CONFIG.debugFirst : this.randomBetween(Hop.CONFIG.objectFirstMin, Hop.CONFIG.objectFirstMax);
     this.generateObjects();
+    if (this.debug) this.applyDebugSetup(Hop.CONFIG.debugSetupAhead);
   }
   readBest() {
     const best = { distance: 0, height: 0, speed: 0 };
@@ -55,15 +56,54 @@ Hop.Game = class {
     try { window.localStorage.setItem(Hop.CONFIG.storageKey, JSON.stringify(this.best)); this.storageAvailable = true; }
     catch { this.storageAvailable = false; }
   }
-  toggleDebug() {
-    this.debug = !this.debug;
-    if (this.state !== Hop.STATES.RESULT) this.debugUsed = true;
-    // Rebuild only future objects; switching OFF cannot make this run eligible.
+  // Legacy switch: OFF <-> "all" (the original fixed-order DEBUG).
+  toggleDebug() { this.setDebugKind(this.debug ? null : "all"); }
+  // The DEBUG kind in effect (debug set directly without a kind behaves as "all"), or null in normal play.
+  activeDebugKind() { return this.debug ? (this.debugKind || "all") : null; }
+  // Select a DEBUG kind (Hop.DEBUG_KINDS id) or null / "off" for normal play. Any use marks the run debugUsed
+  // (記録対象外) exactly like the old toggle; switching OFF cannot make this run eligible again (RETRY does).
+  setDebugKind(kind) {
+    const c = Hop.CONFIG, s = Hop.STATES;
+    const id = kind == null || kind === "off" ? null : Hop.Game.debugKind(kind)?.id;
+    if (id === undefined || (!id && !this.debug)) return false;
+    this.debugKind = id; this.debug = !!id;
+    if (this.state !== s.RESULT) this.debugUsed = true;
+    // Before launch, drop preconditions a previously chosen kind may have prepared (defaults in normal play).
+    const prelaunch = [s.READY, s.AIM_ANGLE, s.AIM_POWER].includes(this.state);
+    if (prelaunch) { this.specialArmed = { dash: false, stopper: false, brake: false }; this.normalGuard = 0; }
+    // Rebuild only future objects.
     this.objects = []; this.debugIndex = 0;
-    const boundary = Hop.CONFIG.boundaryMeters * Hop.CONFIG.pixelsPerMeter;
+    const boundary = c.boundaryMeters * c.pixelsPerMeter;
     this.nextBoundaryX = (Math.floor(this.body.x / boundary) + 1) * boundary;
-    this.nextObjectX = this.body.x + (this.debug ? Hop.CONFIG.debugFirst : this.randomBetween(Hop.CONFIG.objectFirstMin, Hop.CONFIG.objectFirstMax));
+    this.nextObjectX = this.body.x + (this.debug ? c.debugFirst : this.randomBetween(c.objectFirstMin, c.objectFirstMax));
     this.generateObjects();
+    // RESULT: the next RETRY (reset) prepares the check.
+    if (this.debug && this.state !== s.RESULT) this.applyDebugSetup(prelaunch ? c.debugSetupAhead : c.debugFirst);
+    return true;
+  }
+  // Place the active kind's check ahead of the hero and prepare its preconditions; afterwards the original
+  // fixed-order DEBUG placement continues ("aerial": no characters at all). DEBUG plays only.
+  applyDebugSetup(ahead) {
+    const c = Hop.CONFIG, kind = Hop.Game.debugKind(this.activeDebugKind());
+    if (!kind || kind.id === "all") return false;
+    this.objects = []; this.debugIndex = 0;
+    const x = this.body.x + ahead;
+    if (kind.empty) { this.nextObjectX = Infinity; return true; }
+    if (kind.special) {
+      const rule = c.specials[kind.special], first = { x, type: kind.special, used: false, debugSetup: true };
+      this.objects.push(first);
+      if (rule.trigger === "adjacent") this.objects.push({ x: x + c.debugPartnerGap, type: rule.partner, used: false, debugSetup: true });
+      else if (rule.trigger === "chance") first.debugForce = true; // this ANGLE contact skips the 10% draw
+      else if (rule.trigger === "guard") this.normalGuard = 1;
+      else this.specialArmed[rule.trigger] = true; // dash / stopper / brake
+    } else if (kind.merchant) {
+      // GUARD held + this character treated as the 100m boundary (approached from the left); DEBUG skips the draw.
+      this.objects.push({ x, type: kind.cast, used: false, debugSetup: true, debugBoundary: true });
+      this.normalGuard = 1;
+    }
+    this.nextObjectX = this.objects[this.objects.length - 1].x + c.debugGap;
+    this.generateObjects();
+    return true;
   }
   randomBetween(min, max) { return min + (max - min) * this.random(); }
   airborne() { return this.state === Hop.STATES.FLYING && !this.body.stopped && !this.body.grounded && this.body.y > 0; }
@@ -191,10 +231,10 @@ Hop.Game = class {
       const partner = this.objects.filter(o => !o.used && o.x > object.x).sort((a, z) => a.x - z.x)[0];
       const guardAtContact = this.normalGuard;
       const eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner :
-        rule.trigger === "chance" ? this.random() < c.angleSpecialChance :
+        rule.trigger === "chance" ? object.debugForce === true || this.random() < c.angleSpecialChance :
         rule.trigger === "guard" ? guardAtContact && !this.guardSpecial.active : this.specialArmed[rule.trigger]);
       const spacing = c.boundaryMeters * c.pixelsPerMeter;
-      const atBoundary = object.x > 0 && Math.abs(object.x / spacing - Math.round(object.x / spacing)) < 1e-9;
+      const atBoundary = object.debugBoundary === true || object.x > 0 && Math.abs(object.x / spacing - Math.round(object.x / spacing)) < 1e-9;
       const inZone = b.x >= object.x - c.merchantZoneMeters * c.pixelsPerMeter && previous.x <= object.x;
       const merchantCandidate = (guardAtContact || this.guardSpecial.active) && atBoundary && inZone ? c.merchantTypes[object.type] : null;
       // Rare draw (merchantChance); a miss is an ordinary contact judged by the normal SPECIAL rules above.
@@ -467,4 +507,38 @@ Hop.Game = class {
     this.trail.push({ x: this.body.x, y: this.body.y });
     if (this.trail.length > c.trailLength) this.trail.shift();
   }
+};
+// DEBUG kinds (development only; any use makes the play 記録対象外). Each id is also the ?debug= URL value
+// (?debug=boost, ?debug=merchant-a, ?debug=all, ...). key = keyboard shortcut in the DEBUG menu (0 = OFF).
+// Labels come from config (SPECIAL / merchant names) and Hop.CAST at display time (Hop.Game.debugKindLabel).
+Hop.DEBUG_KINDS = Object.freeze([
+  { id: "all", key: "1", group: "basic" },
+  { id: "aerial", key: "9", group: "basic", empty: true },
+  ...Object.keys(Hop.CONFIG.specials).map((type, i) => ({ id: type.toLowerCase(), key: String(i + 2), group: "special", special: type })),
+  ...Object.entries(Hop.CONFIG.merchantTypes).sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([type, letter], i) => ({ id: "merchant-" + letter.toLowerCase(), key: "QWER"[i], group: "merchant", merchant: letter, cast: type }))
+].map(kind => Object.freeze(kind)));
+Hop.Game.debugKind = id => Hop.DEBUG_KINDS.find(kind => kind.id === String(id ?? "").toLowerCase()) || null;
+// ?debug / ?debug=1 / on / all -> "all"; ?debug=<id> -> that kind; off / 0 / unknown / absent -> null.
+Hop.Game.debugKindFromSearch = search => {
+  const match = /[?&]debug(?:=([^&#]*))?(?:[&#]|$)/i.exec(String(search || ""));
+  if (!match) return null;
+  let value = "";
+  try { value = decodeURIComponent((match[1] || "").replace(/\+/g, " ")).trim().toLowerCase(); } catch { return null; }
+  if (["", "1", "on", "true"].includes(value)) return "all";
+  return Hop.Game.debugKind(value)?.id || null;
+};
+// Japanese menu / badge text. title: what is checked, detail: how it is prepared.
+Hop.Game.debugKindLabel = id => {
+  const c = Hop.CONFIG, kind = Hop.Game.debugKind(id), cast = type => Hop.CAST?.[type]?.name || type;
+  if (!kind) return { title: "OFF", detail: "通常プレイに戻す（記録はRETRY後から）" };
+  if (kind.id === "all") return { title: "全キャラ順番", detail: "従来のDEBUG：7人を一定間隔で順に配置" };
+  if (kind.empty) return { title: "キャラなし", detail: "AERIAL UP/DOWN・着地・RESULTの確認" };
+  if (kind.merchant) return { title: `商人${kind.merchant} ${c.merchantNames[kind.merchant]}`, detail: `${cast(kind.cast)}を境界扱い・GUARD×1・抽選なし` };
+  const type = kind.special, rule = c.specials[type];
+  const how = rule.trigger === "adjacent" ? `${cast(type)}＋${cast(rule.partner)}（合体攻撃）` :
+    rule.trigger === "dash" ? `${cast(type)}・DASH準備済み` : rule.trigger === "stopper" ? `${cast(type)}・STOPPER準備済み` :
+    rule.trigger === "brake" ? `${cast(type)}・AERIAL DOWN後の状態` : rule.trigger === "chance" ? `${cast(type)}・${Math.round(c.angleSpecialChance * 100)}%抽選なし` :
+    `${cast(type)}・GUARD×1から`;
+  return { title: rule.name, detail: how };
 };

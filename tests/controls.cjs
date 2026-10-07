@@ -5,8 +5,10 @@ const {isolated,hit,near}=require('./specials.cjs');
 let cases=0;function test(name,fn){try{fn();cases++;}catch(e){e.message=name+': '+e.message;throw e;}}
 function bind(g){const ui=new scope.Hop.UI(g,element('canvas'));scope.Hop.bindInput(g,ui);return ui;}
 function tap(extra={}){element('stage').listeners.pointerdown({button:0,isPrimary:true,preventDefault(){},...extra});}
-test('stage has exactly one pointer listener, only external SE button; full state loop',()=>{
- const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');assert.equal((html.match(/<button\b/g)||[]).length,1);assert(html.includes('id="se-toggle"'));
+test('stage has exactly one pointer listener, only external SE / DEBUG buttons; full state loop',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');assert.equal((html.match(/<button\b/g)||[]).length,2);assert(html.includes('id="se-toggle"'));
+ // The DEBUG button (DEBUG menu, tests/debug-kinds.cjs) sits outside the stage, like the SE button.
+ assert(html.includes('id="debug-toggle"'));assert(html.indexOf('id="debug-toggle"')<html.indexOf('id="stage"'));
  const g=new scope.Hop.Game();const ui=bind(g);assert.deepEqual(Object.keys(element('stage').listeners),['pointerdown']);
  for(const state of ['AIM_ANGLE','AIM_POWER','FLYING']){tap();assert.equal(g.state,state);}
  g.finish();tap();assert.equal(g.state,'AIM_ANGLE');ui.draw();
@@ -20,10 +22,13 @@ test('one tap ascending DOWN, descending UP, charge/no charges are no-ops',()=>{
 test('hysteresis retains last mode in inclusive dead band',()=>{
  const g=isolated();for(const [vy,mode] of [[0,'DOWN'],[41,'DOWN'],[-40,'DOWN'],[-41,'UP'],[40,'UP'],[0,'UP'],[41,'DOWN']]){g.body.vy=vy;assert.equal(g.updateAerialMode(),mode);}
 });
-test('nonprimary/right/middle pointer cannot advance, keyboard ignored except D',()=>{
+test('nonprimary/right/middle pointer cannot advance, keyboard ignored except the D (DEBUG menu) keys',()=>{
  const g=new scope.Hop.Game();bind(g);tap({button:2});tap({button:1});tap({isPrimary:false});assert.equal(g.state,'READY');
  for(const code of ['Space','Enter'])document.listeners.keydown({code,repeat:false});assert.equal(g.state,'READY');
- document.listeners.keydown({code:'KeyD',repeat:false});assert(g.debug);document.listeners.keydown({code:'KeyD',repeat:true});assert(g.debug);
+ // D opens the DEBUG menu (number keys pick a kind; 1 = the original fixed-order DEBUG); a repeat is ignored.
+ document.listeners.keydown({code:'KeyD',repeat:false});assert(!g.debug);assert(!element('debug-menu').hidden);
+ document.listeners.keydown({code:'Digit1',repeat:false});assert(g.debug);assert(element('debug-menu').hidden);
+ document.listeners.keydown({code:'KeyD',repeat:true});assert(g.debug);assert(element('debug-menu').hidden);assert.equal(g.state,'READY');
 });
 test('all seven special taps only resolve, never trigger AERIAL',()=>{
  for(const type of Object.keys(scope.Hop.CONFIG.specials)){

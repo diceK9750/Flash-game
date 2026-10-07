@@ -38,7 +38,7 @@
       <span class="down-readout"><span id="down-status">AERIAL ↓ READY</span><progress id="down-charge" max="1" value="1" aria-label="AERIAL DOWN充電率"></progress></span>
       <span id="contact-status">CONTACT / —</span>
       <strong id="guard-status">GUARD × 0</strong>
-      <span id="debug-status" hidden>DEBUG</span>
+      <span class="debug-tools"><span id="debug-status" hidden>DEBUG</span><button id="debug-toggle" class="debug-toggle" type="button" aria-haspopup="dialog" aria-controls="debug-menu" aria-expanded="false" title="DEBUGメニュー（Dキー）">DEBUG</button></span>
     </div>
     <p id="special-state" class="special-state" hidden></p>
     <div class="stage" id="stage">
@@ -64,6 +64,7 @@
         <div class="special-track" id="special-track"><div id="special-fill"></div></div>
       </div>
     </div>
+    <div id="debug-menu" class="debug-menu" role="dialog" aria-modal="true" aria-labelledby="debug-menu-title" hidden></div>
     <div id="announcements" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
     <footer><p id="hint">画面をタップ / クリック</p></footer>
     <p class="final-line">FINAL / 最終飛距離 <strong id="final">—</strong></p>
@@ -90,7 +91,16 @@
       <p>BRAKE SPECIAL成功は速度・角度を維持。ANGLE SPECIAL成功は速度を保ち水平へ。GUARD SPECIAL成功はSTOPPER専用防御10秒。通常GUARDは次の接触で消滅し、BOOST・BOUNCE・DASH・STOPPERを防ぎます（BRAKE・ANGLEは防ぎません）。</p>
       <p>接触判定は通常SPECIAL → 通常GUARD → GUARD SPECIAL → 通常効果。GUARD SPECIALは受付・成功失敗表示・浮遊中に残り時間が止まり、再GUARD接触でも時間は更新せず通常GUARDだけ追加します。</p>
       <p>ごくまれに謎の商人が現れる…？</p>
-      <details><summary>開発用：DキーでDEBUG切替</summary><p>DEBUGは7種を一定間隔で順に配置します（通常の100m境界枠は追加しません）。一度でもDEBUGを使ったプレイは記録対象外。OFFに戻してRETRYすると通常の記録対象に戻ります。</p></details>
+      <details><summary>開発用：DEBUGメニュー（Dキー / DEBUGボタン）</summary>
+        <p>Dキーか画面上のDEBUGボタンでメニューを開き、番号キー（隠しキャラは Q W E R）かクリックで確認したい項目を選びます。Esc・もう一度Dで閉じます（開いている間はゲームの時間が止まります）。発射前に選ぶと、確認用のキャラが勇者のすぐ前に立ち、発射直後の最初の接触で確認できます。URLの <code>?debug=種類</code> でも直接開けます。</p>
+        <ul class="debug-help">
+          <li>0 OFF：通常プレイに戻す</li>
+          <li>1 全キャラ順番（従来のDEBUG：7人を一定間隔で順に配置、100m境界枠なし）：<code>?debug=all</code></li>
+          <li>9 キャラなし（AERIAL UP/DOWN・着地・RESULT確認）：<code>?debug=aerial</code></li>
+          <li>2〜8 SPECIAL：<code>?debug=boost</code>（魔法使い×武闘家の合体）・<code>bounce</code>（武闘家×魔法使いの合体）・<code>dash</code>・<code>stopper</code>・<code>brake</code>・<code>angle</code>・<code>guard</code>。必要な準備（相方の配置・DASH／STOPPER準備・AERIAL DOWN後の状態・GUARD×1・抽選なし）を済ませた状態で始まります。</li>
+          <li>Q W E R 隠しキャラ Type A〜D：<code>?debug=merchant-a</code>〜<code>merchant-d</code>（すぐに出会えます）</li>
+        </ul>
+        <p>一度でもDEBUGを使ったプレイは記録対象外。OFFに戻してRETRYすると通常の記録対象に戻ります。</p></details>
     </details>
   </main>
 </body>
