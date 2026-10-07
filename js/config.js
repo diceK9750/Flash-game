@@ -66,6 +66,13 @@ Hop.CONFIG = Object.freeze({
     GUARD: Object.freeze({ trigger: "guard", name: "聖護結界" })
   }),
   boundaryMeters: 100, boundaryClearance: 140, merchantZoneMeters: 10,
+  // Hidden "greatest secret art": even when the merchant conditions hold, the merchant only appears on this
+  // draw (a miss falls back to the normal SPECIAL rules). DEBUG plays skip the draw so the merchant can be checked.
+  merchantChance: 0.08,
+  // Placement only: no two roadside cast members of the same type within this world width (screen 1280 px
+  // + both name-tag / READY-label halves), so one screen never shows the same character twice.
+  castRepeatWindow: 1400,
+  castPickWeights: Object.freeze({ BOOST: 0.50, BOUNCE: 0.23, BRAKE: 0.13, ANGLE: 0.055, DASH: 0.032, GUARD: 0.026, STOPPER: 0.017 }),
   merchantTypes: Object.freeze({ STOPPER: "A", DASH: "B", BOOST: "C", BOUNCE: "D" }),
   merchantNames: Object.freeze({ A: "倍化の秘薬", B: "蓄光の護符", C: "浮遊の絨毯", D: "弾跳の靴" }),
   typeAUses: 3, typeAMultiplier: 2,

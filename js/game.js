@@ -120,23 +120,33 @@ Hop.Game = class {
   }
   generateObjects() {
     const c = Hop.CONFIG;
-    const entries = Object.entries(c.objectWeights);
-    const total = entries.reduce((sum, entry) => sum + entry[1], 0);
-    const pickType = () => {
+    // Draw weights: castPickWeights (calibrated so the resulting shares stay close to objectWeights despite the
+    // exclusion below), drawn among the types not already within castRepeatWindow of x — one random() per object,
+    // as before. If every type is nearby, the type whose nearest copy is farthest away is used.
+    const entries = Object.entries(c.castPickWeights || c.objectWeights);
+    const pickType = x => {
+      const near = new Map();
+      for (const o of this.objects) {
+        const d = Math.abs(o.x - x);
+        if (d < c.castRepeatWindow) near.set(o.type, Math.min(near.get(o.type) ?? Infinity, d));
+      }
+      let pool = entries.filter(([type]) => !near.has(type));
+      if (!pool.length) { const far = Math.max(...near.values()); pool = entries.filter(([type]) => near.get(type) === far); }
+      const total = pool.reduce((sum, entry) => sum + entry[1], 0);
       let choice = this.random() * total;
-      return entries.find(([, weight]) => (choice -= weight) < 0)?.[0] || entries[entries.length - 1][0];
+      return pool.find(([, weight]) => (choice -= weight) < 0)?.[0] || pool[pool.length - 1][0];
     };
     const boundary = c.boundaryMeters * c.pixelsPerMeter;
     if (!this.debug) {
       while (this.nextBoundaryX < this.body.x + c.objectAhead) {
-        this.objects.push({ x: this.nextBoundaryX, type: pickType(), used: false, boundary: true });
+        this.objects.push({ x: this.nextBoundaryX, type: pickType(this.nextBoundaryX), used: false, boundary: true });
         this.nextBoundaryX += boundary;
       }
     }
     while (this.nextObjectX < this.body.x + c.objectAhead) {
       const nearestBoundary = Math.max(1, Math.round(this.nextObjectX / boundary)) * boundary;
       if (this.debug || Math.abs(this.nextObjectX - nearestBoundary) >= c.boundaryClearance) {
-        const type = this.debug ? entries[this.debugIndex++ % entries.length][0] : pickType();
+        const type = this.debug ? entries[this.debugIndex++ % entries.length][0] : pickType(this.nextObjectX);
         this.objects.push({ x: this.nextObjectX, type, used: false });
       }
       this.nextObjectX += Math.max(1, this.debug ? c.debugGap : this.randomBetween(c.objectGapMin, c.objectGapMax));
@@ -182,7 +192,9 @@ Hop.Game = class {
       const spacing = c.boundaryMeters * c.pixelsPerMeter;
       const atBoundary = object.x > 0 && Math.abs(object.x / spacing - Math.round(object.x / spacing)) < 1e-9;
       const inZone = b.x >= object.x - c.merchantZoneMeters * c.pixelsPerMeter && previous.x <= object.x;
-      const merchantType = (guardAtContact || this.guardSpecial.active) && atBoundary && inZone ? c.merchantTypes[object.type] : null;
+      const merchantCandidate = (guardAtContact || this.guardSpecial.active) && atBoundary && inZone ? c.merchantTypes[object.type] : null;
+      // Rare draw (merchantChance); a miss is an ordinary contact judged by the normal SPECIAL rules above.
+      const merchantType = merchantCandidate && (this.debug || this.random() < c.merchantChance) ? merchantCandidate : null;
       this.normalGuard = 0; // One contact lifetime; snapshot belongs only to this event.
       this.updateSpecialArming(object.type);
       if (merchantType || eligible) {

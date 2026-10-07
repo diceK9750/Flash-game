@@ -70,7 +70,7 @@ for(const fps of [30,60,120,144])test('charge timing, cap, reuse and pause expir
 });
 for(const pause of ['special','merchantSpecial','SUCCESS','MISS','merchantVisual','C'])test('charge pauses and resumes for '+pause,()=>{
  const g=chargeFlight();g.downCharge=0.25;g.guardSpecial={active:true,remaining:7};
- if(pause==='special'||pause==='merchantSpecial'){g.specialArmed.brake=true;if(pause==='merchantSpecial')g.normalGuard=1;hit(g,pause==='special'?'BRAKE':'DASH',{x:800});assert(g.special);}
+ if(pause==='special'||pause==='merchantSpecial'){g.specialArmed.brake=true;if(pause==='merchantSpecial'){g.normalGuard=1;g.random=()=>0;}hit(g,pause==='special'?'BRAKE':'DASH',{x:800});assert(g.special);}
  else if(pause==='C')g.acquireMerchant('C');
  else if(pause==='merchantVisual')g.merchantVisual={remaining:1};
  else g.specialMessage={label:'SPECIAL '+pause,remaining:1};

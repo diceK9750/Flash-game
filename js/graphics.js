@@ -317,7 +317,7 @@ Hop.Graphics = {
       const ready = visual.readyTargets?.find(target => target.object === object);
       if (ready) {
         ctx.font = "bold 27px system-ui";
-        ctx.fillStyle = ready.label === "MERCHANT" ? "#754615" : "#674488";
+        ctx.fillStyle = ready.label.startsWith("MERCHANT") ? "#754615" : "#674488";
         ctx.fillRect(ox - 85, ground - 211, 170, 34);
         ctx.fillStyle = "#fffdf2"; ctx.fillText(ready.label, ox, ground - 185);
       }

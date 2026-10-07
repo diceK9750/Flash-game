@@ -104,12 +104,12 @@ test('ordinary contact/effect does not pause guard timer',()=>{
  advance(g,0.5);near(g.guardSpecial.remaining,9.5);
 });
 test('merchant STOPPER miss spends contact normal shield before special shield',()=>{
- const g=isolated();shield(g,7.4);g.normalGuard=1;hit(g,'STOPPER',{x:800});
+ const g=isolated();shield(g,7.4);g.normalGuard=1;g.random=()=>0;hit(g,'STOPPER',{x:800});
  assert.equal(g.special.merchantType,'A');assert.equal(g.normalGuard,0);g.resolveSpecial(false);
  assert(g.guardSpecial.active);near(g.guardSpecial.remaining,7.4);assert(!g.body.stopped);assert.equal(g.special,null);
 });
 for(const type of Object.keys(c.merchantTypes))test('merchant with special shield '+type,()=>{
- const g=isolated();shield(g,7.4);hit(g,type,{x:800});assert.equal(g.special.merchantType,c.merchantTypes[type]);g.act();assert(g.guardSpecial.active);near(g.guardSpecial.remaining,7.4);
+ const g=isolated();shield(g,7.4);g.random=()=>0;hit(g,type,{x:800});assert.equal(g.special.merchantType,c.merchantTypes[type]);g.act();assert(g.guardSpecial.active);near(g.guardSpecial.remaining,7.4);
  if(type==='BOOST'){advance(g,3);near(g.guardSpecial.remaining,7.4);}
 });
 for(const merchantType of ['A','B'])for(const type of ['BRAKE','ANGLE','GUARD'])test(merchantType+' excludes '+type+' SPECIAL',()=>{
