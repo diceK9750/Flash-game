@@ -18,7 +18,7 @@ Hop.Game = class {
     this.normalGuard = 0; this.guardSpecial = { active: false, remaining: 0 };
     this.special = null; this.specialMessage = null;
     this.specialArmed = { dash: false, stopper: false, brake: false };
-    this.aerialMode = "DOWN"; this.aerialDownLock = null; this.successVisual = null; this.soundEvent = null;
+    this.aerialMode = "DOWN"; this.aerialDownLock = null; this.successVisual = null; this.specialCutin = null; this.soundEvent = null;
     this.merchant = null; this.merchantVisual = null;
     this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
@@ -330,6 +330,17 @@ Hop.Game = class {
       const strong = !pending.merchantType && pending.type === "STOPPER";
       if (strong) { this.flash = c.stopperFlashDuration; this.specialTrail = c.stopperTrailDuration; }
       this.successVisual = { type: strong ? "STOPPER" : pending.type, remaining: strong ? c.stopperTrailDuration : c.specialTrailDuration, strong };
+      // Display-only cut-in: restart on every success (normal or merchant). MISS never sets this.
+      this.specialCutin = {
+        type: pending.merchantType ? "MERCHANT" : pending.type,
+        castId: pending.merchantType ? "SPECIAL_ONLY" : pending.type,
+        name: pending.merchantType ? c.merchantNames[pending.merchantType] : c.specials[pending.type].name,
+        castName: pending.merchantType ? Hop.CAST?.SPECIAL_ONLY?.name || "商人" : (Hop.CAST?.[pending.type]?.name || pending.type),
+        merchantType: pending.merchantType || null,
+        strong,
+        remaining: c.specialCutinDuration,
+        total: c.specialCutinDuration
+      };
       this.soundEvent = strong ? "STOPPER" : pending.type === "GUARD" ? "GUARD" : "SPECIAL";
       this.contact = { label: pending.type, remaining: c.contactDuration };
     } else this.normalContact(pending.type, pending.entry, pending.guardAtContact);
@@ -376,7 +387,7 @@ Hop.Game = class {
         if (1 - this.downCharge < 1e-9) this.downCharge = 1;
       }
       this.flash = Math.max(0, this.flash - c.physicsStep); this.specialTrail = Math.max(0, this.specialTrail - c.physicsStep);
-      for (const key of ["effect", "contact", "specialMessage", "merchantVisual", "successVisual"]) {
+      for (const key of ["effect", "contact", "specialMessage", "merchantVisual", "successVisual", "specialCutin"]) {
         if (this[key]) { this[key].remaining -= c.physicsStep; if (this[key].remaining < 1e-9) this[key] = null; }
       }
       // A short contact pause gives exactly one decision window. Normal effects

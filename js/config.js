@@ -45,6 +45,10 @@ Hop.CONFIG = Object.freeze({
   stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
   specialTrailDuration: 1.2,
+  // Display-only fighting-game cut-in on SPECIAL success (resolveSpecial true). MISS does not start it.
+  // Timeline: slide in → hold → fade. reducedMotion skips the slide and shortens the hold.
+  specialCutinDuration: 1.0, specialCutinSlideIn: 0.18, specialCutinHold: 0.55,
+  specialCutinReducedDuration: 0.45, specialCutinBandHeight: 230, specialCutinPortraitScale: 3.6,
   // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({
     BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),

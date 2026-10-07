@@ -116,6 +116,62 @@ Hop.Graphics = {
     }
     ctx.restore();
   },
+  // Display-only: progress of the SPECIAL success cut-in (pure). age = total - remaining.
+  specialCutinStyle(age, reducedMotion = false) {
+    const c = Hop.CONFIG, total = c.specialCutinDuration;
+    if (!(age >= 0) || age >= total) return { visible: false, alpha: 0, slide: 0 };
+    if (reducedMotion) {
+      const dur = c.specialCutinReducedDuration;
+      return age < dur ? { visible: true, alpha: 1, slide: 0 } : { visible: false, alpha: 0, slide: 0 };
+    }
+    const slideT = c.specialCutinSlideIn, holdEnd = slideT + c.specialCutinHold;
+    let alpha = 1, slide = 0;
+    if (age < slideT) slide = 1 - age / slideT;
+    else if (age > holdEnd) alpha = Math.max(0, 1 - (age - holdEnd) / Math.max(1e-6, total - holdEnd));
+    return { visible: alpha > 0.01, alpha, slide };
+  },
+  // Fighting-game band + portrait + SPECIAL name. Reads game.specialCutin only; never mutates game.
+  specialCutin(ctx, g, visual) {
+    const cut = g.specialCutin; if (!cut) return;
+    const c = Hop.CONFIG, age = cut.total - cut.remaining;
+    const style = this.specialCutinStyle(age, !!visual?.reducedMotion);
+    if (!style.visible) return;
+    const bandH = c.specialCutinBandHeight, bandY = (c.height - bandH) / 2;
+    const accent = cut.strong ? "#e8c45a" : (Hop.CAST[cut.castId]?.color || "#674488");
+    const slidePx = style.slide * (c.width * 0.45);
+    ctx.save();
+    ctx.globalAlpha = style.alpha * 0.72;
+    ctx.fillStyle = "#1a1520"; ctx.fillRect(0, bandY, c.width, bandH);
+    ctx.globalAlpha = style.alpha;
+    ctx.fillStyle = accent; ctx.fillRect(0, bandY, 14, bandH);
+    ctx.fillRect(0, bandY, c.width, 6); ctx.fillRect(0, bandY + bandH - 6, c.width, 6);
+    // Portrait: existing CAST still (or Canvas figure) enlarged on the left.
+    const px = 210 - slidePx, feet = bandY + bandH - 18;
+    {
+      const layer = Hop.Sprites?.castLayer?.(cut.castId, 0);
+      const scale = (layer?.scale || 1.25) * c.specialCutinPortraitScale;
+      let drawn = false;
+      if (layer?.asset?.ready) {
+        if (layer.flip) {
+          ctx.save();
+          try { ctx.translate(px, 0); ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feet, scale); }
+          finally { ctx.restore(); }
+        } else drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, px, feet, scale);
+      }
+      if (!drawn) this.character(ctx, cut.castId, px, feet, 1.25 * c.specialCutinPortraitScale * 0.55);
+    }
+    // Titles
+    const tx = 420 - slidePx * 0.35;
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#fff8e8"; ctx.font = "bold 28px system-ui";
+    ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", tx, bandY + 58);
+    ctx.fillStyle = accent; ctx.font = "bold 52px system-ui";
+    ctx.fillText(cut.name, tx, bandY + 120);
+    ctx.fillStyle = "#f0e6d4"; ctx.font = "bold 26px system-ui";
+    const sub = cut.merchantType ? `Type ${cut.merchantType} / ${cut.castName}` : `${cut.castName} · ${cut.type}`;
+    ctx.fillText(sub, tx, bandY + 168);
+    ctx.restore();
+  },
   draw(ctx, g, visual) {
     const c = Hop.CONFIG, ground = c.groundY + g.cameraY;
     const sx = x => c.launchX + x - g.cameraX;
@@ -220,6 +276,8 @@ Hop.Graphics = {
       this.contactEffect(ctx, "BOOST", sx(0), sy(0), launchAge);
     }
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
+    // SPECIAL success cut-in above the world / flash; DOM special-panel stays separate.
+    this.specialCutin(ctx, g, visual);
   },
   objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; }
 };
