@@ -45,12 +45,13 @@ Hop.CONFIG = Object.freeze({
   stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
   specialTrailDuration: 1.2,
-  // Display-only flashy SPECIAL cut-in (resolveSpecial true only). Timeline: impact → wipe → hold → fade.
-  // reducedMotion: short still, no shake/flash/rays/pops.
-  specialCutinDuration: 1.2, specialCutinImpact: 0.12, specialCutinWipe: 0.22, specialCutinHold: 0.55,
-  specialCutinReducedDuration: 0.45, specialCutinBandHeight: 248, specialCutinPortraitScale: 3.6,
-  specialCutinShakePx: 10, specialCutinFlashPeak: 0.85, specialCutinPortraitPop: 1.35, specialCutinTitlePop: 1.7,
-  specialCutinRayCount: 14, specialCutinSparkCount: 18,
+  // Display-only early-Tales-inspired band cut-in (resolveSpecial true only). Original layout — not a copy of
+  // any ToE / Destiny 2 / Symphonia frame. Feel of those first-three band inserts: short flash → band wipe → hold → fade.
+  // reducedMotion: short still, no shake/flash/wipe motion.
+  specialCutinDuration: 1.05, specialCutinImpact: 0.08, specialCutinWipe: 0.26, specialCutinHold: 0.48,
+  specialCutinReducedDuration: 0.40, specialCutinBandHeight: 280, specialCutinBandTiltDeg: 8,
+  specialCutinPortraitScale: 4.0, specialCutinNameSize: 64, specialCutinShakePx: 6,
+  specialCutinFlashPeak: 0.72, specialCutinPortraitPop: 1.12,
   // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({
     BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),
