@@ -116,61 +116,160 @@ Hop.Graphics = {
     }
     ctx.restore();
   },
-  // Display-only: progress of the SPECIAL success cut-in (pure). age = total - remaining.
-  specialCutinStyle(age, reducedMotion = false) {
+  // Display-only: flashy SPECIAL cut-in progress (pure). age = total - remaining.
+  // Returns wipe/slide/pops/shake/flash/ray phase for drawing; never mutates game.
+  specialCutinStyle(age, reducedMotion = false, strong = false) {
     const c = Hop.CONFIG, total = c.specialCutinDuration;
-    if (!(age >= 0) || age >= total) return { visible: false, alpha: 0, slide: 0 };
+    const idle = { visible: false, alpha: 0, wipe: 0, slide: 0, portraitPop: 1, titlePop: 1, shakeX: 0, shakeY: 0, flash: 0, raySpin: 0, spark: 0 };
+    if (!(age >= 0) || age >= total) return idle;
     if (reducedMotion) {
-      const dur = c.specialCutinReducedDuration;
-      return age < dur ? { visible: true, alpha: 1, slide: 0 } : { visible: false, alpha: 0, slide: 0 };
+      return age < c.specialCutinReducedDuration
+        ? { ...idle, visible: true, alpha: 1, wipe: 1, portraitPop: 1, titlePop: 1 }
+        : idle;
     }
-    const slideT = c.specialCutinSlideIn, holdEnd = slideT + c.specialCutinHold;
-    let alpha = 1, slide = 0;
-    if (age < slideT) slide = 1 - age / slideT;
-    else if (age > holdEnd) alpha = Math.max(0, 1 - (age - holdEnd) / Math.max(1e-6, total - holdEnd));
-    return { visible: alpha > 0.01, alpha, slide };
+    const impactT = c.specialCutinImpact, wipeT = c.specialCutinWipe;
+    const holdEnd = impactT + wipeT + c.specialCutinHold;
+    const easeOut = t => 1 - (1 - Math.max(0, Math.min(1, t))) ** 3;
+    const easeOutBack = t => { t = Math.max(0, Math.min(1, t)); return 1 + 2.70158 * (t - 1) ** 3 + 1.70158 * (t - 1) ** 2; };
+    let alpha = 1, wipe = 1, slide = 0, portraitPop = 1, titlePop = 1, flash = 0, shakeX = 0, shakeY = 0;
+    const shakeMul = strong ? 1.55 : 1;
+    const flashMul = strong ? 1.25 : 1;
+    if (age < impactT) {
+      const u = age / impactT;
+      flash = (1 - u) * c.specialCutinFlashPeak * flashMul;
+      const amp = (1 - u) * c.specialCutinShakePx * shakeMul;
+      shakeX = Math.sin(age * 90) * amp;
+      shakeY = Math.cos(age * 110) * amp * 0.65;
+      wipe = 0.15 + 0.2 * u;
+      slide = 1 - u * 0.4;
+      portraitPop = c.specialCutinPortraitPop;
+      titlePop = c.specialCutinTitlePop;
+    } else if (age < impactT + wipeT) {
+      const u = (age - impactT) / wipeT;
+      wipe = 0.35 + 0.65 * easeOut(u);
+      slide = (1 - easeOut(u)) * 0.55;
+      portraitPop = c.specialCutinPortraitPop - (c.specialCutinPortraitPop - 1) * easeOutBack(u);
+      titlePop = c.specialCutinTitlePop - (c.specialCutinTitlePop - 1) * easeOut(Math.min(1, u * 1.2));
+      flash = Math.max(0, (1 - u) * 0.2 * flashMul);
+    } else if (age <= holdEnd) {
+      wipe = 1; slide = 0; portraitPop = 1; titlePop = 1;
+      // Soft idle pulse on rays only (spark/raySpin below).
+    } else {
+      const fadeT = Math.max(1e-6, total - holdEnd);
+      alpha = Math.max(0, 1 - (age - holdEnd) / fadeT);
+      wipe = 1;
+    }
+    return {
+      visible: alpha > 0.01, alpha, wipe, slide, portraitPop, titlePop, shakeX, shakeY, flash,
+      raySpin: age * (strong ? 2.8 : 2.1), spark: age * 6.5
+    };
   },
-  // Fighting-game band + portrait + SPECIAL name. Reads game.specialCutin only; never mutates game.
+  // Flashy fighting-game cut-in. Reads game.specialCutin only; never mutates game.
   specialCutin(ctx, g, visual) {
     const cut = g.specialCutin; if (!cut) return;
     const c = Hop.CONFIG, age = cut.total - cut.remaining;
-    const style = this.specialCutinStyle(age, !!visual?.reducedMotion);
+    const style = this.specialCutinStyle(age, !!visual?.reducedMotion, !!cut.strong);
     if (!style.visible) return;
     const bandH = c.specialCutinBandHeight, bandY = (c.height - bandH) / 2;
     const accent = cut.strong ? "#e8c45a" : (Hop.CAST[cut.castId]?.color || "#674488");
-    const slidePx = style.slide * (c.width * 0.45);
+    const slidePx = style.slide * (c.width * 0.42);
     ctx.save();
-    ctx.globalAlpha = style.alpha * 0.72;
-    ctx.fillStyle = "#1a1520"; ctx.fillRect(0, bandY, c.width, bandH);
+    ctx.translate(style.shakeX, style.shakeY);
+    // Impact white flash (screen-wide).
+    if (style.flash > 0.01) {
+      ctx.globalAlpha = Math.min(1, style.flash);
+      ctx.fillStyle = cut.strong ? "#fff6c0" : "#ffffff";
+      ctx.fillRect(-20, -20, c.width + 40, c.height + 40);
+    }
+    // Speed lines / rays behind the band.
+    if (!visual?.reducedMotion && style.wipe > 0.2) {
+      ctx.save();
+      ctx.globalAlpha = style.alpha * (cut.strong ? 0.55 : 0.38) * Math.min(1, style.wipe);
+      ctx.translate(c.width * 0.5, bandY + bandH * 0.5);
+      for (let i = 0; i < c.specialCutinRayCount; i++) {
+        const a = style.raySpin + i * Math.PI * 2 / c.specialCutinRayCount;
+        const len = 220 + (i % 3) * 90;
+        ctx.rotate(a);
+        ctx.fillStyle = cut.strong ? "#ffe9a0" : accent;
+        ctx.fillRect(40, -3 - (i % 2), len, 2 + (i % 3));
+        ctx.rotate(-a);
+      }
+      ctx.restore();
+    }
+    // Diagonal wipe clip for the band.
+    const wipeX = -80 + style.wipe * (c.width + 160);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(-40 + style.shakeX, bandY - 30);
+    ctx.lineTo(wipeX, bandY - 30);
+    ctx.lineTo(wipeX - 70, bandY + bandH + 30);
+    ctx.lineTo(-40, bandY + bandH + 30);
+    ctx.closePath();
+    ctx.clip();
+    ctx.globalAlpha = style.alpha * 0.78;
+    ctx.fillStyle = cut.strong ? "#2a2010" : "#1a1520";
+    ctx.fillRect(-20, bandY, c.width + 40, bandH);
+    // Accent stripes
     ctx.globalAlpha = style.alpha;
-    ctx.fillStyle = accent; ctx.fillRect(0, bandY, 14, bandH);
-    ctx.fillRect(0, bandY, c.width, 6); ctx.fillRect(0, bandY + bandH - 6, c.width, 6);
-    // Portrait: existing CAST still (or Canvas figure) enlarged on the left.
-    const px = 210 - slidePx, feet = bandY + bandH - 18;
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, bandY, 18, bandH);
+    ctx.fillRect(0, bandY, c.width, 8);
+    ctx.fillRect(0, bandY + bandH - 8, c.width, 8);
+    // Diagonal slash highlight
+    ctx.save();
+    ctx.globalAlpha = style.alpha * 0.35;
+    ctx.translate(c.width * 0.55 - slidePx, bandY + bandH * 0.5);
+    ctx.rotate(-0.35);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(-c.width, -10, c.width * 2, 20);
+    ctx.restore();
+    // Sparks along the wipe edge
+    if (!visual?.reducedMotion) {
+      ctx.globalAlpha = style.alpha * 0.9;
+      for (let i = 0; i < c.specialCutinSparkCount; i++) {
+        const t = (i / c.specialCutinSparkCount + style.spark * 0.02) % 1;
+        const sx = wipeX - 40 - t * 30;
+        const sy = bandY + 20 + (i * 97) % (bandH - 40);
+        const r = 2 + (i % 4);
+        this.circle(ctx, sx, sy, r, i % 2 ? accent : "#fff4c8");
+      }
+    }
+    // Portrait with pop scale
+    const px = 210 - slidePx, feet = bandY + bandH - 16;
     {
       const layer = Hop.Sprites?.castLayer?.(cut.castId, 0);
-      const scale = (layer?.scale || 1.25) * c.specialCutinPortraitScale;
+      const base = (layer?.scale || 1.25) * c.specialCutinPortraitScale * style.portraitPop;
       let drawn = false;
       if (layer?.asset?.ready) {
         if (layer.flip) {
           ctx.save();
-          try { ctx.translate(px, 0); ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feet, scale); }
+          try { ctx.translate(px, 0); ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feet, base); }
           finally { ctx.restore(); }
-        } else drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, px, feet, scale);
+        } else drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, px, feet, base);
       }
-      if (!drawn) this.character(ctx, cut.castId, px, feet, 1.25 * c.specialCutinPortraitScale * 0.55);
+      if (!drawn) this.character(ctx, cut.castId, px, feet, 1.25 * c.specialCutinPortraitScale * 0.55 * style.portraitPop);
     }
-    // Titles
+    // Titles with pop
     const tx = 420 - slidePx * 0.35;
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.save();
+    ctx.translate(tx, bandY + 58);
+    ctx.scale(style.titlePop, style.titlePop);
     ctx.fillStyle = "#fff8e8"; ctx.font = "bold 28px system-ui";
-    ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", tx, bandY + 58);
-    ctx.fillStyle = accent; ctx.font = "bold 52px system-ui";
-    ctx.fillText(cut.name, tx, bandY + 120);
+    ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", 0, 0);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(tx, bandY + 128);
+    ctx.scale(style.titlePop, style.titlePop);
+    ctx.fillStyle = accent; ctx.font = "bold 56px system-ui";
+    ctx.fillText(cut.name, 0, 0);
+    ctx.restore();
+    ctx.globalAlpha = style.alpha;
     ctx.fillStyle = "#f0e6d4"; ctx.font = "bold 26px system-ui";
     const sub = cut.merchantType ? `Type ${cut.merchantType} / ${cut.castName}` : `${cut.castName} · ${cut.type}`;
-    ctx.fillText(sub, tx, bandY + 168);
-    ctx.restore();
+    ctx.fillText(sub, tx, bandY + 178);
+    ctx.restore(); // wipe clip
+    ctx.restore(); // shake
   },
   draw(ctx, g, visual) {
     const c = Hop.CONFIG, ground = c.groundY + g.cameraY;
