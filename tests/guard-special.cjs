@@ -80,7 +80,7 @@ test('both shields: normal STOPPER first, special STOPPER second',()=>{
 for(const success of [true,false])test('STOPPER SPECIAL before special shield '+success,()=>{
  const g=isolated();shield(g,7.4);hit(g,'BOOST');hit(g,'STOPPER');assert(g.special);g.resolveSpecial(success);
  assert.equal(g.guardSpecial.active,success);assert(!g.body.stopped);
- if(success){near(Math.hypot(g.body.vx,g.body.vy),2300);assert(g.successVisual.strong);assert.equal(g.soundEvent,'STOPPER');}
+ if(success){near(Math.hypot(g.body.vx,g.body.vy),2300);assert(g.successVisual.strong);assert.equal(g.soundEvent,'SPECIAL_STOPPER');}
 });
 for(const fps of [30,60,120,144])test('10s playable guard timer at '+fps+' fps',()=>{
  const g=isolated();high(g);shield(g);advance(g,9,fps);near(g.guardSpecial.remaining,1);advance(g,1,fps);assert(!g.guardSpecial.active);near(g.guardSpecial.remaining,0);

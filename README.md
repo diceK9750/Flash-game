@@ -135,6 +135,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 
 - `node tests/phase2.cjs`：物理・AERIAL・入力・停止の回帰テスト。
 - `node tests/phase3.cjs`：上記に加え、7種類・SPECIAL・GUARD・保存・DEBUG・リセット。
+- `node tests/special-se.cjs`：SPECIAL別SE（種類ごとに別イベント・別のノード構成と周波数・音量上限・ミュート・AudioContextなし・エラー時も停止しない）。
 - `node tests/specials.cjs`：正式SPECIAL・準備解除・商人A〜D・境界生成・終了・上書き・入力・RETRY。
 - `node tests/guard-special.cjs`：通常ベクトル・新SPECIAL・2種類のGUARD・タイマー停止・商人との統合。
 - `node tests/controls.cjs`：1入力・ヒステリシス・旧操作無効・音声不可時の安全性。
@@ -155,7 +156,8 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 ## プレイ中の表示・快適性
 
 - FLYING中にステージ内から始めるジェスチャーはゲーム操作を優先します。ステージ外やREADY・角度／パワー選択・RESULTでは縦スクロールできます。
-- SPECIAL成功時（MISS以外）は、キャンバス上にテイルズ初期帯カットインを参考にしたオリジナル構図で、**決め顔のドアップ**（各CAST専用 `CUTIN_FACE` 顔板）を約1.0秒表示します（短いフラッシュ→帯ワイプ→顔が大きく枠を埋める。技名は帯の外／端、SPECIALは控えめ。`specialCutin*`。STOPPERだけ金白で少し神々しく。動きを減らす設定では短い静止のみ。原作動画・画像・字体は使わず雰囲気のみ。表示のみで物理・判定は変わりません）。
+- SPECIAL成功時（MISS以外）は、キャンバス上にテイルズ初期帯カットインを参考にしたオリジナル構図で、**決め顔のドアップ**を約1.0秒表示します。顔板は各CAST専用の `CUTIN_FACE` v2（`assets/sprites/cast/*_cutin_face_v2/`、640x320。HD comic の1280px元画像から目〜あご基準で切り出し、シアン抜き・Lanczos縮小）で、帯の高さの1.2倍（眉〜あごが帯いっぱい）・画面幅の約64%に描きます（v1の256px板は `*_cutin_face/` に残置）。技名は帯の右端に重ね、SPECIALは控えめ。帯の高さ・角度・顔の大きさと位置は `specialCutin*`。STOPPERだけ金白で少し神々しく。動きを減らす設定では短い静止のみ。原作動画・画像・字体は使わず雰囲気のみ。表示のみで物理・判定は変わりません）。
+- SPECIAL成功時は種類ごとの専用SEを鳴らします（`js/audio.js` の `specialRecipes`。音声ファイルなし、WebAudio合成のみ）。BOOST＝爆発ノイズ＋上昇スイープ、BOUNCE＝3連打撃→跳ね上がり、DASH＝金属的な衝撃＋風切り、STOPPER＝和音＋キラキラ、BRAKE＝下降するヒュン、ANGLE＝ドラムロール＋ピョン、GUARD＝結界のブゥン＋鈴、商人＝チャリン。0.5〜1.0秒、同時に鳴る声部の合計を `specialPeakCap` 0.16 以下に抑えます。SE OFF・タップ前・AudioContextなしでは鳴らず、エラーでもゲームは止まりません。MISSは無音。
 ステージ左上に次のAERIAL操作とDOWN充電、右上に商人効果の残数を表示。Type Cは残り人数、Type BはCHARGEゲージです。
 - SPECIAL READYは現在の準備状態から導出した対象職業、頭上SPECIALは現在条件が成立する画面内キャラです。途中の接触・バウンドで条件は変化します。ANGLEの抽選結果は先読みしません。
 - 結界保持中、次の100m境界まで10m以内でMERCHANT ZONEを表示。対象境界キャラはMERCHANT表示を優先します。実際の接触条件・成功判定は従来どおりです。
