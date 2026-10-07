@@ -154,7 +154,7 @@ Hop.Graphics = {
     }
     return { visible: alpha > 0.01, alpha, wipe, portraitPop, shakeX, shakeY, flash };
   },
-  // Early-Tales band insert (original). Flat/duotone character band sweeps across; skill name at the edge.
+  // Early-Tales band insert (original) with decisive face close-up. Skill name at the edge.
   specialCutin(ctx, g, visual) {
     const cut = g.specialCutin; if (!cut) return;
     const c = Hop.CONFIG, age = cut.total - cut.remaining;
@@ -206,23 +206,28 @@ Hop.Graphics = {
     } else ctx.fillStyle = accent;
     ctx.globalAlpha = style.alpha * 0.85;
     ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
-    // Large portrait centered in band
+    // Decisive face close-up (CUTIN_FACE plate) filling the band — not full-body.
     ctx.globalAlpha = style.alpha;
     {
-      const layer = Hop.Sprites?.castLayer?.(cut.castId, 0);
-      const feetY = hh - 14;
-      const scale = (layer?.scale || 1.25) * c.specialCutinPortraitScale * style.portraitPop;
+      const face = Hop.Sprites?.cutinFaceLayer?.(cut.castId);
+      const fall = !face ? Hop.Sprites?.castLayer?.(cut.castId, 0) : null;
       let drawn = false;
-      if (layer?.asset?.ready) {
-        if (layer.flip) {
+      if (face?.asset?.ready) {
+        const scale = (face.scale || 1.15) * c.specialCutinFaceScale * style.portraitPop;
+        // Pivot is cell center: draw at band center so the face fills the strip.
+        drawn = !!Hop.Sprites.draw(ctx, face.asset, 0, 0, 0, scale);
+      } else if (fall?.asset?.ready) {
+        const feetY = hh - 14;
+        const scale = (fall.scale || 1.25) * c.specialCutinPortraitScale * style.portraitPop;
+        if (fall.flip) {
           ctx.save();
-          try { ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feetY, scale); }
+          try { ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, fall.asset, 0, 0, feetY, scale); }
           finally { ctx.restore(); }
-        } else drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feetY, scale);
+        } else drawn = !!Hop.Sprites.draw(ctx, fall.asset, 0, 0, feetY, scale);
       }
-      if (!drawn) this.character(ctx, cut.castId, 0, feetY, 1.15 * c.specialCutinPortraitScale * 0.5 * style.portraitPop);
-      // Light monochrome plate wash over the portrait (early single-tone insert feel)
-      ctx.globalAlpha = style.alpha * (cut.strong ? 0.18 : 0.22);
+      if (!drawn) this.character(ctx, cut.castId, 0, hh * 0.35, 1.6 * style.portraitPop);
+      // Soft plate wash (keep face readable)
+      ctx.globalAlpha = style.alpha * (cut.strong ? 0.12 : 0.14);
       ctx.fillStyle = cut.strong ? "#ffe9a0" : accent;
       ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
     }

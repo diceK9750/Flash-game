@@ -1,0 +1,15 @@
+{
+  "id": "GUARD",
+  "animation": "CUTIN_FACE",
+  "cellW": 256,
+  "cellH": 256,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 128,
+    "y": 128
+  },
+  "smoothing": false,
+  "notes": "Dedicated SPECIAL cut-in face close-up cropped from in-game HD comic still (NN upscale). Original crop \u2014 not Tales copyrighted art."
+}

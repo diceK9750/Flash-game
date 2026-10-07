@@ -45,13 +45,14 @@ Hop.CONFIG = Object.freeze({
   stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
   specialTrailDuration: 1.2,
-  // Display-only early-Tales-inspired band cut-in (resolveSpecial true only). Original layout — not a copy of
-  // any ToE / Destiny 2 / Symphonia frame. Feel of those first-three band inserts: short flash → band wipe → hold → fade.
+  // Display-only early-Tales-feel band cut-in with decisive face close-up (resolveSpecial true only).
+  // Original layout — not a copy of any ToE / Destiny 2 / Symphonia / nicovideo frame.
+  // Timeline: short flash → band wipe → hold → fade. Face plates are dedicated CUTIN_FACE crops.
   // reducedMotion: short still, no shake/flash/wipe motion.
-  specialCutinDuration: 1.05, specialCutinImpact: 0.08, specialCutinWipe: 0.26, specialCutinHold: 0.48,
-  specialCutinReducedDuration: 0.40, specialCutinBandHeight: 280, specialCutinBandTiltDeg: 8,
-  specialCutinPortraitScale: 4.0, specialCutinNameSize: 64, specialCutinShakePx: 6,
-  specialCutinFlashPeak: 0.72, specialCutinPortraitPop: 1.12,
+  specialCutinDuration: 1.0, specialCutinImpact: 0.07, specialCutinWipe: 0.24, specialCutinHold: 0.46,
+  specialCutinReducedDuration: 0.40, specialCutinBandHeight: 300, specialCutinBandTiltDeg: 7,
+  specialCutinFaceScale: 1.35, specialCutinPortraitScale: 3.2, specialCutinNameSize: 62,
+  specialCutinShakePx: 5, specialCutinFlashPeak: 0.70, specialCutinPortraitPop: 1.10,
   // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({
     BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),
