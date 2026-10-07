@@ -323,4 +323,64 @@ function play(seed, mode) {
   cases++;
 }
 
+// 12) Dedicated combo poses: the right slot in each beat, always facing the hero (mirrored about the feet).
+{
+  const S0 = G.comboSceneStart(false);
+  const at = (g, t) => { g.combo.elapsed = S0 + t; const st = G.comboState(g); return { st, A: G.comboActors(st) }; };
+  const towardHero = (a, st) => a.face === (a.x < st.heroWX ? 'right' : 'left');
+  // Witch SPECIAL: witch CAST while chanting, USED when the spell flies; fighter PUNCH rush (KICK every third
+  // blow) from both sides, UPPER finisher.
+  { const { g } = scene('BOOST', 'BOUNCE'), W = c.comboWitchTimes, seen = new Set();
+    assert.equal(at(g, 0.05).A.witch.pose, 'IDLE');
+    for (let t = 0.2; t < W.liftEnd - 0.06; t += 0.05) { const { A, st } = at(g, t); assert.equal(A.witch.pose, 'CAST', 'chanting at ' + t.toFixed(2)); assert(towardHero(A.witch, st)); }
+    for (let t = W.dash; t < W.rushEnd; t += 0.01) {
+      const { A, st } = at(g, t); seen.add(A.fighter.pose + ':' + A.fighter.face);
+      assert(['PUNCH', 'KICK'].includes(A.fighter.pose)); assert(towardHero(A.fighter, st), 'rush faces the hero');
+      assert.equal(A.fighter.pose, (A.hits - 1) % 3 === 2 ? 'KICK' : 'PUNCH');
+    }
+    assert(seen.has('PUNCH:left') && seen.has('PUNCH:right') && (seen.has('KICK:left') || seen.has('KICK:right')), 'punches from both sides, kicks mixed in: ' + [...seen]);
+    for (let t = W.rushEnd; t < W.liftEnd + 0.15; t += 0.02) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'UPPER'); assert(towardHero(A.fighter, st)); }
+    for (let t = W.liftEnd; t < g.combo.total - S0; t += 0.05) assert.equal(at(g, t).A.witch.pose, 'USED');
+  }
+  // Fighter SPECIAL: witch walks in facing left, then CAST toward the fighter; giant UPPER (uniform scale).
+  { const { g } = scene('BOUNCE', 'BOOST'), F = c.comboFighterTimes;
+    assert.equal(at(g, 0.1).A.witch.face, 'left'); assert.equal(at(g, 0.1).A.witch.pose, 'IDLE');
+    for (let t = F.arrive + 0.01; t < F.growEnd - 0.01; t += 0.05) { const { A } = at(g, t); assert.equal(A.witch.pose, 'CAST'); assert.equal(A.witch.face, 'right'); assert(A.witch.x < A.fighter.x, 'witch casts at the fighter'); }
+    for (let t = 0; t < F.upper - 0.05; t += 0.05) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'IDLE'); assert(towardHero(A.fighter, st)); }
+    for (let t = F.upper; t < g.combo.total - S0; t += 0.05) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'UPPER'); assert(towardHero(A.fighter, st)); near(A.fighter.scale, c.comboFighterScale, 'giant'); }
+  }
+  // Short versions use the poses too.
+  { const a = scene('BOOST', 'BOUNCE', { short: true }).g; a.combo.elapsed = 0.5; const A = G.comboActors(G.comboState(a)); assert.deepEqual([A.witch.pose, A.fighter.pose], ['CAST', 'UPPER']);
+    const b = scene('BOUNCE', 'BOOST', { short: true }).g; b.combo.elapsed = 0.5; const B = G.comboActors(G.comboState(b)); assert.deepEqual([B.witch.pose, B.fighter.pose], ['CAST', 'UPPER']); }
+  // The drawing passes slot + facing to Sprites.drawCastScaled.
+  { const { g } = scene('BOOST', 'BOUNCE'); const calls = [], saved = S.drawCastScaled;
+    S.drawCastScaled = (ctx, id, x, feet, pose, mul, opts) => { calls.push({ id, pose, face: opts.face }); return { w: 1, h: 1 }; };
+    const nullCtx = new Proxy({}, { get: (o, k) => k in o ? o[k] : k === 'createRadialGradient' || k === 'createLinearGradient' ? () => ({ addColorStop() {} }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
+    const ground = 600, sx = x => x, sy = y => ground - 18 - y;
+    g.combo.elapsed = S0 + 1.0; G.comboBack(nullCtx, G.comboState(g), sx, sy, ground);
+    assert(calls.some(k => k.id === 'BOOST' && k.pose === 'CAST' && k.face === 'right') && calls.some(k => k.id === 'BOUNCE' && ['PUNCH', 'KICK'].includes(k.pose)));
+    S.drawCastScaled = saved; }
+  // Facing: a slot is mirrored only when its stored facing differs, about the feet (feet x unchanged).
+  { const data = { frameWidth: 384, frameHeight: 288, unit: 3, frames: 1, fps: 1, loop: false, pivot: { x: 192, y: 264 }, smooth: true };
+    const savedAssets = S.castAssets.BOUNCE;
+    S.castAssets.BOUNCE = { IDLE: { ready: true, data: { ...data, frameWidth: 288, pivot: { x: 144, y: 264 } }, image: { complete: true, naturalWidth: 288 } }, KICK: { ready: true, data, image: { complete: true, naturalWidth: 384 } },
+      PUNCH: { ready: true, data, image: { complete: true, naturalWidth: 384 } }, UPPER: { ready: false } };
+    const rec = () => { let sxs = 1, tx = 0; const stack = []; const out = {}; return { out, globalAlpha: 1, save() { stack.push([sxs, tx]); }, restore() { [sxs, tx] = stack.pop(); }, translate(x) { tx += x * sxs; }, scale(x) { sxs *= x; }, rotate() {},
+      drawImage(img, a, b, sw, sh, dx, dy, dw) { out.mirrored = sxs < 0; out.feetX = tx + sxs * (dx + data.pivot.x * dw / sw * (sw === 288 ? 144 / 192 : 1)); } }; };
+    for (const [face, mirrored] of [['right', false], ['left', true]]) {
+      const r = rec(); const box = S.drawCastScaled(r, 'BOUNCE', 500, 600, 'PUNCH', 1.5, { face });
+      assert.equal(box.name, 'PUNCH'); assert.equal(box.flipped, mirrored); assert.equal(r.out.mirrored, mirrored); near(r.out.feetX, 500, 'feet x kept (' + face + ')');
+    }
+    const r2 = rec(); assert.equal(S.drawCastScaled(r2, 'BOUNCE', 500, 600, 'IDLE', 1, { face: 'left' }).flipped, false, 'IDLE stored facing left');
+    // Missing combo slot -> the pose-1 still (KICK), then IDLE.
+    assert.equal(S.comboLayer('BOUNCE', 'UPPER').name, 'KICK');
+    S.castAssets.BOUNCE.KICK = { ready: false }; assert.equal(S.comboLayer('BOUNCE', 'UPPER').name, 'IDLE');
+    S.castAssets.BOUNCE = savedAssets; }
+  // Roadside stills unchanged: castLayer never returns a combo slot.
+  for (const [id, name] of [['BOOST', 'CAST'], ['BOUNCE', 'PUNCH'], ['BOUNCE', 'UPPER']]) {
+    assert.equal(S.definitions.CAST[id][name].comboPose, true); assert.equal(S.definitions.CAST[id][name].pose, undefined);
+  }
+  cases++;
+}
+
 console.log(JSON.stringify({ comboSpecial: 'PASS', cases }));

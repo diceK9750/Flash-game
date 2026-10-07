@@ -95,22 +95,30 @@ Hop.Sprites = {
     // BOOST.USED, BRAKE.USED and ANGLE.USED have one.
     CAST: {
       BOOST: { // 魔法使い (HD comic idle r1a + used r1a; idle staff on the viewer's right like the Canvas witch, used pose thrusts it toward the hero; not mirrored)
-        IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
+        IDLE: { id: "BOOST", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", enabled: true,
           src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle_sheet_288x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle.json" },
         // HD comic idle (288 cell) and used pose (384x288 cell for the wide stance); the 96 r1 stills are
         // kept in boost_witch/.
-        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", pose: 1, enabled: true,
           src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used_sheet_384x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used.json" },
+        // Combo-scene only (comboPose; never the roadside still): chanting with the staff raised.
+        CAST: { id: "BOOST", animation: "CAST", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, enabled: true,
+          src: "assets/sprites/cast/boost_witch_combo_v1/boost_witch_cast_sheet_288x288.png", metadata: "assets/sprites/cast/boost_witch_combo_v1/boost_witch_cast.json" },
         CUTIN_FACE: { id: "BOOST", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/boost_witch_cutin_face_v2/boost_witch_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/boost_witch_cutin_face_v2/boost_witch_cutin_face.json" }
       },
       BOUNCE: { // 武闘家 (HD comic idle r1b + kick r1a; the kick points to the viewer's right like the Canvas pose, so not mirrored)
-        IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
+        IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", enabled: true,
           src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_idle_sheet_288x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_idle.json" },
         // HD comic idle (288 cell) and kick (384x288 cell for the high kick, standing foot on the pivot x);
         // the 96 r1 stills are kept in bounce_fighter/.
-        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
+        KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "right", pose: 1, enabled: true,
           src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick_sheet_384x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick.json" },
+        // Combo-scene only (comboPose): rush punch and uppercut.
+        PUNCH: { id: "BOUNCE", animation: "PUNCH", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "right", comboPose: true, enabled: true,
+          src: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_punch_sheet_384x288.png", metadata: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_punch.json" },
+        UPPER: { id: "BOUNCE", animation: "UPPER", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "right", comboPose: true, enabled: true,
+          src: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_upper_sheet_288x288.png", metadata: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_upper.json" },
         CUTIN_FACE: { id: "BOUNCE", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter_cutin_face_v2/bounce_fighter_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/bounce_fighter_cutin_face_v2/bounce_fighter_cutin_face.json" }
       },
@@ -300,11 +308,24 @@ Hop.Sprites = {
   // Combo scenes (display only): a CAST still with uniform scale `mul` (x and y alike, so the 5-head proportions
   // never change), feet fixed at (x, feet), optional mirror (XOR the slot's flip), rotation about the feet point
   // and alpha. Returns the drawn rect in canvas px (or null -> caller draws the Canvas figure).
+  // Combo scene slot (pure): pose = slot name (PUNCH / UPPER / CAST / IDLE / KICK / USED) or 0 / 1 like castLayer.
+  // A missing / not loaded named slot falls back to the pose-1 still (KICK / USED), IDLE for "IDLE".
+  comboLayer(id, pose = 0) {
+    if (typeof pose !== "string") return this.castLayer(id, pose);
+    const def = this.definitions.CAST?.[id]?.[pose], asset = this.castAssets?.[id]?.[pose];
+    if (def && def.animation !== "CUTIN_FACE" && asset?.ready) return { name: pose, asset, scale: def.scale, flip: !!def.flip, facing: def.facing || "left" };
+    const fallback = this.castLayer(id, pose === "IDLE" ? 0 : 1);
+    return fallback && { ...fallback, facing: this.definitions.CAST[id][fallback.name]?.facing || "left" };
+  },
+  // Combo scenes: uniform scale `mul` about the feet (x, feet), optional rotation about the feet. opts.face
+  // ("left" / "right") mirrors the slot when its drawn facing differs (mirrored about the feet, so the feet stay);
+  // without face, opts.flip toggles the definition flip. Returns { w, h, left, top, scale, name, flipped } or null.
   drawCastScaled(ctx, id, x, feet, pose = 0, mul = 1, opts = {}) {
-    const layer = this.castLayer(id, pose);
+    const layer = this.comboLayer(id, pose);
     if (!layer) return null;
     const d = layer.asset.data, scale = layer.scale * mul / (d.unit > 0 ? d.unit : 1);
-    const flip = !!layer.flip !== !!opts.flip;
+    // facing = the stored image's facing, so the total mirror is simply face !== facing.
+    const flip = opts.face ? opts.face !== (layer.facing || "left") : !!layer.flip !== !!opts.flip;
     ctx.save();
     try {
       if (Number.isFinite(opts.alpha)) ctx.globalAlpha *= Math.max(0, Math.min(1, opts.alpha));
@@ -312,7 +333,8 @@ Hop.Sprites = {
       if (opts.rotate) ctx.rotate(opts.rotate);
       if (flip) ctx.scale(-1, 1);
       if (!this.draw(ctx, layer.asset, 0, 0, 0, layer.scale * mul)) return null;
-      return { w: d.frameWidth * scale, h: d.frameHeight * scale, left: x - d.pivot.x * scale, top: feet - d.pivot.y * scale, scale };
+      const left = flip ? x - (d.frameWidth - d.pivot.x) * scale : x - d.pivot.x * scale;
+      return { w: d.frameWidth * scale, h: d.frameHeight * scale, left, top: feet - d.pivot.y * scale, scale, name: layer.name, flipped: flip };
     } finally { ctx.restore(); }
   },
   // Hero HIT (HD Rumiko knockback) still for the combo scenes; false -> caller keeps the normal layers.

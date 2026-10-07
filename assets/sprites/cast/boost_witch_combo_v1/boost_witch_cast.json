@@ -1,0 +1,26 @@
+{
+  "id": "BOOST",
+  "animation": "CAST",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 278
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_witch_cast_r2.jpg",
+  "facing": "left",
+  "heightRatio": {
+    "value": 5.0,
+    "beforeWarp": 5.72,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Combo-scene pose: witch chanting (gold staff held up overhead, eyes closed; r1 rejected). Sky-blue background (1,202,254) shifted to the standard cyan (fix_bg.py), then head and hat enlarged x1.18 about the chin (640,227) with the smooth warp (warp_head.py; no change below the chin or at the staff / raised hands). 頭身 5.00 = estimated head top -> soles (mean of both soles) / head, hat excluded; the head top is hidden by the hat, so head length = 2.53 x (chin - eye centre), the same estimate as the HD idle / used (before the warp 5.72: the head was drawn small; the hat-brim width gives the same reading). Body check after the warp: chin -> sole = 59 sprite px (HD idle 60). Soft-alpha cyan cutout (hd_cutout --spill-strong) at grid 8.09 (head 119 / 14.74: on-screen head = HD idle head = hero head) into a 288 cell (unit 3), pivot (144,278) (extra headroom for the staff tip), centre between the boots on the pivot x. Teal edge pixels replaced by nearby opaque colours (defringe.py). Facing the viewer's left like the HD idle (flip in the combo scene to face the hero / fighter). Display only."
+}

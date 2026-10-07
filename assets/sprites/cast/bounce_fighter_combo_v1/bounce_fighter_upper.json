@@ -1,0 +1,27 @@
+{
+  "id": "BOUNCE",
+  "animation": "UPPER",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_fighter_upper_r2.jpg",
+  "facing": "right",
+  "heightRatio": {
+    "value": 4.93,
+    "estimate": 4.52,
+    "measured": 5.34,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Combo-scene pose: fighter uppercut (fist straight up, facing the viewer's right; r1 rejected). Sky-blue background (4,199,252) shifted to the standard cyan (fix_bg.py). No head warp: 頭身 4.93 = mean of the estimate (head = 2.53 x (chin - eye centre), the hero idle ratio: 4.52) and the measured hair top (5.34; the ahoge strand not counted), head top -> sole of the standing (viewer's left, flat) foot; the other foot is on its toes. Bun and ponytail not counted. Torso check: chin -> sash bottom = 1.03 heads (HD idle 1.07). Soft-alpha cyan cutout (hd_cutout --spill-strong) at grid 9.16 (head 135 / 14.74: on-screen head = HD idle head = hero head) into a 288 cell (unit 3), pivot (144,264) = centre between the boots, standing sole on the pivot y; the raised fist stays inside the cell (top at y 35). Teal edge pixels replaced by nearby opaque colours (defringe.py). Facing right. Display only."
+}
