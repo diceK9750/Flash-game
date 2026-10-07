@@ -383,4 +383,38 @@ function play(seed, mode) {
   cases++;
 }
 
+// 13) Fighter SPECIAL renamed to match the uppercut (name only: type / event / physics unchanged), and the
+// cut-in name and the combo labels shrink to fit when a name is long.
+{
+  const fs = require('node:fs'), path = require('node:path'), root = path.join(__dirname, '..');
+  assert.equal(c.specials.BOUNCE.name, '巨神昇天拳');
+  assert.deepEqual([c.specials.BOUNCE.trigger, c.specials.BOUNCE.partner, c.specials.BOUNCE.speed, c.specials.BOUNCE.angle], ['adjacent', 'BOOST', 1700, 60]);
+  const OLD = '\u9023\u5929'; // old name prefix
+  const files = ['index.html', 'README.md', ...fs.readdirSync(path.join(root, 'js')).map(f => 'js/' + f), ...fs.readdirSync(path.join(root, 'tests')).map(f => 'tests/' + f)];
+  for (const f of files) if (/\.(js|cjs|html|md|css)$/.test(f)) assert(!fs.readFileSync(path.join(root, f), 'utf8').includes(OLD), 'old name left in ' + f);
+  // Success: cut-in, SE event and SUCCESS panel carry the new name; the combo blast label too.
+  const { g } = scene('BOUNCE', 'BOOST');
+  assert.equal(g.specialCutin.name, '巨神昇天拳'); assert.equal(g.soundEvent, 'SPECIAL_BOUNCE'); assert.equal(g.specialMessage.detail, '巨神昇天拳');
+  g.combo.elapsed = G.comboSceneStart(false) + c.comboFighterTimes.upper + 0.1;
+  const ground = c.groundY + g.cameraY, sx = x => c.launchX + x - g.cameraX, sy = y => ground - c.playerRadius - y;
+  const nullCtx = new Proxy({}, { get: (o, k) => k in o ? o[k] : k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
+  assert(G.comboFront(nullCtx, G.comboState(g), sx, sy, ground).some(i => i.kind === 'label' && i.text === '巨神昇天拳!!'), 'combo label');
+  // Fitting: a recorder whose measureText is font size x characters (x0.8 for the combo font).
+  const recorder = (k) => { const out = []; let font = ''; return { out, ctx: new Proxy({}, { get: (o, key) => key === 'measureText' ? s => ({ width: +/(\d+)px/.exec(font)[1] * [...s].length * k }) :
+    key === 'fillText' ? (s, x) => out.push({ s, x, size: +/(\d+)px/.exec(font)[1] }) : key === 'createLinearGradient' || key === 'createRadialGradient' ? () => ({ addColorStop() {} }) : key in o ? o[key] : () => {},
+    set: (o, key, v) => { if (key === 'font') font = v; o[key] = v; return true; } }) }; };
+  const cutMax = c.width * (1 - c.specialCutinNameX - c.specialCutinNameMargin);
+  for (const [name, shrink] of [['巨神昇天拳', false], ['とても長い必殺技の名前です', true]]) {
+    const r = recorder(1); G.specialCutin(r.ctx, { specialCutin: { type: 'BOUNCE', castId: 'BOUNCE', name, castName: '武闘家', strong: false, remaining: 0.5, total: 1 } }, { reducedMotion: false });
+    const hit = r.out.find(o => o.s === name); assert(hit, 'cut-in name drawn');
+    assert.equal(hit.size < c.specialCutinNameSize, shrink, name + ' size ' + hit.size); assert(hit.size * [...name].length <= cutMax + 1, 'cut-in name fits');
+  }
+  for (const [text, shrink] of [['巨神昇天拳!!', false], ['巨神昇天拳巨神昇天拳巨神昇天拳!!!!', true]]) {
+    const r = recorder(0.8); G.comboOverlay(r.ctx, [{ kind: 'label', text, x: 1250, y: 300, size: 54, color: '#fff', stroke: '#000', alpha: 1 }], { w: 0 });
+    const hit = r.out.find(o => o.s === text), w = hit.size * [...text].length * 0.8;
+    assert.equal(hit.size < 54, shrink); assert(w <= c.width * c.comboLabelMaxW + 1 && hit.x + w / 2 <= c.width && hit.x - w / 2 >= 0, 'combo label inside the canvas');
+  }
+  cases++;
+}
+
 console.log(JSON.stringify({ comboSpecial: 'PASS', cases }));
