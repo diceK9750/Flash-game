@@ -2,6 +2,9 @@
 Hop.Game = class {
   constructor(random = Math.random) {
     this.random = random; this.debug = false;
+    // Combo scene preferences (kept across RETRY): comboEnabled (config default) and comboShort (the UI mirrors
+    // prefers-reduced-motion here so the short version is chosen when the scene starts).
+    this.comboEnabled = Hop.CONFIG.comboEnabled !== false; this.comboShort = false;
     this.best = this.readBest(); this.reset();
   }
   reset() {
@@ -20,6 +23,7 @@ Hop.Game = class {
     this.specialArmed = { dash: false, stopper: false, brake: false };
     this.aerialMode = "DOWN"; this.aerialDownLock = null; this.successVisual = null; this.specialCutin = null; this.soundEvent = null;
     this.merchant = null; this.merchantVisual = null;
+    this.combo = null; this.comboAfter = null;
     this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
     this.history = []; this.counts = Object.fromEntries(Object.keys(Hop.CONFIG.objectWeights).map(type => [type, 0]));
@@ -88,7 +92,7 @@ Hop.Game = class {
     b.vx = speed * cos; b.vy = speed * sin;
   }
   aerial(direction) {
-    if (this.special || this.merchant?.type === "C" || !this.airborne()) return false;
+    if (this.combo || this.special || this.merchant?.type === "C" || !this.airborne()) return false;
     const c = Hop.CONFIG;
     if (direction === "UP") {
       if (this.upRemaining <= 0) return false;
@@ -198,7 +202,7 @@ Hop.Game = class {
       this.normalGuard = 0; // One contact lifetime; snapshot belongs only to this event.
       this.updateSpecialArming(object.type);
       if (merchantType || eligible) {
-        this.special = { type: object.type, merchantType, partner: eligible && rule.trigger === "adjacent" ? partner : null, remaining: c.specialWindow, entry, guardAtContact, velocity: { vx: b.vx, vy: b.vy } };
+        this.special = { type: object.type, source: object, merchantType, partner: eligible && rule.trigger === "adjacent" ? partner : null, remaining: c.specialWindow, entry, guardAtContact, velocity: { vx: b.vx, vy: b.vy } };
         this.specialArmed.dash = false;
         this.specialArmed.brake = false;
         if (merchantType) {
@@ -356,6 +360,7 @@ Hop.Game = class {
       // Per-SPECIAL SE (Hop.Audio.specialRecipes): SPECIAL_BOOST ... SPECIAL_GUARD, merchant = SPECIAL_MERCHANT. MISS = none.
       this.soundEvent = pending.merchantType ? "SPECIAL_MERCHANT" : `SPECIAL_${pending.type}`;
       this.contact = { label: pending.type, remaining: c.contactDuration };
+      if (!pending.merchantType && this.comboEnabled && pending.partner && (pending.type === "BOOST" || pending.type === "BOUNCE")) this.startCombo(pending);
     } else this.normalContact(pending.type, pending.entry, pending.guardAtContact);
     this.updateAerialMode();
     this.specialMessage = {
@@ -366,6 +371,24 @@ Hop.Game = class {
     if (this.body.stopped) this.finish();
     return true;
   }
+  // Combo SPECIAL scene (display only). The launch vector was already applied by resolveSpecial; while
+  // this.combo exists the game step is frozen (see update), so the flight result is unchanged.
+  startCombo(pending) {
+    const c = Hop.CONFIG, short = !!this.comboShort;
+    this.combo = {
+      type: pending.type, source: pending.source || null, partner: pending.partner,
+      heroX: this.body.x, heroY: this.body.y, elapsed: 0, short, skipped: false,
+      total: short ? c.comboReducedDuration : pending.type === "BOOST" ? c.comboWitchDuration : c.comboFighterDuration
+    };
+  }
+  endCombo(skipped = false) {
+    const combo = this.combo; if (!combo) return false;
+    combo.skipped = skipped; this.combo = null;
+    // Display-only afterglow (explosion fade / giant fighter shrinking); decremented like successVisual.
+    this.comboAfter = { ...combo, remaining: Hop.CONFIG.comboAfterglow, total: Hop.CONFIG.comboAfterglow };
+    return true;
+  }
+  skipCombo() { return this.endCombo(true); }
   act() {
     const s = Hop.STATES;
     switch (this.state) {
@@ -376,7 +399,7 @@ Hop.Game = class {
         this.maxSpeed = Math.hypot(this.body.vx, this.body.vy);
         this.state = s.FLYING; this.accumulator = 0; break;
       case s.RESULT: this.reset(); this.act(); break;
-      case s.FLYING: if (this.special) this.resolveSpecial(true); else this.aerial(this.updateAerialMode()); break;
+      case s.FLYING: if (this.combo) this.skipCombo(); else if (this.special) this.resolveSpecial(true); else this.aerial(this.updateAerialMode()); break;
     }
   }
   update(deltaTime) {
@@ -390,6 +413,15 @@ Hop.Game = class {
     if (this.state !== Hop.STATES.FLYING) return;
     this.accumulator += dt;
     while (this.accumulator + 1e-10 >= c.physicsStep) {
+      // Combo scene: only display timers (cut-in, success flash) run; physics, play timers, generation and
+      // RNG are frozen until the scene ends or is skipped.
+      if (this.combo) {
+        this.combo.elapsed += c.physicsStep; this.accumulator -= c.physicsStep;
+        this.flash = Math.max(0, this.flash - c.physicsStep);
+        if (this.specialCutin) { this.specialCutin.remaining -= c.physicsStep; if (this.specialCutin.remaining < 1e-9) this.specialCutin = null; }
+        if (this.combo.elapsed >= this.combo.total - 1e-9) this.endCombo(false);
+        continue;
+      }
       const playTimersPaused = this.special || this.specialMessage || this.merchantVisual || this.merchant?.type === "C";
       if (this.guardSpecial.active && !playTimersPaused) {
         this.guardSpecial.remaining = Math.max(0, this.guardSpecial.remaining - c.physicsStep);
@@ -400,7 +432,7 @@ Hop.Game = class {
         if (1 - this.downCharge < 1e-9) this.downCharge = 1;
       }
       this.flash = Math.max(0, this.flash - c.physicsStep); this.specialTrail = Math.max(0, this.specialTrail - c.physicsStep);
-      for (const key of ["effect", "contact", "specialMessage", "merchantVisual", "successVisual", "specialCutin"]) {
+      for (const key of ["effect", "contact", "specialMessage", "merchantVisual", "successVisual", "specialCutin", "comboAfter"]) {
         if (this[key]) { this[key].remaining -= c.physicsStep; if (this[key].remaining < 1e-9) this[key] = null; }
       }
       // A short contact pause gives exactly one decision window. Normal effects

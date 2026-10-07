@@ -60,6 +60,33 @@ Hop.Audio = {
       ["tone", 0.08, 0.5, 0.05, "sine", 2637, 2637, 0.002], ["tone", 0.08, 0.35, 0.015, "sine", 6330, 6330, 0.002],
       ["tone", 0.26, 0.4, 0.03, "sine", 3136, 3136, 0.002], ["tone", 0.26, 0.25, 0.01, "sine", 7526, 7526, 0.002]]
   },
+  // Combo SPECIAL scene tracks (display-synced, times from the success; the scene starts at S = 0.77 s, when the
+  // cut-in begins its fade). Same voice format and peak cap. Skip stops the whole track (stopCombo).
+  comboRecipes: (() => {
+    const S = 0.77, hit = t => [["noise", t, 0.05, 0.06, "bandpass", 1500, 800, 1.4], ["tone", t, 0.07, 0.05, "sine", 190, 70, 0.002]];
+    const witch = [["noise", S, 0.3, 0.05, "bandpass", 700, 2600, 1.1]]                                    // dash whoosh
+      .concat([["tone", S + 0.15, 1.45, 0.03, "sine", 220, 330, 0.25], ["tone", S + 0.15, 1.45, 0.018, "triangle", 331, 497, 0.25], // chant drone
+        ["noise", S + 0.4, 1.2, 0.012, "highpass", 5000, 8000, 0.7]])                                     // gathering sparkle hiss
+      .concat(Array.from({ length: 14 }, (_, i) => hit(S + 0.30 + i * 0.093)).flat())                       // rush x14
+      .concat([["tone", S + 1.60, 0.28, 0.08, "sine", 130, 40, 0.003], ["noise", S + 1.60, 0.3, 0.07, "lowpass", 2600, 300, 0.9], // finisher
+        ["noise", S + 1.64, 0.3, 0.04, "bandpass", 500, 3000, 1.0],                                       // launch whoosh up
+        ["tone", S + 1.90, 0.26, 0.04, "sawtooth", 200, 1100, 0.02],                                      // fireball charge
+        ["noise", S + 2.15, 0.95, 0.11, "lowpass", 3200, 140, 0.8], ["tone", S + 2.15, 0.7, 0.08, "sine", 95, 28, 0.004], // big explosion
+        ["noise", S + 2.15, 0.12, 0.05, "highpass", 3000, 3000, 0.7]]);
+    const fighter = [["noise", S, 0.35, 0.04, "bandpass", 600, 2000, 1.0]]                                 // witch runs in
+      .concat([["tone", S + 0.40, 0.45, 0.04, "triangle", 300, 1200, 0.03]]                                  // buff spell rising
+        .concat([1568, 2093, 2637].map((f, i) => ["tone", S + 0.45 + i * 0.12, 0.2, 0.018, "sine", f, f * 1.02, 0.004])))
+      .concat([0, 1, 2].map(i => ["tone", S + 0.85 + i * 0.165, 0.2, 0.06, "sine", 150 - i * 25, 70 - i * 12, 0.01]))  // grow x3 (deeper each step)
+      .concat([["noise", S + 1.35, 0.25, 0.035, "lowpass", 300, 600, 0.8],                                  // charge rumble
+        ["tone", S + 1.60, 0.55, 0.1, "sine", 105, 32, 0.003], ["noise", S + 1.60, 0.6, 0.09, "lowpass", 2600, 110, 0.8], // heavy uppercut
+        ["noise", S + 1.60, 0.07, 0.05, "highpass", 2500, 2500, 0.7], ["noise", S + 1.72, 0.3, 0.04, "bandpass", 500, 2800, 1.0]]);
+    const R = 0.4; // reducedMotion short version: scene from the still cut-in end
+    return {
+      COMBO_WITCH: witch, COMBO_FIGHTER: fighter,
+      COMBO_WITCH_SHORT: [["tone", R, 0.3, 0.025, "sine", 220, 330, 0.08]].concat(hit(R + 0.05)).concat([["noise", R + 0.3, 0.45, 0.06, "lowpass", 2000, 160, 0.8]]),
+      COMBO_FIGHTER_SHORT: [["tone", R, 0.25, 0.03, "triangle", 300, 900, 0.03], ["tone", R + 0.3, 0.4, 0.07, "sine", 105, 34, 0.003], ["noise", R + 0.3, 0.4, 0.06, "lowpass", 2200, 120, 0.8]]
+    };
+  })(),
   // Worst-case summed peak: the largest total of voice peaks that are sounding at the same moment.
   peakSum(voices) {
     return Math.max(...voices.map(([, t]) => voices.reduce((sum, v) => sum + (v[1] <= t && t < v[1] + v[2] ? v[3] : 0), 0)));
@@ -75,9 +102,10 @@ Hop.Audio = {
   },
   // Schedule a special recipe on ctx at time `at` (also used for offline WAV renders). Returns the master gain.
   render(ctx, kind, at = ctx.currentTime) {
-    const voices = this.specialRecipes[kind];
+    const voices = this.specialRecipes[kind] || this.comboRecipes[kind];
     if (!voices) return null;
-    const master = ctx.createGain();
+    const master = ctx.createGain(), sources = [];
+    master.sources = sources;
     master.gain.setValueAtTime(Math.min(1, this.specialPeakCap / this.peakSum(voices)), at);
     master.connect(ctx.destination);
     let open = voices.length;
@@ -109,10 +137,27 @@ Hop.Audio = {
       gain.gain.exponentialRampToValueAtTime(0.0005, end);
       gain.connect(master);
       source.onended = done(source, nodes);
-      this.active.add(source);
+      this.active.add(source); sources.push(source);
       source.start(start); source.stop(end + 0.02);
     }
     return master;
+  },
+  // Combo scene track: kind = COMBO_WITCH / COMBO_FIGHTER (+ _SHORT). offset = seconds already elapsed since the
+  // success. Only one track at a time; stopCombo (skip / RETRY) stops every voice still pending or sounding.
+  playCombo(kind, offset = 0) {
+    this.stopCombo();
+    if (this.muted) return null;
+    try {
+      const ctx = this.context;
+      if (!ctx || ctx.state !== "running" || !this.comboRecipes[kind]) return null;
+      this.comboTrack = this.render(ctx, kind, ctx.currentTime - Math.max(0, Math.min(0.5, offset || 0)));
+      return this.comboTrack;
+    } catch { return null; }
+  },
+  stopCombo() {
+    const track = this.comboTrack; this.comboTrack = null;
+    if (!track?.sources) return;
+    for (const source of track.sources) { try { source.stop(); } catch {} }
   },
   play(kind) {
     if (this.muted) return;

@@ -83,6 +83,7 @@ async function simulate({ runs = 60, seed0 = 1, log = null } = {}) {
     for (const k of Object.keys(KEYS)) S[k] = missing.includes(k) ? { ready: false, image: null, data: null } : real[k];
     if (missing.length) stats.missingRuns++;
     const game = new H.Game(rng(seed)), ui = new H.UI(game, element('canvas'));
+    game.comboEnabled = false; // combo scenes (frozen, HIT pose, reaction after the scene) are covered by tests/combo-special.cjs
     ui.visual.reducedMotion = reduced;
     if (debug) game.toggleDebug();
     let wait = 0.3 + R(), pendingSpecial = null, flight = 0, prev = null, lastSpecialMsg = null, history = [];

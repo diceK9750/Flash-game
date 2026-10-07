@@ -297,6 +297,30 @@ Hop.Sprites = {
     try { ctx.translate(x, 0); ctx.scale(-1, 1); return this.draw(ctx, layer.asset, 0, 0, feet, layer.scale); }
     finally { ctx.restore(); }
   },
+  // Combo scenes (display only): a CAST still with uniform scale `mul` (x and y alike, so the 5-head proportions
+  // never change), feet fixed at (x, feet), optional mirror (XOR the slot's flip), rotation about the feet point
+  // and alpha. Returns the drawn rect in canvas px (or null -> caller draws the Canvas figure).
+  drawCastScaled(ctx, id, x, feet, pose = 0, mul = 1, opts = {}) {
+    const layer = this.castLayer(id, pose);
+    if (!layer) return null;
+    const d = layer.asset.data, scale = layer.scale * mul / (d.unit > 0 ? d.unit : 1);
+    const flip = !!layer.flip !== !!opts.flip;
+    ctx.save();
+    try {
+      if (Number.isFinite(opts.alpha)) ctx.globalAlpha *= Math.max(0, Math.min(1, opts.alpha));
+      ctx.translate(x, feet);
+      if (opts.rotate) ctx.rotate(opts.rotate);
+      if (flip) ctx.scale(-1, 1);
+      if (!this.draw(ctx, layer.asset, 0, 0, 0, layer.scale * mul)) return null;
+      return { w: d.frameWidth * scale, h: d.frameHeight * scale, left: x - d.pivot.x * scale, top: feet - d.pivot.y * scale, scale };
+    } finally { ctx.restore(); }
+  },
+  // Hero HIT (HD Rumiko knockback) still for the combo scenes; false -> caller keeps the normal layers.
+  drawHeroHit(ctx, x, feet) {
+    const asset = this.heroHit, def = this.definitions.HERO.HIT;
+    if (!asset?.ready || def?.enabled === false) return false;
+    return this.draw(ctx, asset, 0, x, feet, def.scale);
+  },
   // Display-only GROUND_BOUNCE gating for a detected normal bounce (pure; vy = rebound speed).
   groundBounceAllowed(visual, phaseTime, vy) {
     const def = this.definitions.HERO.GROUND_BOUNCE, asset = this.heroGroundBounce;
