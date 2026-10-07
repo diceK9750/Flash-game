@@ -119,3 +119,37 @@ test('debug placement order unchanged', () => {
 });
 
 console.log(JSON.stringify({ merchantRareCastSpacing: 'PASS', cases, playsPerMerchant: test.rate }));
+
+// Hidden character: no merchant hints for players (rules / zone / markers / result totals) outside DEBUG.
+{
+  const fs = require('node:fs'), path = require('node:path');
+  const { element } = require('./phase2.cjs');
+  const { UI } = scope.Hop;
+  test('player rules: no merchant condition or chance, only a vague line', () => {
+    const g = isolated(); const ui = new UI(g, element('canvas')); ui.update();
+    const rules = element('special-rules').textContent;
+    assert(rules.includes('ごくまれに謎の商人が現れる…？'));
+    for (const bad of ['商人SPECIAL', '%）', `${Math.round(c.merchantChance * 100)}%`, `最後${c.merchantZoneMeters}m`, 'MERCHANT']) assert(!rules.includes(bad), bad);
+    const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+    const rulesHtml = html.slice(html.indexOf('<details class="rules">'), html.indexOf('</details>', html.indexOf('開発用')));
+    assert(rulesHtml.includes('ごくまれに謎の商人が現れる…？'));
+    for (const bad of ['商人：', 'STOPPER→A', '商人SPECIAL', '商人登場', '商人成功', '8%']) assert(!rulesHtml.includes(bad), bad);
+  });
+  test('no marker / zone in normal play even at a guarded boundary approach; DEBUG keeps them', () => {
+    const g = isolated(); const ui = new UI(g, element('canvas'));
+    g.normalGuard = 1; g.body.x = 752; g.objects = [{ x: 800, type: 'BOUNCE', used: false }]; ui.update();
+    assert.equal(UI.readyTargets(g).length, 0); assert(element('merchant-zone').hidden);
+    assert.equal(element('ready-targets').textContent.includes('商人'), false);
+    g.guardSpecial = { active: true, remaining: 7 }; g.normalGuard = 0; ui.update(); assert.equal(UI.readyTargets(g).length, 0); assert(element('merchant-zone').hidden);
+    g.debug = true; ui.update(); assert.equal(UI.readyTargets(g)[0].label, 'MERCHANT'); assert(!element('merchant-zone').hidden);
+  });
+  test('result: merchant totals only after meeting the merchant (or DEBUG); success display unchanged', () => {
+    const g = isolated(); const ui = new UI(g, element('canvas')); g.finish(); ui.update();
+    assert(element('merchant-totals').hidden); assert.equal(element('merchant-totals').textContent, '');
+    const m = isolated(); const mu = new UI(m, element('canvas')); m.normalGuard = 1; m.random = () => 0;
+    hit(m, 'DASH', { x: 800 }); mu.update(); assert.equal(element('special-title').textContent, 'MERCHANT SPECIAL!');
+    m.act(); mu.update(); assert(element('merchant-hud-text').textContent.includes('CHARGE'));
+    m.finish(); mu.update(); assert(!element('merchant-totals').hidden); assert(element('merchant-totals').textContent.includes('発生 1 / 成功 1'));
+  });
+}
+console.log(JSON.stringify({ merchantHidden: 'PASS', cases }));

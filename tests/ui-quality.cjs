@@ -25,7 +25,12 @@ test('preview arming, adjacent x-order, used/behind filtering, chance never samp
 });
 test('zone and merchant marker require guard, zone, correct boundary and type',()=>{
  const {g,ui}=setup();g.body.x=752;g.objects=[obj('DASH',800)];assert.equal(UI.zone(g),null);
- g.normalGuard=1;assert.equal(UI.zone(g).remaining,6);assert.equal(UI.readyTargets(g)[0].label,'MERCHANT?');ui.update();assert(element('merchant-zone').textContent.includes('6.0m'));
+ g.normalGuard=1;assert.equal(UI.zone(g).remaining,6);
+ // Hidden merchant: normal play shows no marker and no MERCHANT ZONE, even in the zone with a merchant-type target.
+ assert.equal(UI.readyTargets(g).length,0);ui.update();assert(element('merchant-zone').hidden);assert.equal(element('merchant-zone').textContent,'');
+ g.specialArmed.dash=true;assert.equal(UI.readyTargets(g)[0].label,'SPECIAL','a guaranteed ordinary SPECIAL keeps its label');g.specialArmed.dash=false;
+ // DEBUG only: marker + zone.
+ g.debug=true;assert.equal(UI.readyTargets(g)[0].label,'MERCHANT');ui.update();assert(!element('merchant-zone').hidden);assert(element('merchant-zone').textContent.includes('6.0m'));g.debug=false;ui.update();assert(element('merchant-zone').hidden);
  g.body.x=719;assert.equal(UI.zone(g),null);g.body.x=801;assert.equal(UI.zone(g),null);
  g.body.x=752;g.normalGuard=0;g.guardSpecial.active=true;assert(UI.zone(g));g.objects=[obj('DASH',790)];assert.equal(UI.readyTargets(g).length,0);
  g.objects=[obj('BRAKE',800)];assert.equal(UI.readyTargets(g).length,0);g.special={type:'DASH',remaining:1};assert.equal(UI.zone(g),null);assert.equal(UI.readyTargets(g).length,0);
