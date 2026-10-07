@@ -9,7 +9,7 @@ function test(name, fn) { try { fn(); cases++; } catch (e) { e.message = name + 
 const types = Object.keys(c.objectWeights);
 
 test('config: rare merchant chance, window covers the whole screen plus name tags', () => {
-  assert(c.merchantChance > 0 && c.merchantChance <= 0.1, 'merchantChance ' + c.merchantChance);
+  assert.equal(c.merchantChance, 0.20, 'merchant draw is 20% (user decision 2026-10-07 15:16)');
   assert(c.castRepeatWindow >= c.width + 2 * 59, 'window >= screen + tag halves');
   assert.deepEqual(Object.keys(c.castPickWeights), types);
 });
@@ -57,11 +57,13 @@ function play(seed) {
   }
   return g.merchantStats.successes;
 }
-test('merchant rate: rare (tens of plays per merchant), but still reachable', () => {
+test('merchant rate at 20%: rare, but still reachable', () => {
   let s = 0; const PLAYS = 300;
   for (let i = 1; i <= PLAYS; i++) s += play(i * 104729 + 1);
   assert(s >= 1, 'merchant still appears');
-  assert(PLAYS / s >= 12 && PLAYS / s <= 150, 'plays per merchant ' + (PLAYS / s).toFixed(1));
+  // 20% draw (user decision): 1 in 11.5 plays for these 300 seeds (1 in 14.9 over 3000 plays,
+  // phase_c/merchant_rate). Bounds: clearly rarer than the old always-on merchant (~3.7), still reachable.
+  assert(PLAYS / s >= 7 && PLAYS / s <= 25, 'plays per merchant ' + (PLAYS / s).toFixed(1));
   test.rate = +(PLAYS / s).toFixed(1);
 });
 
@@ -129,11 +131,14 @@ console.log(JSON.stringify({ merchantRareCastSpacing: 'PASS', cases, playsPerMer
     const g = isolated(); const ui = new UI(g, element('canvas')); ui.update();
     const rules = element('special-rules').textContent;
     assert(rules.includes('ごくまれに謎の商人が現れる…？'));
-    for (const bad of ['商人SPECIAL', '%）', `${Math.round(c.merchantChance * 100)}%`, `最後${c.merchantZoneMeters}m`, 'MERCHANT']) assert(!rules.includes(bad), bad);
+    // (ANGLE's own 10% draw is public; the merchant's chance/conditions are not.)
+    const rest = rules.replace('ごくまれに謎の商人が現れる…？', '');
+    for (const bad of ['商人', '%）', `最後${c.merchantZoneMeters}m`, 'MERCHANT', '境界']) assert(!rest.includes(bad), bad);
     const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     const rulesHtml = html.slice(html.indexOf('<details class="rules">'), html.indexOf('</details>', html.indexOf('開発用')));
     assert(rulesHtml.includes('ごくまれに謎の商人が現れる…？'));
     for (const bad of ['商人：', 'STOPPER→A', '商人SPECIAL', '商人登場', '商人成功', '8%']) assert(!rulesHtml.includes(bad), bad);
+    assert.equal(rulesHtml.replace('ごくまれに謎の商人が現れる…？', '').includes('商人'), false);
   });
   test('no marker / zone in normal play even at a guarded boundary approach; DEBUG keeps them', () => {
     const g = isolated(); const ui = new UI(g, element('canvas'));

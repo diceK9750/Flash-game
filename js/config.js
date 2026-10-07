@@ -68,7 +68,7 @@ Hop.CONFIG = Object.freeze({
   boundaryMeters: 100, boundaryClearance: 140, merchantZoneMeters: 10,
   // Hidden "greatest secret art": even when the merchant conditions hold, the merchant only appears on this
   // draw (a miss falls back to the normal SPECIAL rules). DEBUG plays skip the draw so the merchant can be checked.
-  merchantChance: 0.08,
+  merchantChance: 0.20,
   // Placement only: no two roadside cast members of the same type within this world width (screen 1280 px
   // + both name-tag / READY-label halves), so one screen never shows the same character twice.
   castRepeatWindow: 1400,
