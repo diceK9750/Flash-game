@@ -68,6 +68,8 @@ Hop.CONFIG = Object.freeze({
   comboFighterTimes: Object.freeze({ arrive: 0.40, buffEnd: 0.85, growEnd: 1.35, upper: 1.60, hitstop: 0.10 }),
   comboFighterScale: 2.8, comboFighterSteps: 3, comboFighterLiftPx: 120,
   comboShakePx: 9,
+  // Combo camera (display only): max zoom, part of the canvas the actors' box may fill, box margin (px), zoom-in / back times (s).
+  comboZoomMax: 2.4, comboZoomFill: 0.82, comboZoomMargin: 26, comboZoomIn: 0.3, comboZoomOut: 0.5,
   // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({
     BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),

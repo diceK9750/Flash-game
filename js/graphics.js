@@ -283,6 +283,10 @@ Hop.Graphics = {
     const combo = this.comboState(g), impact = this.comboImpact(combo, !!visual?.reducedMotion);
     ctx.fillStyle = "#bce9f3"; ctx.fillRect(0, 0, c.width, c.height);
     ctx.save(); ctx.translate(impact.x, impact.y);
+    // Combo camera (display only): zoom toward the scene actors; identity when cam.w = 0.
+    const cam = this.comboCamera(combo, !!visual?.reducedMotion, sx, sy, ground, sx(g.body.x), sy(g.body.y));
+    ctx.save();
+    if (cam.w > 0) { ctx.translate(cam.ax, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.fx, -cam.fy); }
     this.circle(ctx, 1080, 115, 49, "#fff1ad");
     for (let i = -1; i < 5; i++) {
       const x = i * 380 - (g.cameraX * 0.12 % 380), y = 115 + (i % 2) * 60;
@@ -317,6 +321,8 @@ Hop.Graphics = {
       ctx.save(); ctx.globalAlpha = (object.used ? 0.35 : 1) * (actor ? Math.min(1, combo.after / combo.afterTotal) : 1);
       // Phase C: CAST sprite when loaded, else the Canvas figure (same feet point; alpha above applies).
       if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
+      // Name / READY labels step aside while the combo camera is zoomed (they would be huge).
+      if (cam.w > 0) ctx.globalAlpha *= 1 - cam.w;
       ctx.textAlign = "center"; ctx.font = "bold 25px system-ui";
       ctx.fillStyle = "#fff9e9"; ctx.fillRect(ox - 59, ground - 173, 118, 32);
       ctx.fillStyle = this.objectColor(object.type); ctx.fillText(Hop.CAST[object.type].name, ox, ground - 148);
@@ -386,7 +392,9 @@ Hop.Graphics = {
       ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - launchAge / 0.18)})`; ctx.fillRect(0, 0, c.width, c.height);
       this.contactEffect(ctx, "BOOST", sx(0), sy(0), launchAge);
     }
-    if (combo) this.comboFront(ctx, combo, sx, sy, ground);
+    const overlay = combo ? this.comboFront(ctx, combo, sx, sy, ground) : null;
+    ctx.restore(); // combo camera
+    if (overlay) this.comboOverlay(ctx, overlay, cam);
     ctx.restore(); // screen shake
     if (impact.flash > 0) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
@@ -453,6 +461,47 @@ Hop.Graphics = {
     if (!st.short && t >= F.growEnd && t < F.upper) out.fighter.charge = (t - F.growEnd) / (F.upper - F.growEnd);
     if (st.after !== null && !st.short) out.fighter.scale = 1 + (out.fighter.scale - 1) * (1 - this.ease(st.after / 0.35)); // back to normal size
     return out;
+  },
+  // Combo camera (pure, display only). Returns the zoom weight w (0 = normal camera), the full zoom z and the
+  // focus (fx, fy) in normal screen coordinates; draw maps p -> (ax, ay) + z * (p - (fx, fy)).
+  // Focus = centre of the bounding box of the scene actors (hero, witch, fighter), zoom fits that box up to
+  // comboZoomMax (so the giant fighter pulls the camera back); the launched hero is followed. Zooms in over
+  // comboZoomIn when the scene starts, back to normal over comboZoomOut of the afterglow (following the hero).
+  // Skip, the short (reducedMotion) version or reducedMotion: no zoom.
+  comboCamera(st, reducedMotion, sx, sy, ground, heroScreenX, heroScreenY) {
+    const c = Hop.CONFIG, none = { w: 0, z: 1, fx: c.width / 2, fy: c.height / 2, ax: c.width / 2, ay: c.height / 2 };
+    if (!st || st.short || st.skipped || reducedMotion || c.comboZoomMax <= 1) return none;
+    const box = this.comboBox(st, sx, sy, ground);
+    let z = Math.max(1, Math.min(c.comboZoomMax, c.width * c.comboZoomFill / (box.r - box.l), c.height * c.comboZoomFill / (box.b - box.t)));
+    let fx = (box.l + box.r) / 2, fy = (box.t + box.b) / 2, w;
+    if (st.after === null) w = this.ease(st.t / c.comboZoomIn);
+    else {
+      w = 1 - this.ease(st.after / c.comboZoomOut);
+      const u = this.ease(st.after / (c.comboZoomOut * 0.5)); // follow the flying hero
+      fx += (heroScreenX - fx) * u; fy += (heroScreenY - 30 - fy) * u;
+    }
+    if (!(w > 0)) return none;
+    const hx = c.width / 2 / z, hy = c.height / 2 / z;
+    fx = Math.max(hx, Math.min(c.width - hx, fx)); fy = Math.max(hy, Math.min(c.height - hy, fy));
+    const zoom = 1 + (z - 1) * w;
+    return { w, z: zoom, full: z, fx, fy, ax: fx + (c.width / 2 - fx) * w, ay: fy + (c.height / 2 - fy) * w };
+  },
+  // Screen bounding box of the actors (normal camera) with a margin. The rush teleports are boxed by the
+  // fighter's stance so the camera does not jitter.
+  comboBox(st, sx, sy, ground) {
+    const c = Hop.CONFIG, A = this.comboActors(st), H = st.heroWX, m = c.comboZoomMargin;
+    const boxes = [];
+    const cast = (x, s = 1) => boxes.push([sx(x) - 48 * s, ground - 122 * s, sx(x) + 48 * s, ground]);
+    const hx = sx(H) + A.hero.dx, hy = sy(st.heroY) + A.hero.dy;
+    boxes.push([hx - 42, hy + c.playerRadius - 88, hx + 42, hy + c.playerRadius]);
+    if (A.witch) cast(A.witch.x, A.witch.scale || 1);
+    if (A.fighter) {
+      const W = c.comboWitchTimes;
+      if (st.type === "BOOST" && st.t >= W.dash) cast(H + 75); else cast(A.fighter.x, A.fighter.scale || 1);
+    }
+    const l = Math.min(...boxes.map(b => b[0])) - m, t = Math.min(...boxes.map(b => b[1])) - m;
+    const r = Math.max(...boxes.map(b => b[2])) + m, b = Math.max(...boxes.map(b => b[3])) + m * 0.5;
+    return { l, t, r, b };
   },
   // Screen shake / white flash for the current frame (pure; 0 for the short version or reducedMotion).
   comboImpact(st, reducedMotion) {
@@ -543,28 +592,27 @@ Hop.Graphics = {
     ctx.restore();
   },
   // In front of the hero: hit sparks, HIT counter, chant gauge, fireball / explosion, shockwave, labels.
+  // Effects are drawn in world space (under the combo camera); texts / gauge / skip hint are returned as an
+  // overlay list (world anchor + screen offset) and drawn by comboOverlay at a readable size.
   comboFront(ctx, st, sx, sy, ground) {
     const c = Hop.CONFIG, A = this.comboActors(st), t = st.t, fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal);
     // Effects stay where the scene happened (world x / held height), even after the hero flies off.
     const heroX = sx(st.heroWX) + A.hero.dx, heroY = sy(st.heroY) + A.hero.dy;
-    const label = (text, x, y, size, color, stroke = "#3b2357") => {
-      ctx.save(); ctx.font = `italic 900 ${size}px system-ui`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(4, size / 7); ctx.strokeStyle = stroke;
-      ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.restore();
-    };
+    const overlay = [];
+    const label = (text, x, y, size, color, stroke = "#3b2357", dx = 0, dy = 0) => overlay.push({ kind: "label", text, x, y, dx, dy, size, color, stroke, alpha: fade });
     ctx.save(); ctx.globalAlpha = fade;
     if (st.type === "BOOST") {
       const W = c.comboWitchTimes, wx = sx(A.witch.x);
       if (A.hits && st.after === null) {
         if (!st.short && A.hitU !== undefined && A.hitU < 0.6) this.spark(ctx, heroX + (A.fighter.flip ? 22 : -22), heroY - 10 + ((A.hits * 37) % 30) - 15, 30 * (1 - A.hitU * 0.8), A.hits % 2 ? "#fff6b0" : "#ffd27a", A.hits);
-        label(`${A.hits} HIT${A.hits >= c.comboWitchHits ? "!!" : ""}`, heroX + 120, heroY - 90, 40, "#ffe55c");
+        if (st.short || t < W.blast) label(`${A.hits} HIT${A.hits >= c.comboWitchHits ? "!!" : ""}`, heroX + 40, heroY - 60, 40, "#ffe55c", undefined, 80, -30);
       }
       if (!st.short && t >= 0.15 && t < W.blast && st.after === null) { // chant gauge
         const g = Math.max(0, Math.min(1, (t - 0.15) / (W.rushEnd - 0.15)));
-        ctx.fillStyle = "rgba(40,20,60,0.75)"; ctx.fillRect(wx - 60, ground - 205, 120, 14);
-        ctx.fillStyle = g >= 1 ? "#ffe066" : "#ff9a3c"; ctx.fillRect(wx - 58, ground - 203, 116 * g, 10);
-        label(g >= 1 ? "詠唱完了！" : "詠唱中…", wx, ground - 214, 24, "#fff4d6");
+        overlay.push({ kind: "gauge", x: wx, y: ground - 125, dy: -30, value: g, alpha: fade });
+        label(g >= 1 ? "詠唱完了！" : "詠唱中…", wx, ground - 125, 24, "#fff4d6", undefined, 0, -44);
       }
-      if (st.short && t >= 0) { this.circle(ctx, heroX, heroY, 70, "rgba(255,190,90,0.35)"); label("爆裂斜光", heroX, heroY - 110, 40, "#ffe55c"); }
+      if (st.short && t >= 0) { this.circle(ctx, heroX, heroY, 70, "rgba(255,190,90,0.35)"); label("爆裂斜光", heroX, heroY - 60, 40, "#ffe55c", undefined, 0, -50); }
       if (!st.short && t >= W.liftEnd && t < W.blast) { // fireball from the staff
         const u = this.ease((t - W.liftEnd) / (W.blast - W.liftEnd)), x0 = wx + 30, y0 = ground - 120;
         const x = x0 + (heroX - x0) * u, y = y0 + (heroY - y0) * u - Math.sin(u * Math.PI) * 60, r = 18 + 18 * u;
@@ -583,12 +631,12 @@ Hop.Graphics = {
         ctx.beginPath(); ctx.arc(heroX, heroY, R, 0, Math.PI * 2); ctx.fill();
         this.spark(ctx, heroX, heroY, R * 1.25, "rgba(255,240,180,0.55)", b * 2);
         ctx.restore();
-        if (b < 0.6) label("爆裂斜光!!", heroX, Math.max(70, heroY - R - 10), 54, "#fff3b0", "#7a2a08");
+        if (b < 0.6) label("爆裂斜光!!", heroX, heroY - R * 0.55, 54, "#fff3b0", "#7a2a08", 0, -20);
       }
     } else {
       const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x);
-      if (!st.short && t >= F.arrive && t < F.buffEnd + 0.15 && st.after === null) label("強化魔法！", sx(A.witch.x), ground - 190, 30, "#ffd6f2");
-      if (!st.short && t >= F.buffEnd && t < F.upper && st.after === null) label(`巨大化!! ×${f.scale.toFixed(1)}`, fx, ground - 150 * f.scale - 20, 34, "#fff4c0");
+      if (!st.short && t >= F.arrive && t < F.buffEnd + 0.15 && st.after === null) label("強化魔法！", sx(A.witch.x), ground - 125, 30, "#ffd6f2", undefined, 0, -30);
+      if (!st.short && t >= F.buffEnd && t < F.upper && st.after === null) label(`巨大化!! ×${f.scale.toFixed(1)}`, fx, ground - 125 * f.scale, 34, "#fff4c0", undefined, 0, -24);
       const u = t + (st.after || 0) - F.upper;
       if (st.short ? t >= 0 : u >= 0 && u < 1.0) {
         const R = st.short ? 90 : 30 + 520 * this.ease(u / 0.6), a = st.short ? 0.6 : Math.max(0, 1 - u / 0.8);
@@ -596,11 +644,39 @@ Hop.Graphics = {
         if (!st.short) for (let i = 0; i < 14; i++) { const ang = i * Math.PI / 7 + 0.2; this.line(ctx, [[heroX + Math.cos(ang) * R * 0.5, heroY + Math.sin(ang) * R * 0.5], [heroX + Math.cos(ang) * R * 0.95, heroY + Math.sin(ang) * R * 0.95]], "#ffe680", 5); }
         this.spark(ctx, heroX, heroY, st.short ? 50 : 70 * Math.max(0.3, 1 - u), "#fff3a0", 0.3);
         ctx.restore();
-        if (st.short || u < 0.6) label("連天蹴り!!", heroX, Math.max(70, heroY - 130), 54, "#e9ffd8", "#1f4d1c");
+        if (st.short || u < 0.6) label("連天蹴り!!", heroX, heroY - 70, 54, "#e9ffd8", "#1f4d1c", 0, -60);
       }
     }
-    if (st.after === null && !st.short) { ctx.font = "bold 18px system-ui"; ctx.textAlign = "right"; ctx.fillStyle = "rgba(40,40,60,0.75)"; ctx.fillText("タップでスキップ ▶▶", c.width - 18, c.height - 18); }
+    if (st.after === null && !st.short) overlay.push({ kind: "hint", text: "タップでスキップ ▶▶" });
     ctx.restore();
+    return overlay;
+  },
+  // Screen-space texts for the combo scenes: anchors follow the combo camera, sizes grow only a little
+  // with the zoom (readable, never huge) and stay inside the canvas.
+  comboOverlay(ctx, items, cam) {
+    const c = Hop.CONFIG, z = cam?.w > 0 ? cam.z : 1, k = 1 + 0.18 * (z - 1);
+    const map = (x, y) => cam?.w > 0 ? [cam.ax + z * (x - cam.fx), cam.ay + z * (y - cam.fy)] : [x, y];
+    for (const it of items) {
+      ctx.save();
+      if (it.kind === "hint") {
+        ctx.font = "bold 20px system-ui"; ctx.textAlign = "right"; ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.fillRect(c.width - 232, c.height - 46, 220, 34);
+        ctx.fillStyle = "rgba(40,40,60,0.85)"; ctx.fillText(it.text, c.width - 22, c.height - 22); ctx.restore(); continue;
+      }
+      ctx.globalAlpha *= it.alpha ?? 1;
+      let [x, y] = map(it.x, it.y); y += (it.dy || 0) * k; x += (it.dx || 0) * k;
+      if (it.kind === "gauge") {
+        const w = 150 * k, h = 16 * k; x = Math.max(w / 2 + 8, Math.min(c.width - w / 2 - 8, x)); y = Math.max(40 * k, Math.min(c.height - 20, y));
+        ctx.fillStyle = "rgba(40,20,60,0.78)"; ctx.fillRect(x - w / 2, y - h / 2, w, h);
+        ctx.fillStyle = it.value >= 1 ? "#ffe066" : "#ff9a3c"; ctx.fillRect(x - w / 2 + 2, y - h / 2 + 2, (w - 4) * it.value, h - 4);
+        ctx.restore(); continue;
+      }
+      const size = Math.round(it.size * k);
+      ctx.font = `italic 900 ${size}px system-ui`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(4, size / 7); ctx.strokeStyle = it.stroke; ctx.lineJoin = "round";
+      const half = size * it.text.length * 0.36;
+      x = Math.max(half + 10, Math.min(c.width - half - 10, x)); y = Math.max(size + 8, Math.min(c.height - 16, y));
+      ctx.strokeText(it.text, x, y); ctx.fillStyle = it.color; ctx.fillText(it.text, x, y);
+      ctx.restore();
+    }
   },
   objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; }
 };
