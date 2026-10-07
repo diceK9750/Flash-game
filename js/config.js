@@ -53,7 +53,7 @@ Hop.CONFIG = Object.freeze({
   specialCutinDuration: 1.0, specialCutinImpact: 0.07, specialCutinWipe: 0.24, specialCutinHold: 0.46,
   specialCutinReducedDuration: 0.40, specialCutinBandHeight: 340, specialCutinBandTiltDeg: 7,
   specialCutinFaceFill: 1.2, specialCutinFaceCenterX: 0.37, specialCutinPortraitScale: 3.2,
-  specialCutinNameSize: 62, specialCutinNameX: 0.64, specialCutinNameY: 0.30, specialCutinNameSlide: 0.4,
+  specialCutinNameSize: 62, specialCutinNameMargin: 0.03, specialCutinNameX: 0.64, specialCutinNameY: 0.30, specialCutinNameSlide: 0.4,
   specialCutinShakePx: 5, specialCutinFlashPeak: 0.70, specialCutinPortraitPop: 1.10,
   // Combo SPECIAL scenes (display only) for BOOST (魔法使い × 武闘家) and BOUNCE (武闘家 × 魔法使い) successes with
   // their adjacent partner. The launch vector is applied at success exactly as before; the game step (physics,
@@ -69,11 +69,11 @@ Hop.CONFIG = Object.freeze({
   comboFighterScale: 2.8, comboFighterSteps: 3, comboFighterLiftPx: 120,
   comboShakePx: 9,
   // Combo camera (display only): max zoom, part of the canvas the actors' box may fill, box margin (px), zoom-in / back times (s).
-  comboZoomMax: 2.4, comboZoomFill: 0.82, comboZoomMargin: 26, comboZoomIn: 0.3, comboZoomOut: 0.5,
+  comboLabelMaxW: 0.5, comboZoomMax: 2.4, comboZoomFill: 0.82, comboZoomMargin: 26, comboZoomIn: 0.3, comboZoomOut: 0.5,
   // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({
     BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),
-    BOUNCE: Object.freeze({ trigger: "adjacent", partner: "BOOST", speed: 1700, angle: 60, name: "連天蹴り" }),
+    BOUNCE: Object.freeze({ trigger: "adjacent", partner: "BOOST", speed: 1700, angle: 60, name: "巨神昇天拳" }),
     DASH: Object.freeze({ trigger: "dash", speed: 2000, angle: 25, name: "戦陣突破" }),
     STOPPER: Object.freeze({ trigger: "stopper", speed: 2300, angle: 35, name: "聖光反転" }),
     BRAKE: Object.freeze({ trigger: "brake", name: "影すり抜け" }),

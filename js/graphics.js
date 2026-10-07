@@ -261,6 +261,10 @@ Hop.Graphics = {
     ctx.strokeStyle = cut.strong ? "#4a3010" : "#141018";
     ctx.fillStyle = cut.strong ? "#ffe9a8" : "#fff6ee";
     ctx.font = `bold ${c.specialCutinNameSize}px system-ui`;
+    // Long names shrink to fit between the settled anchor and the right edge (font size only).
+    const nameMaxW = c.width * (1 - c.specialCutinNameX - c.specialCutinNameMargin);
+    const nameW = ctx.measureText?.(cut.name)?.width || 0;
+    if (nameW > nameMaxW) ctx.font = `bold ${Math.floor(c.specialCutinNameSize * nameMaxW / nameW)}px system-ui`;
     ctx.strokeText(cut.name, 0, 0); ctx.fillText(cut.name, 0, 0);
     ctx.restore();
     // Cast / SPECIAL — subdued, above band
@@ -644,7 +648,7 @@ Hop.Graphics = {
         ctx.beginPath(); ctx.arc(heroX, heroY, R, 0, Math.PI * 2); ctx.fill();
         this.spark(ctx, heroX, heroY, R * 1.25, "rgba(255,240,180,0.55)", b * 2);
         ctx.restore();
-        if (b < 0.6) label("爆裂斜光!!", heroX, heroY - R * 0.55, 54, "#fff3b0", "#7a2a08", 0, -20);
+        if (b < 0.6) label(`${c.specials.BOOST.name}!!`, heroX, heroY - R * 0.55, 54, "#fff3b0", "#7a2a08", 0, -20);
       }
     } else {
       const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x);
@@ -657,7 +661,7 @@ Hop.Graphics = {
         if (!st.short) for (let i = 0; i < 14; i++) { const ang = i * Math.PI / 7 + 0.2; this.line(ctx, [[heroX + Math.cos(ang) * R * 0.5, heroY + Math.sin(ang) * R * 0.5], [heroX + Math.cos(ang) * R * 0.95, heroY + Math.sin(ang) * R * 0.95]], "#ffe680", 5); }
         this.spark(ctx, heroX, heroY, st.short ? 50 : 70 * Math.max(0.3, 1 - u), "#fff3a0", 0.3);
         ctx.restore();
-        if (st.short || u < 0.6) label("連天蹴り!!", heroX, heroY - 70, 54, "#e9ffd8", "#1f4d1c", 150, -70);
+        if (st.short || u < 0.6) label(`${c.specials.BOUNCE.name}!!`, heroX, heroY - 70, 54, "#e9ffd8", "#1f4d1c", 170, -70);
       }
     }
     if (st.after === null && !st.short) overlay.push({ kind: "hint", text: "タップでスキップ ▶▶" });
@@ -683,9 +687,12 @@ Hop.Graphics = {
         ctx.fillStyle = it.value >= 1 ? "#ffe066" : "#ff9a3c"; ctx.fillRect(x - w / 2 + 2, y - h / 2 + 2, (w - 4) * it.value, h - 4);
         ctx.restore(); continue;
       }
-      const size = Math.round(it.size * k);
-      ctx.font = `italic 900 ${size}px system-ui`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(4, size / 7); ctx.strokeStyle = it.stroke; ctx.lineJoin = "round";
-      const half = size * it.text.length * 0.36;
+      let size = Math.round(it.size * k);
+      ctx.font = `italic 900 ${size}px system-ui`; ctx.textAlign = "center";
+      const maxW = c.width * c.comboLabelMaxW, measured = ctx.measureText?.(it.text)?.width || 0;
+      if (measured > maxW) { size = Math.floor(size * maxW / measured); ctx.font = `italic 900 ${size}px system-ui`; }
+      ctx.lineWidth = Math.max(4, size / 7); ctx.strokeStyle = it.stroke; ctx.lineJoin = "round";
+      const half = measured > 0 ? Math.min(measured, maxW) / 2 + ctx.lineWidth / 2 : size * it.text.length * 0.36;
       x = Math.max(half + 10, Math.min(c.width - half - 10, x)); y = Math.max(size + 8, Math.min(c.height - 16, y));
       ctx.strokeText(it.text, x, y); ctx.fillStyle = it.color; ctx.fillText(it.text, x, y);
       ctx.restore();

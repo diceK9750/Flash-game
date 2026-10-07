@@ -32,7 +32,7 @@ Hop.Audio = {
     // 爆裂斜光 (魔法使い): explosion burst + rising sweep + sparkle
     SPECIAL_BOOST: [["noise", 0, 0.45, 0.09, "lowpass", 2400, 260, 0.9], ["tone", 0, 0.16, 0.06, "sine", 140, 45, 0.004],
       ["tone", 0.06, 0.55, 0.045, "sawtooth", 180, 1500, 0.03], ["tone", 0.46, 0.3, 0.03, "sine", 1760, 2350, 0.01]],
-    // 連天蹴り (武闘家): three quick strikes, then two springy rising hops
+    // 巨神昇天拳 (武闘家): three quick strikes, then two springy rising hops
     SPECIAL_BOUNCE: [0, 0.09, 0.18].flatMap(t => [["noise", t, 0.06, 0.07, "bandpass", 1100, 700, 1.2], ["tone", t, 0.09, 0.06, "sine", 170, 60, 0.003]])
       .concat([["tone", 0.3, 0.26, 0.035, "square", 300, 900, 0.01], ["tone", 0.46, 0.3, 0.035, "square", 450, 1350, 0.01]]),
     // 戦陣突破 (戦士): heavy metallic clang (inharmonic partials) + low impact + wind rush
