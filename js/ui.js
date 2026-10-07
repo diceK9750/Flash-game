@@ -102,7 +102,12 @@ Hop.UI = class {
     document.getElementById("special-state").textContent = armed.join(" · ");
     document.getElementById("special-state").hidden = !armed.length;
     document.getElementById("guard-status").textContent = `GUARD × ${g.normalGuard}`;
-    document.getElementById("debug-status").hidden = !g.debug;
+    // DEBUG badge names the active kind (「DEBUG: 爆裂斜光」); the DEBUG button mirrors the menu state.
+    const debugStatus = document.getElementById("debug-status");
+    debugStatus.hidden = !g.debug;
+    const debugText = g.debug ? "DEBUG: " + Hop.Game.debugKindLabel(g.activeDebugKind()).title : "DEBUG";
+    if (debugStatus.textContent !== debugText) debugStatus.textContent = debugText;
+    document.getElementById("debug-toggle").setAttribute("aria-expanded", String(!!this.debugMenuOpen));
     document.getElementById("history").textContent = `CONTACT / ${g.history.slice(-8).map(entry => `${Hop.CAST[entry.type]?.name || entry.type} (${entry.label})`).join(" → ") || "—"}`;
     // Display only: a SPECIAL SUCCESS panel (normal or merchant) waits while the cut-in covers the stage
     // (Graphics.specialCutinCovering: until its fade-out / the reducedMotion still ends), then stays for
@@ -185,7 +190,9 @@ Hop.UI = class {
     const c = Hop.CONFIG;
     if (g.state !== Hop.STATES.FLYING || !(g.normalGuard || g.guardSpecial.active) || g.special) return null;
     const distance = g.body.x / c.pixelsPerMeter;
-    const boundary = Math.max(c.boundaryMeters, Math.ceil(distance / c.boundaryMeters) * c.boundaryMeters);
+    // DEBUG merchant kinds treat their prepared character as the boundary (game.applyDebugSetup).
+    const marked = g.debug && g.objects.find(o => o.debugBoundary && !o.used && o.x >= g.body.x);
+    const boundary = marked ? marked.x / c.pixelsPerMeter : Math.max(c.boundaryMeters, Math.ceil(distance / c.boundaryMeters) * c.boundaryMeters);
     const remaining = boundary - distance;
     return remaining >= 0 && remaining <= c.merchantZoneMeters ? { boundary, remaining } : null;
   }
@@ -256,6 +263,44 @@ Hop.UI = class {
     if (notice && live.textContent !== notice) live.textContent = notice;
     else if (!notice && ((this.notices.charge >= 1 && g.downCharge < 1) || (!flying && g.state !== Hop.STATES.RESULT)) && live.textContent) live.textContent = "";
     this.notices = { special: g.special, message: g.specialMessage, charge: g.downCharge, guard: g.guardSpecial.active };
+  }
+  // DEBUG menu (development only). Opened by the D key or the DEBUG button; items are rendered only when it
+  // opens (so the hidden merchant never sits in the page in normal play). While open, game time is paused (main.js).
+  static debugMenuHtml(active) {
+    const esc = text => String(text).replace(/[&<>"']/g, ch => "&#" + ch.charCodeAt(0) + ";");
+    const item = (id, key) => {
+      const label = Hop.Game.debugKindLabel(id), on = (active || "off") === id;
+      return `<button type="button" class="debug-item${on ? " active" : ""}" data-debug-kind="${id}" aria-pressed="${on}"><kbd>${key}</kbd><b>${esc(label.title)}</b><small>${esc(label.detail)}</small></button>`;
+    };
+    const group = (title, name, extra = "") => `<section class="debug-group"><h3>${title}</h3><div class="debug-items">${extra}${Hop.DEBUG_KINDS.filter(k => k.group === name).map(k => item(k.id, k.key)).join("")}</div></section>`;
+    return `<div class="debug-menu-panel"><div class="debug-menu-head"><strong id="debug-menu-title">DEBUGメニュー</strong><button type="button" class="debug-close" data-debug-close>閉じる（Esc）</button></div>` +
+      `<p class="debug-menu-note">番号キー（商人は Q W E R）かクリックで選択。発射前に選ぶと、発射直後の最初の接触で確認できます。DEBUGを使ったプレイは記録対象外。</p>` +
+      group("基本", "basic", item("off", "0")) + group("SPECIAL（最初の接触で発動）", "special") + group("謎の商人（すぐに出会う）", "merchant") + `</div>`;
+  }
+  static debugKeyKind(code) {
+    const key = /^(?:Digit|Numpad)([0-9])$/.exec(code || "")?.[1] || /^Key([QWER])$/.exec(code || "")?.[1];
+    if (!key) return null;
+    return key === "0" ? "off" : Hop.DEBUG_KINDS.find(kind => kind.key === key)?.id || null;
+  }
+  openDebugMenu() {
+    const menu = document.getElementById("debug-menu");
+    menu.innerHTML = Hop.UI.debugMenuHtml(this.game.activeDebugKind());
+    menu.hidden = false; this.debugMenuOpen = true;
+    const current = menu.querySelector?.(`[data-debug-kind="${this.game.activeDebugKind() || "off"}"]`);
+    current?.focus?.({ preventScroll: true });
+    this.update();
+  }
+  closeDebugMenu() {
+    const menu = document.getElementById("debug-menu");
+    const wasOpen = !!this.debugMenuOpen;
+    menu.hidden = true; this.debugMenuOpen = false;
+    if (wasOpen) document.getElementById("debug-toggle").focus?.({ preventScroll: true });
+    this.update();
+  }
+  toggleDebugMenu() { if (this.debugMenuOpen) this.closeDebugMenu(); else this.openDebugMenu(); }
+  selectDebugKind(id) {
+    this.game.setDebugKind(id === "off" ? null : id);
+    this.closeDebugMenu();
   }
   objectColor(type) { return Hop.Graphics.objectColor(type); }
   draw() {

@@ -145,6 +145,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 
 - `node tests/phase2.cjs`：物理・AERIAL・入力・停止の回帰テスト。
 - `node tests/phase3.cjs`：上記に加え、7種類・SPECIAL・GUARD・保存・DEBUG・リセット。
+- `node tests/debug-kinds.cjs`：DEBUGメニューの種類（Dキー・DEBUGボタン・番号キー／Q W E R・クリック・Esc、`?debug=` URL）、SPECIAL 7種がそれぞれ発射直後の最初の接触で発動すること（9通りの角度・パワー）、商人A〜Dがすぐ出ること（抽選なし）、記録対象外、OFFで通常生成に戻ること、通常プレイが変更前（4c3aec7）のシード固定160プレイの指紋と一致すること。
 - `node tests/special-se.cjs`：SPECIAL別SE（種類ごとに別イベント・別のノード構成と周波数・音量上限・ミュート・AudioContextなし・エラー時も停止しない）。
 - `node tests/specials.cjs`：正式SPECIAL・準備解除・商人A〜D・境界生成・終了・上書き・入力・RETRY。
 - `node tests/guard-special.cjs`：通常ベクトル・新SPECIAL・2種類のGUARD・タイマー停止・商人との統合。
@@ -161,7 +162,34 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 - `node tests/release.cjs`：全テストに加え、描画・必須ファイル・.nojekyll・共有メタ情報・ローカルアセットのサブパス解決・維持した物理設定を照合。
 - `node tests/release.cjs --serve`：`/NANACACRASH/qa.html` は検証専用。シナリオを選択して「準備」で通常効果・7SPECIAL・商人A〜D・BRAKE準備・GUARD期限／二重防御／浮遊中の時間停止を再現します。準備時は時間停止し、画面タップでSPECIAL成功、「再生」でタイマーを再開してMISSを確認できます。「次の通常STOPPER」「次のGUARD」で防御の順序も確認できます。QAプレイは保存しません。
 
-ゲーム中のDキーでDEBUG切替。DEBUGは従来の固定順序・間隔を維持し、追加の100m境界生成を行いません。OFFで通常の境界＋ランダム生成に戻ります。一度でもDEBUGを使ったプレイは記録対象外です。テスト用のサーバー・QA画面はGitHub Pagesには必要ありません。
+テスト用のサーバー・QA画面はGitHub Pagesには必要ありません。
+
+## DEBUGメニュー（開発用・ネタバレ注意）
+
+Dキーか、ステータス行右端の小さな **DEBUG** ボタン（タッチ・マウス可）でメニューを開き、番号キー（商人は Q W E R）かクリックで確認したい項目を選びます。Esc・もう一度D・背景クリックで閉じ、メニューを開いている間はゲームの時間が止まります。URLの `?debug=種類` を付けると、その確認を選んだ状態で直接開きます（`?debug` / `?debug=1` は全キャラ順番、`?debug=off` と不明な値は通常プレイ）。
+
+- 発射前（READY・角度／パワー選択中・RESULT後のRETRY）に選ぶと、確認用のキャラが勇者の `debugSetupAhead`（56px＝7m）前に立ち、必要な準備を済ませます。どの角度（10〜70°）・パワー（30〜100%）で発射しても、最初の上昇中（地面バウンド前）にそのキャラへ触れ、**最初の接触**でSPECIAL受付になります（タップで成功）。合体攻撃の相方はさらに `debugPartnerGap`（420px＝通常の最小間隔）右。確認用キャラの後は従来の「全キャラ順番」の配置が続きます。飛行中に選ぶと勇者の `debugFirst`（400px）前に配置します。種類はRETRYしても維持し、毎回同じ準備をします。
+- 選んだ種類はステータス行のバッジに「DEBUG: 爆裂斜光」のように表示します。OFFを選ぶと通常の100m境界＋ランダム生成に戻り、次のRETRYから記録対象です。
+- 一度でもDEBUGを使ったプレイは記録対象外（`debugUsed`、従来どおり）。通常プレイの動作・乱数の消費は変わりません（判定に加えたのはDEBUGが置いたキャラだけに付く印 `debugForce` / `debugBoundary` のみ）。商人の予告（MERCHANT ZONE・MERCHANT表示）は従来どおりDEBUG中だけで、メニューの項目は開いたときにだけ作るため、通常プレイの画面には商人の名前・条件・確率は出ません。
+
+| キー | 種類 | URL | 準備内容 |
+| --- | --- | --- | --- |
+| 0 | OFF（通常プレイ） | `?debug=off` | 通常の生成に戻す |
+| 1 | 全キャラ順番（従来のDEBUG） | [`?debug=all`](https://dicek9750.github.io/Flash-game/?debug=all) | 7人を `debugFirst` 400px から `debugGap` 600px 間隔で順に配置、100m境界枠なし、商人抽選なし |
+| 9 | キャラなし | [`?debug=aerial`](https://dicek9750.github.io/Flash-game/?debug=aerial) | キャラを1人も置かない（AERIAL UP/DOWN・着地・STOP_RESULT・RESULTの確認） |
+| 2 | BOOST「爆裂斜光」 | [`?debug=boost`](https://dicek9750.github.io/Flash-game/?debug=boost) | 魔法使い、そのすぐ右に武闘家（合体攻撃） |
+| 3 | BOUNCE「巨神昇天拳」 | [`?debug=bounce`](https://dicek9750.github.io/Flash-game/?debug=bounce) | 武闘家、そのすぐ右に魔法使い（合体攻撃） |
+| 4 | DASH「戦陣突破」 | [`?debug=dash`](https://dicek9750.github.io/Flash-game/?debug=dash) | 戦士、DASH準備済み |
+| 5 | STOPPER「聖光反転」 | [`?debug=stopper`](https://dicek9750.github.io/Flash-game/?debug=stopper) | 僧侶、STOPPER準備済み（BOOST・BOUNCE・DASH接触後と同じ） |
+| 6 | BRAKE「影すり抜け」 | [`?debug=brake`](https://dicek9750.github.io/Flash-game/?debug=brake) | 盗賊、AERIAL DOWN成功後と同じ準備 |
+| 7 | ANGLE「水平曲芸」 | [`?debug=angle`](https://dicek9750.github.io/Flash-game/?debug=angle) | 遊び人、この1人だけ10%抽選なしで発動 |
+| 8 | GUARD「聖護結界」 | [`?debug=guard`](https://dicek9750.github.io/Flash-game/?debug=guard) | 賢者、通常GUARD×1を持った状態 |
+| Q | 商人 Type A「倍化の秘薬」 | [`?debug=merchant-a`](https://dicek9750.github.io/Flash-game/?debug=merchant-a) | 僧侶を100m境界扱い・通常GUARD×1・抽選なし |
+| W | 商人 Type B「蓄光の護符」 | [`?debug=merchant-b`](https://dicek9750.github.io/Flash-game/?debug=merchant-b) | 戦士を境界扱い・GUARD×1・抽選なし |
+| E | 商人 Type C「浮遊の絨毯」 | [`?debug=merchant-c`](https://dicek9750.github.io/Flash-game/?debug=merchant-c) | 魔法使いを境界扱い・GUARD×1・抽選なし |
+| R | 商人 Type D「弾跳の靴」 | [`?debug=merchant-d`](https://dicek9750.github.io/Flash-game/?debug=merchant-d) | 武闘家を境界扱い・GUARD×1・抽選なし |
+
+メニューの技名・商人名・キャラ名は `js/config.js`（`specials[].name`・`merchantNames`・`merchantTypes`）と `Hop.CAST` から作ります（種類の定義は `js/game.js` の `Hop.DEBUG_KINDS`）。
 
 ## プレイ中の表示・快適性
 
@@ -177,7 +205,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 - SPECIAL成功時は種類ごとの専用SEを鳴らします（`js/audio.js` の `specialRecipes`。音声ファイルなし、WebAudio合成のみ）。BOOST＝爆発ノイズ＋上昇スイープ、BOUNCE＝3連打撃→跳ね上がり、DASH＝金属的な衝撃＋風切り、STOPPER＝和音＋キラキラ、BRAKE＝下降するヒュン、ANGLE＝ドラムロール＋ピョン、GUARD＝結界のブゥン＋鈴、商人＝チャリン。0.5〜1.0秒、同時に鳴る声部の合計を `specialPeakCap` 0.16 以下に抑えます。SE OFF・タップ前・AudioContextなしでは鳴らず、エラーでもゲームは止まりません。MISSは無音。
 ステージ左上に次のAERIAL操作とDOWN充電、右上に商人効果の残数を表示。Type Cは残り人数、Type BはCHARGEゲージです。
 - SPECIAL READYは現在の準備状態から導出した対象職業、頭上SPECIALは現在条件が成立する画面内キャラです。途中の接触・バウンドで条件は変化します。ANGLEの抽選結果は先読みしません。
-- DEBUGプレイ中だけ、結界保持中に次の100m境界まで10m以内でMERCHANT ZONEを表示し、対象境界キャラにMERCHANT表示を出します（通常プレイでは商人は隠しキャラのため予告しません）。実際の接触条件・成功判定は従来どおりです。
+- DEBUGプレイ中だけ、結界保持中に次の100m境界まで10m以内でMERCHANT ZONEを表示し、対象境界キャラにMERCHANT表示を出します（通常プレイでは商人は隠しキャラのため予告しません。DEBUGの商人A〜Dでは用意したキャラを境界として扱います）。実際の接触条件・成功判定は従来どおりです。
 - SPECIAL受付・成功／失敗、GUARD SPECIAL開始／終了、DOWN再充電完了だけを読み上げ領域へ通知します。充電率や秒数は毎フレーム読み上げません。動きを減らす設定では強いフラッシュ・点滅を抑えます。
 - RESULTのハイライトは既存接触履歴から最大3件を抽出します。商人成功→僧侶SPECIAL→その他SPECIAL→GUARD BLOCKの順で、ない場合は接触・バウンド回数を表示します。
 - UI追加検証：`node tests/ui-quality.cjs`（release.cjsからも実行）。

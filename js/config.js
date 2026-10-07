@@ -95,6 +95,10 @@ Hop.CONFIG = Object.freeze({
   typeCCount: 100, typeCSpeed: 1600, typeCHeight: 190,
   typeDBounces: 5, typeDMultiplier: 1.2, typeDMinVertical: 450,
   debugGap: 600, debugFirst: 400,
+  // DEBUG kinds (Hop.DEBUG_KINDS in game.js): the check's character(s) stand debugSetupAhead px ahead of the hero
+  // before launch (every 10–70° / 30–100% launch touches it during the first ascent, before any ground bounce),
+  // an adjacent partner debugPartnerGap px further on (= objectGapMin). Chosen in flight: debugFirst ahead.
+  debugSetupAhead: 56, debugPartnerGap: 420,
   storageKey: "hop-distance-best-v1"
 });
 Hop.STATES = Object.freeze({ READY: "READY", AIM_ANGLE: "AIM_ANGLE", AIM_POWER: "AIM_POWER", FLYING: "FLYING", RESULT: "RESULT" });
