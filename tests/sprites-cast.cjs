@@ -18,7 +18,15 @@ const HD_CAST = {
   'DASH.IDLE': { dir: 'assets/sprites/cast/dash_warrior_comic_v1/', w: 288, legacy: ['assets/sprites/cast/dash_warrior/dash_warrior_idle_sheet_96x96.png', 'assets/sprites/cast/dash_warrior/dash_warrior_idle.json'] },
   'GUARD.IDLE': { dir: 'assets/sprites/cast/guard_sage_comic_v1/', w: 288, legacy: ['assets/sprites/cast/guard_sage/guard_sage_idle_sheet_96x96.png', 'assets/sprites/cast/guard_sage/guard_sage_idle.json'] },
   'STOPPER.IDLE': { dir: 'assets/sprites/cast/stopper_cleric_comic_v1/', w: 288, legacy: ['assets/sprites/cast/stopper_cleric/stopper_cleric_idle_sheet_96x96.png', 'assets/sprites/cast/stopper_cleric/stopper_cleric_idle.json'] },
-  'SPECIAL_ONLY.IDLE': { dir: 'assets/sprites/cast/merchant_comic_v1/', w: 288, legacy: ['assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png', 'assets/sprites/cast/merchant/merchant_idle.json'] }
+  'SPECIAL_ONLY.IDLE': { dir: 'assets/sprites/cast/merchant_comic_v1/', w: 288, legacy: ['assets/sprites/cast/merchant/merchant_idle_sheet_96x96.png', 'assets/sprites/cast/merchant/merchant_idle.json'] },
+  'BOOST.CUTIN_FACE': { dir: 'assets/sprites/cast/boost_witch_cutin_face/', w: 256 },
+  'BOUNCE.CUTIN_FACE': { dir: 'assets/sprites/cast/bounce_fighter_cutin_face/', w: 256 },
+  'BRAKE.CUTIN_FACE': { dir: 'assets/sprites/cast/brake_thief_cutin_face/', w: 256 },
+  'ANGLE.CUTIN_FACE': { dir: 'assets/sprites/cast/angle_jester_cutin_face/', w: 256 },
+  'DASH.CUTIN_FACE': { dir: 'assets/sprites/cast/dash_warrior_cutin_face/', w: 256 },
+  'GUARD.CUTIN_FACE': { dir: 'assets/sprites/cast/guard_sage_cutin_face/', w: 256 },
+  'STOPPER.CUTIN_FACE': { dir: 'assets/sprites/cast/stopper_cleric_cutin_face/', w: 256 },
+  'SPECIAL_ONLY.CUTIN_FACE': { dir: 'assets/sprites/cast/merchant_cutin_face/', w: 256 }
 };
 const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
 const still = (id, animation, extra) => ({ id, animation, frameWidth: 96, frameHeight: 96, frames: 1, fps: 1, loop: false, pivot: { x: 48, y: 88 }, ...extra });
@@ -75,14 +83,20 @@ if (process.argv.includes('--loader')) {
   assert.deepEqual(Object.keys(C), IDS);
   for (const id of IDS) {
     assert(H.CAST[id], id + ' is a CAST id');
-    assert.deepEqual(Object.keys(C[id]), id === 'BOUNCE' ? ['IDLE', 'KICK'] : USED_POSE[id] ? ['IDLE', USED_POSE[id]] : ['IDLE']);
+    const expectedKeys = id === 'BOUNCE' ? ['IDLE', 'KICK', 'CUTIN_FACE'] : USED_POSE[id] ? ['IDLE', USED_POSE[id], 'CUTIN_FACE'] : ['IDLE', 'CUTIN_FACE'];
+    assert.deepEqual(Object.keys(C[id]), expectedKeys);
     // Generic used (post-contact) pose: at most one pose: 1 slot per character, never IDLE.
     assert(Object.values(C[id]).filter(d => d.pose === 1).length <= 1, id + ': one pose-1 slot at most');
     assert.notEqual(C[id].IDLE.pose, 1, id + ': IDLE is the pose-0 still');
     assert.deepEqual(Object.entries(C[id]).filter(([, d]) => d.pose === 1).map(([n]) => n), USED_POSE[id] ? [USED_POSE[id]] : []);
     for (const [name, def] of Object.entries(C[id])) {
-      assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, id === 'DASH' || id === 'GUARD']); // mirrored: the warrior (sword right, shield left) and the redesigned sage (staff right, book left), like the Canvas figures; the redesigned fighter kick, thief and jester already face the Canvas way
-      assert.equal(def.scale, id === 'SPECIAL_ONLY' ? 1.25 * 1.25 / 1.365 : 1.25);
+      if (name === 'CUTIN_FACE') {
+        assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, 'CUTIN_FACE', 1, 1, false, false]);
+        assert.equal(def.scale, 2.8);
+      } else {
+        assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, id === 'DASH' || id === 'GUARD']); // mirrored: the warrior (sword right, shield left) and the redesigned sage (staff right, book left), like the Canvas figures; the redesigned fighter kick, thief and jester already face the Canvas way
+        assert.equal(def.scale, id === 'SPECIAL_ONLY' ? 1.25 * 1.25 / 1.365 : 1.25);
+      }
       for (const ref of [def.src, def.metadata]) {
         assert(!/^(?:\/|[a-z]+:)/i.test(ref) && ref.startsWith('assets/sprites/cast/'));
         assert(new URL(ref, 'https://example.test/Flash-game/').pathname.startsWith('/Flash-game/assets/sprites/cast/'));
@@ -98,7 +112,14 @@ if (process.argv.includes('--loader')) {
       if (present) {
         const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
         const hd = HD_CAST[id + '.' + name], png = fs.readFileSync(path.join(root, def.src));
-        if (hd) {
+        if (hd && name === 'CUTIN_FACE') {
+          // Dedicated face close-up plate: 256 square, center pivot, nearest-neighbour.
+          assert(def.src.startsWith(hd.dir) && def.metadata.startsWith(hd.dir), id + ' face dir');
+          assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, smoothing: m.smoothing },
+            { id, animation: 'CUTIN_FACE', w: 256, h: 256, frames: 1, fps: 1, loop: false, pivot: { x: 128, y: 128 }, smoothing: false });
+          assert(s.normalizeCell({ ...m }), id + ' face cell contract');
+          assert.equal(png.readUInt32BE(16), 256); assert.equal(png.readUInt32BE(20), 256); assert.equal(png[25], 6, 'RGBA PNG');
+        } else if (hd) {
           // HD comic still: 288 high (unit 3), pivot (cellW/2,264) = the 96 feet point, smoothing on.
           assert(def.src.startsWith(hd.dir) && def.metadata.startsWith(hd.dir), id + ' HD dir');
           assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, smoothing: m.smoothing },

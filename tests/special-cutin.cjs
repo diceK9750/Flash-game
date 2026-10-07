@@ -7,11 +7,11 @@ const near = (a, b, label, eps = 1e-6) => assert(Math.abs(a - b) < eps, `${label
 
 assert.deepEqual(
   [c.specialCutinDuration, c.specialCutinImpact, c.specialCutinWipe, c.specialCutinHold, c.specialCutinReducedDuration],
-  [1.05, 0.08, 0.26, 0.48, 0.40]
+  [1.0, 0.07, 0.24, 0.46, 0.40]
 );
 assert.deepEqual(
-  [c.specialCutinBandHeight, c.specialCutinBandTiltDeg, c.specialCutinPortraitScale, c.specialCutinNameSize],
-  [280, 8, 4.0, 64]
+  [c.specialCutinBandHeight, c.specialCutinBandTiltDeg, c.specialCutinFaceScale, c.specialCutinPortraitScale, c.specialCutinNameSize],
+  [300, 7, 1.35, 3.2, 62]
 );
 assert(c.specialCutinImpact + c.specialCutinWipe + c.specialCutinHold < c.specialCutinDuration, 'fade window');
 assert.equal(c.specialCutinSlam, undefined, 'slam key removed');
@@ -83,5 +83,16 @@ function armSpecial(g, type, extra = {}) {
   g.specialMessage = null; g.merchantVisual = null; g.special = null;
   const before = g.downCharge; for (let i = 0; i < 30; i++) g.update(c.physicsStep);
   assert(g.downCharge > before); cases++; }
+
+// Dedicated face plates for every SPECIAL cast
+{
+  const ids = ['BOOST','BOUNCE','BRAKE','DASH','STOPPER','ANGLE','GUARD','SPECIAL_ONLY'];
+  for (const id of ids) {
+    const def = H.Sprites.definitions.CAST[id].CUTIN_FACE;
+    assert(def && def.enabled !== false && def.animation === 'CUTIN_FACE');
+    assert(require('node:fs').existsSync(require('node:path').join(__dirname, '..', def.src)));
+  }
+  cases++;
+}
 
 console.log(JSON.stringify({ specialCutin: 'PASS', cases }));

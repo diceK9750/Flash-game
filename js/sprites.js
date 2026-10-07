@@ -100,7 +100,9 @@ Hop.Sprites = {
         // HD comic idle (288 cell) and used pose (384x288 cell for the wide stance); the 96 r1 stills are
         // kept in boost_witch/.
         USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
-          src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used_sheet_384x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used.json" }
+          src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used_sheet_384x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used.json" },
+        CUTIN_FACE: { id: "BOOST", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/boost_witch_cutin_face/boost_witch_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/boost_witch_cutin_face/boost_witch_cutin_face.json" }
       },
       BOUNCE: { // 武闘家 (HD comic idle r1b + kick r1a; the kick points to the viewer's right like the Canvas pose, so not mirrored)
         IDLE: { id: "BOUNCE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
@@ -108,7 +110,9 @@ Hop.Sprites = {
         // HD comic idle (288 cell) and kick (384x288 cell for the high kick, standing foot on the pivot x);
         // the 96 r1 stills are kept in bounce_fighter/.
         KICK: { id: "BOUNCE", animation: "KICK", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
-          src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick_sheet_384x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick.json" }
+          src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick_sheet_384x288.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_kick.json" },
+        CUTIN_FACE: { id: "BOUNCE", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/bounce_fighter_cutin_face/bounce_fighter_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/bounce_fighter_cutin_face/bounce_fighter_cutin_face.json" }
       },
       BRAKE: { // 盗賊 (HD comic idle r1b + used r1a; idle hook on the viewer's right like the Canvas thief, used pose throws it toward the hero; not mirrored)
         IDLE: { id: "BRAKE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
@@ -116,7 +120,9 @@ Hop.Sprites = {
         // HD comic idle (288 cell) and used pose (384x288 cell for the thrown hook and chain); the 96 r2 idle
         // and r1 used stills are kept in brake_thief/.
         USED: { id: "BRAKE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
-          src: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used_sheet_384x288.png", metadata: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used.json" }
+          src: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used_sheet_384x288.png", metadata: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used.json" },
+        CUTIN_FACE: { id: "BRAKE", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/brake_thief_cutin_face/brake_thief_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/brake_thief_cutin_face/brake_thief_cutin_face.json" }
       },
       ANGLE: { // 遊び人 (HD comic idle r1a + used r1a; idle cane on the viewer's right like the Canvas jester's ball, used pose swings it up toward the hero; not mirrored)
         IDLE: { id: "ANGLE", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
@@ -124,23 +130,33 @@ Hop.Sprites = {
         // HD comic idle (288 cell) and used pose (384x288 cell for the raised cane and open hand, standing foot on
         // the pivot x); the 96 r1 stills are kept in angle_jester/.
         USED: { id: "ANGLE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
-          src: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used_sheet_384x288.png", metadata: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used.json" }
+          src: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used_sheet_384x288.png", metadata: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used.json" },
+        CUTIN_FACE: { id: "ANGLE", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/angle_jester_cutin_face/angle_jester_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/angle_jester_cutin_face/angle_jester_cutin_face.json" }
       },
       DASH: { // 戦士 (HD comic idle r1b, drawn like the design sheet with the sword on the viewer's left; mirrored: sword on the viewer's right, shield on the left like the Canvas warrior; the 96 r1 still is kept in dash_warrior/)
         IDLE: { id: "DASH", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
-          src: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle_sheet_288x288.png", metadata: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle.json" }
+          src: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle_sheet_288x288.png", metadata: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle.json" },
+        CUTIN_FACE: { id: "DASH", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/dash_warrior_cutin_face/dash_warrior_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/dash_warrior_cutin_face/dash_warrior_cutin_face.json" }
       },
       GUARD: { // 賢者 (HD comic idle r1b, no hat by design, drawn like sage_r1b with the staff on the viewer's left; mirrored: staff on the viewer's right, book on the left like the Canvas sage; the 96 r1 still is kept in guard_sage/)
         IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
-          src: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle.json" }
+          src: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle.json" },
+        CUTIN_FACE: { id: "GUARD", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/guard_sage_cutin_face/guard_sage_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/guard_sage_cutin_face/guard_sage_cutin_face.json" }
       },
       STOPPER: { // 僧侶 (HD comic idle r1a, same facing as the r3 still: staff on the viewer's right like the Canvas cleric, so not mirrored; the 96 r3 still is kept in stopper_cleric/)
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
-          src: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle.json" }
+          src: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle.json" },
+        CUTIN_FACE: { id: "STOPPER", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/stopper_cleric_cutin_face/stopper_cleric_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/stopper_cleric_cutin_face/stopper_cleric_cutin_face.json" }
       },
       SPECIAL_ONLY: { // 商人 (HD comic idle r1b, same facing as the r1 still: pouch in the viewer-left hand, bag on the viewer's right under the item orb like the Canvas box, facing the hero, so not flipped; MERCHANT SPECIAL overlay at the Canvas ratio 1.25/1.365; the 96 r1 still is kept in merchant/)
         IDLE: { id: "SPECIAL_ONLY", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25 * 1.25 / 1.365, flip: false, enabled: true,
-          src: "assets/sprites/cast/merchant_comic_v1/merchant_idle_sheet_288x288.png", metadata: "assets/sprites/cast/merchant_comic_v1/merchant_idle.json" }
+          src: "assets/sprites/cast/merchant_comic_v1/merchant_idle_sheet_288x288.png", metadata: "assets/sprites/cast/merchant_comic_v1/merchant_idle.json" },
+        CUTIN_FACE: { id: "SPECIAL_ONLY", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 2.8, flip: false, enabled: true,
+          src: "assets/sprites/cast/merchant_cutin_face/merchant_cutin_face_sheet_256x256.png", metadata: "assets/sprites/cast/merchant_cutin_face/merchant_cutin_face.json" }
       }
     },
     // Launch truck (display only; there is no truck in game.js / physics.js, so no hit box changes). One HD comic still
@@ -257,6 +273,13 @@ Hop.Sprites = {
     const used = pose ? Object.keys(defs).find(n => defs[n].pose === 1 && slots[n]?.ready) : null;
     const name = used || "IDLE", asset = slots[name];
     return asset?.ready ? { name, asset, scale: defs[name].scale, flip: !!defs[name].flip } : null;
+  },
+  // SPECIAL cut-in face plate (pure). Dedicated CUTIN_FACE crop; null -> caller falls back.
+  cutinFaceLayer(id) {
+    const slots = this.castAssets?.[id], def = this.definitions.CAST?.[id]?.CUTIN_FACE;
+    const asset = slots?.CUTIN_FACE;
+    if (!def || def.enabled === false || !asset?.ready) return null;
+    return { asset, scale: def.scale, flip: !!def.flip };
   },
   // Draw the truck still with its origin at (x, ground) (the Canvas truck's translate point); false -> Canvas truck.
   drawTruck(ctx, x, ground) {
