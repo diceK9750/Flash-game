@@ -279,7 +279,10 @@ Hop.Graphics = {
     const c = Hop.CONFIG, ground = c.groundY + g.cameraY;
     const sx = x => c.launchX + x - g.cameraX;
     const sy = y => ground - c.playerRadius - y;
+    // Combo scene (display only): one state per frame; screen shake wraps the world, not the cut-in.
+    const combo = this.comboState(g), impact = this.comboImpact(combo, !!visual?.reducedMotion);
     ctx.fillStyle = "#bce9f3"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.save(); ctx.translate(impact.x, impact.y);
     this.circle(ctx, 1080, 115, 49, "#fff1ad");
     for (let i = -1; i < 5; i++) {
       const x = i * 380 - (g.cameraX * 0.12 % 380), y = 115 + (i % 2) * 60;
@@ -308,7 +311,10 @@ Hop.Graphics = {
     }
     for (const object of g.objects) {
       const ox = sx(object.x); if (ox < -120 || ox > c.width + 120) continue;
-      ctx.save(); ctx.globalAlpha = object.used ? 0.35 : 1;
+      // Combo actors are drawn by comboBack; they fade back in place during the afterglow.
+      const actor = combo && (object === combo.source || object === combo.partner);
+      if (actor && combo.after === null) continue;
+      ctx.save(); ctx.globalAlpha = (object.used ? 0.35 : 1) * (actor ? Math.min(1, combo.after / combo.afterTotal) : 1);
       // Phase C: CAST sprite when loaded, else the Canvas figure (same feet point; alpha above applies).
       if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
       ctx.textAlign = "center"; ctx.font = "bold 25px system-ui";
@@ -328,22 +334,24 @@ Hop.Graphics = {
       this.circle(ctx, sx(point.x), sy(point.y), 4 + i / 4, "#e99c40");
     }); ctx.globalAlpha = 1;
     const x = sx(g.body.x), y = sy(g.body.y);
+    if (combo) this.comboBack(ctx, combo, sx, sy, ground);
+    const comboHero = combo && combo.after === null ? this.comboActors(combo).hero : null;
     if (g.contact && !visual.reducedMotion) this.contactEffect(ctx, g.contact.label.split(" ")[0], x, y, g.phaseTime - visual.contactAt);
     if (g.effect) {
       ctx.save(); ctx.globalAlpha = g.effect.remaining / c.effectDuration;
       this.line(ctx, [[x - 28, y + 20], [x - 12, y + (g.effect.label.endsWith("UP") ? -30 : 55)]], "#277ca5", 6); ctx.restore();
     }
-    ctx.save(); ctx.translate(x, y);
+    ctx.save(); ctx.translate(x + (comboHero?.dx || 0), y + (comboHero?.dy || 0));
     // GROUND_BOUNCE plays upright (tilt weight 0) and the tilt eases back afterwards.
     const tilt = Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1;
-    if (g.state === "FLYING" && !visual.reducedMotion && tilt > 0) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt);
+    if (g.state === "FLYING" && !visual.reducedMotion && tilt > 0 && !comboHero) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt);
     // Same foot anchor and rotation as the silhouette; physics stays untouched.
     // phaseTime shares the game's pause/hidden-tab handling (no wall-clock jump).
     // Stopped on the ground (FLYING or RESULT): STOP_RESULT. FLYING order: one-shot (priority
     // table) -> FLIGHT_LOOP; RESULT without STOP_RESULT: frozen FLIGHT_LOOP. READY / AIM: HD IDLE
     // still when loaded. Else -> Canvas HERO. Feet at playerRadius; physics untouched.
     const drawLayer = layer => Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
-    const spriteDrawn = !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
+    const spriteDrawn = (comboHero?.hit && !!Hop.Sprites?.drawHeroHit?.(ctx, 0, c.playerRadius)) || !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
       ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer)) ||
       (prelaunch && !!Hop.Sprites?.idleLayers?.().some(drawLayer));
     if (!spriteDrawn) this.character(ctx, "HERO", 0, c.playerRadius, 0.936);
@@ -378,9 +386,221 @@ Hop.Graphics = {
       ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - launchAge / 0.18)})`; ctx.fillRect(0, 0, c.width, c.height);
       this.contactEffect(ctx, "BOOST", sx(0), sy(0), launchAge);
     }
+    if (combo) this.comboFront(ctx, combo, sx, sy, ground);
+    ctx.restore(); // screen shake
+    if (impact.flash > 0) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
     // SPECIAL success cut-in above the world / flash; DOM special-panel stays separate.
     this.specialCutin(ctx, g, visual);
+  },
+  // ---- Combo SPECIAL scenes (display only; never mutate game) -------------------------------------------
+  // Scene clock (pure). live = g.combo (scene time t = elapsed - S, S = cut-in fade start; negative while the
+  // cut-in still covers the stage), after = g.comboAfter (final tableau, then the afterglow age `after`).
+  comboSceneStart(short) { const c = Hop.CONFIG; return short ? c.specialCutinReducedDuration : c.specialCutinImpact + c.specialCutinWipe + c.specialCutinHold; },
+  comboState(g) {
+    const live = g?.combo, after = live ? null : g?.comboAfter, k = live || after;
+    if (!k || (k.type !== "BOOST" && k.type !== "BOUNCE")) return null;
+    const S = this.comboSceneStart(k.short), c = Hop.CONFIG;
+    const full = k.short ? c.comboReducedDuration : k.type === "BOOST" ? c.comboWitchDuration : c.comboFighterDuration;
+    const end = full - S, afterAge = after ? Math.max(0, after.total - after.remaining) : null;
+    return { type: k.type, short: !!k.short, t: live ? live.elapsed - S : end, end, after: afterAge, afterTotal: after ? after.total : 0,
+      heroWX: k.heroX, heroY: k.heroY, source: k.source, partner: k.partner, skipped: !!k.skipped };
+  },
+  ease(u) { u = Math.max(0, Math.min(1, u)); return 1 - (1 - u) ** 3; },
+  // Uniform growth of the giant fighter (pure): 1 until the buff ends, then comboFighterSteps eased steps
+  // (small overshoot) up to comboFighterScale at growEnd.
+  comboFighterScale(t) {
+    const c = Hop.CONFIG, T = c.comboFighterTimes, n = c.comboFighterSteps, max = c.comboFighterScale;
+    if (!(t >= T.buffEnd)) return 1;
+    if (t >= T.growEnd) return max;
+    const span = (T.growEnd - T.buffEnd) / n, k = Math.min(n - 1, Math.floor((t - T.buffEnd) / span)), u = (t - T.buffEnd - k * span) / span;
+    const from = 1 + (max - 1) * k / n, to = 1 + (max - 1) * (k + 1) / n, x = Math.min(1, u / 0.45) - 1;
+    return from + (to - from) * (1 + 2.70158 * x ** 3 + 1.70158 * x ** 2);
+  },
+  // Actor placements in world x / pose / scale for a scene time (pure). Used by the drawing and by tests.
+  comboActors(st) {
+    const c = Hop.CONFIG, H = st.heroWX, t = st.t, lerp = (a, b, u) => a + (b - a) * this.ease(u);
+    const src = st.source?.x ?? H, par = st.partner?.x ?? H + 500;
+    const out = { hero: { dx: 0, dy: 0, hit: t >= 0 }, witch: null, fighter: null };
+    if (st.type === "BOOST") {
+      const W = c.comboWitchTimes, hits = c.comboWitchHits, step = (W.rushEnd - W.dash) / hits;
+      out.witch = { x: st.short && t >= 0 ? H - 120 : lerp(src, H - 120, t / W.dash), pose: st.short ? (t >= 0 ? 1 : 0) : t >= W.liftEnd - 0.05 ? 1 : 0, flip: false, scale: 1 };
+      if (st.short) {
+        out.fighter = t >= 0 ? { x: H + 75, pose: 1, flip: true, scale: 1, rotate: 0 } : { x: par, pose: 0, flip: true, scale: 1, rotate: 0 };
+        out.hits = t >= 0 ? hits : 0; out.hero.dy = 0; return out;
+      }
+      if (t < W.dash) out.fighter = { x: lerp(par, H + 75, t / W.dash), pose: 0, flip: true, scale: 1, rotate: 0, dash: Math.max(0, t) / W.dash };
+      else if (t < W.rushEnd) {
+        const k = Math.min(hits - 1, Math.floor((t - W.dash) / step)), u = (t - W.dash - k * step) / step, right = Math.floor(k / 2) % 2 === 0;
+        out.fighter = { x: H + (right ? 1 : -1) * (75 - 14 * (1 - u)), pose: k % 3 === 2 ? 0 : 1, flip: right, scale: 1, rotate: 0, ghost: k > 0 && k % 2 === 0 ? (right ? -1 : 1) : 0, ghostU: u };
+        out.hits = k + 1; out.hitU = u;
+        out.hero.dx = Math.sin(t * 73) * 4; out.hero.dy = Math.cos(t * 59) * 3;
+      } else {
+        const u = (t - W.rushEnd) / (W.liftEnd - W.rushEnd);
+        out.fighter = { x: t < W.liftEnd ? H - 30 : lerp(H - 30, H - 170, (t - W.liftEnd) / 0.2), pose: 1, flip: false, scale: 1, rotate: -0.95 * this.ease(u * 1.6) };
+        out.hits = hits; out.finish = true;
+        out.hero.dy = -c.comboWitchLiftPx * this.ease(u) + (t > W.liftEnd ? Math.sin((t - W.liftEnd) * 9) * 3 : 0);
+      }
+      return out;
+    }
+    const F = c.comboFighterTimes;
+    out.fighter = { x: st.short && t >= 0 ? H - 150 : lerp(src, H - 150, t / F.arrive), pose: 0, flip: false, rotate: 0,
+      scale: st.short ? (t >= 0 ? c.comboFighterScale : 1) : this.comboFighterScale(t) };
+    const arrived = st.short ? t >= 0 : t >= F.arrive;
+    out.witch = { x: st.short && t >= 0 ? H - 330 : lerp(par, H - 330, t / F.arrive), pose: arrived && (st.short || t < F.growEnd) ? 1 : 0, flip: !arrived, scale: 1 };
+    if (st.short ? t >= 0 : t >= F.upper) { out.fighter.pose = 1; out.fighter.rotate = -0.45; }
+    if (!st.short && t >= F.upper + F.hitstop) out.hero.dy = -c.comboFighterLiftPx * this.ease((t - F.upper - F.hitstop) / 0.18);
+    if (!st.short && t >= F.growEnd && t < F.upper) out.fighter.charge = (t - F.growEnd) / (F.upper - F.growEnd);
+    if (st.after !== null && !st.short) out.fighter.scale = 1 + (out.fighter.scale - 1) * (1 - this.ease(st.after / 0.35)); // back to normal size
+    return out;
+  },
+  // Screen shake / white flash for the current frame (pure; 0 for the short version or reducedMotion).
+  comboImpact(st, reducedMotion) {
+    if (!st || st.short || reducedMotion) return { x: 0, y: 0, flash: 0 };
+    const c = Hop.CONFIG, t = st.t + (st.after || 0);
+    let amp = 0, flash = 0;
+    if (st.type === "BOOST") {
+      const W = c.comboWitchTimes, b = t - W.blast;
+      if (b >= 0) { amp = c.comboShakePx * Math.max(0, 1 - b / 0.55); flash = Math.max(0, 0.85 - b * 2.6); }
+      else if (t >= W.rushEnd && t < W.rushEnd + 0.12) amp = c.comboShakePx * 0.5;
+      else if (t >= W.dash && t < W.rushEnd) amp = 1.5;
+    } else {
+      const F = c.comboFighterTimes, u = t - F.upper;
+      if (u >= 0) { amp = c.comboShakePx * (u < F.hitstop ? 1.2 : Math.max(0, 1 - (u - F.hitstop) / 0.5)); flash = Math.max(0, 0.6 - u * 2.4); }
+      else if (t >= F.buffEnd && t < F.growEnd) amp = 2.5;
+      else if (t >= F.growEnd) amp = 1.5;
+    }
+    const s = Math.floor(t * 60);
+    return { x: Math.sin(s * 2.3) * amp, y: Math.cos(s * 3.1) * amp * 0.7, flash };
+  },
+  comboCast(ctx, id, a, sx, ground, alpha = 1) {
+    if (!a) return;
+    const ok = Hop.Sprites?.drawCastScaled?.(ctx, id, sx(a.x), ground, a.pose, a.scale || 1, { flip: a.flip, rotate: a.rotate, alpha });
+    if (!ok) { ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(sx(a.x), ground); if (a.rotate) ctx.rotate(a.rotate); if (a.flip) ctx.scale(-1, 1); this.character(ctx, id, 0, 0, 1.365 * (a.scale || 1), a.pose); ctx.restore(); }
+  },
+  spark(ctx, x, y, r, color, rot = 0) {
+    const pts = Array.from({ length: 16 }, (_, i) => { const a = rot + i * Math.PI / 8, rr = i % 2 ? r * 0.38 : r; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; });
+    this.polygon(ctx, pts, color);
+  },
+  // Behind the hero: magic circle, actors, afterimages, aura / rings.
+  comboBack(ctx, st, sx, sy, ground) {
+    const c = Hop.CONFIG, A = this.comboActors(st), t = st.t, fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal);
+    ctx.save(); ctx.globalAlpha = fade;
+    if (st.type === "BOOST") {
+      const W = c.comboWitchTimes, wx = sx(A.witch.x);
+      if (st.short ? t >= 0 : t >= 0.15 && t < W.blast + 0.1) { // magic circle at the witch's feet
+        const r = st.short ? 80 : 30 + 60 * this.ease((t - 0.15) / 0.5), rot = st.short ? 0 : t * 2.2;
+        ctx.save(); ctx.translate(wx, ground - 2); ctx.scale(1, 0.32);
+        ctx.strokeStyle = "rgba(255,170,60,0.9)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, r * 0.72, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,230,140,0.95)"; ctx.beginPath();
+        for (let i = 0; i <= 6; i++) { const a = rot + i * Math.PI * 4 / 6; ctx[i ? "lineTo" : "moveTo"](Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72); }
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,190,90,0.18)"; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        if (!st.short) { // light motes gathering to the staff
+          for (let i = 0; i < 18; i++) {
+            const ph = (t * 1.3 + i / 18) % 1, a = i * 2.39, d = (1 - ph) * 150;
+            ctx.globalAlpha = fade * Math.min(1, ph * 3) * 0.9;
+            this.circle(ctx, wx + 28 + Math.cos(a) * d, ground - 120 + Math.sin(a) * d * 0.7, 3 + ph * 3, i % 3 ? "#ffe9a0" : "#ffb347");
+          }
+          ctx.globalAlpha = fade;
+        }
+      }
+      this.comboCast(ctx, "BOOST", A.witch, sx, ground);
+      const f = A.fighter;
+      if (f.dash !== undefined && !st.short) for (let i = 3; i >= 1; i--) this.comboCast(ctx, "BOUNCE", { ...f, x: f.x + i * 55 }, sx, ground, 0.18 * (4 - i) * fade);
+      if (f.ghost) this.comboCast(ctx, "BOUNCE", { ...f, x: st.heroWX + f.ghost * 75, flip: f.ghost > 0 }, sx, ground, 0.35 * (1 - f.ghostU) * fade);
+      this.comboCast(ctx, "BOUNCE", f, sx, ground);
+    } else {
+      const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x), mid = ground - 70 * f.scale;
+      if (st.short ? t >= 0 : t >= F.arrive) { // aura (pulsing) around the fighter
+        const pulse = st.short ? 1 : 1 + 0.06 * Math.sin(t * 22);
+        ctx.save(); ctx.globalAlpha = fade * (st.short ? 0.35 : Math.min(0.55, (t - F.arrive) * 1.5));
+        ctx.fillStyle = f.charge ? "#ffef7a" : "#ffd0f0";
+        ctx.beginPath(); ctx.ellipse(fx, mid, 55 * f.scale * pulse, 80 * f.scale * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      if (!st.short && t >= F.arrive && t < F.growEnd) { // rings of the buff spell
+        for (let i = 0; i < 3; i++) {
+          const ph = ((t - F.arrive) * 1.8 + i / 3) % 1;
+          ctx.save(); ctx.globalAlpha = fade * (1 - ph); ctx.strokeStyle = "#ff8ad8"; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.ellipse(fx, mid, (30 + ph * 70) * f.scale, (12 + ph * 26) * f.scale, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+      }
+      this.comboCast(ctx, "BOOST", A.witch, sx, ground);
+      if (!st.short && t >= F.arrive && t < F.growEnd) { // sparkles from the staff to the fighter
+        const wx = sx(A.witch.x) + 40, wy = ground - 110;
+        for (let i = 0; i < 10; i++) { const ph = (t * 2 + i / 10) % 1; this.spark(ctx, wx + (fx - wx) * ph, wy + (mid - wy) * ph - Math.sin(ph * Math.PI) * 50, 7, "#fff1a8", t * 5 + i); }
+      }
+      const shake = f.charge ? Math.sin(t * 90) * 3 * (1 + f.charge) : 0;
+      this.comboCast(ctx, "BOUNCE", { ...f, x: f.x + shake }, sx, ground);
+      if (f.charge) { // speed lines into the fighter while charging
+        ctx.save(); ctx.globalAlpha = fade * 0.7; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+        for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 + t * 3, r1 = 260 - f.charge * 60, r2 = 170; ctx.beginPath(); ctx.moveTo(fx + Math.cos(a) * r1, mid + Math.sin(a) * r1); ctx.lineTo(fx + Math.cos(a) * r2, mid + Math.sin(a) * r2); ctx.stroke(); }
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  },
+  // In front of the hero: hit sparks, HIT counter, chant gauge, fireball / explosion, shockwave, labels.
+  comboFront(ctx, st, sx, sy, ground) {
+    const c = Hop.CONFIG, A = this.comboActors(st), t = st.t, fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal);
+    // Effects stay where the scene happened (world x / held height), even after the hero flies off.
+    const heroX = sx(st.heroWX) + A.hero.dx, heroY = sy(st.heroY) + A.hero.dy;
+    const label = (text, x, y, size, color, stroke = "#3b2357") => {
+      ctx.save(); ctx.font = `italic 900 ${size}px system-ui`; ctx.textAlign = "center"; ctx.lineWidth = Math.max(4, size / 7); ctx.strokeStyle = stroke;
+      ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.restore();
+    };
+    ctx.save(); ctx.globalAlpha = fade;
+    if (st.type === "BOOST") {
+      const W = c.comboWitchTimes, wx = sx(A.witch.x);
+      if (A.hits && st.after === null) {
+        if (!st.short && A.hitU !== undefined && A.hitU < 0.6) this.spark(ctx, heroX + (A.fighter.flip ? 22 : -22), heroY - 10 + ((A.hits * 37) % 30) - 15, 30 * (1 - A.hitU * 0.8), A.hits % 2 ? "#fff6b0" : "#ffd27a", A.hits);
+        label(`${A.hits} HIT${A.hits >= c.comboWitchHits ? "!!" : ""}`, heroX + 120, heroY - 90, 40, "#ffe55c");
+      }
+      if (!st.short && t >= 0.15 && t < W.blast && st.after === null) { // chant gauge
+        const g = Math.max(0, Math.min(1, (t - 0.15) / (W.rushEnd - 0.15)));
+        ctx.fillStyle = "rgba(40,20,60,0.75)"; ctx.fillRect(wx - 60, ground - 205, 120, 14);
+        ctx.fillStyle = g >= 1 ? "#ffe066" : "#ff9a3c"; ctx.fillRect(wx - 58, ground - 203, 116 * g, 10);
+        label(g >= 1 ? "詠唱完了！" : "詠唱中…", wx, ground - 214, 24, "#fff4d6");
+      }
+      if (st.short && t >= 0) { this.circle(ctx, heroX, heroY, 70, "rgba(255,190,90,0.35)"); label("爆裂斜光", heroX, heroY - 110, 40, "#ffe55c"); }
+      if (!st.short && t >= W.liftEnd && t < W.blast) { // fireball from the staff
+        const u = this.ease((t - W.liftEnd) / (W.blast - W.liftEnd)), x0 = wx + 30, y0 = ground - 120;
+        const x = x0 + (heroX - x0) * u, y = y0 + (heroY - y0) * u - Math.sin(u * Math.PI) * 60, r = 18 + 18 * u;
+        const grad = ctx.createRadialGradient?.(x, y, 2, x, y, r * 1.6);
+        if (grad) { grad.addColorStop(0, "#fffbe0"); grad.addColorStop(0.4, "#ffb13b"); grad.addColorStop(1, "rgba(255,80,20,0)"); ctx.fillStyle = grad; }
+        else ctx.fillStyle = "#ff9a3c";
+        ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+      const b = t + (st.after || 0) - W.blast;
+      if (!st.short && b >= 0 && b < 1.0) { // big explosion at the lifted hero
+        const R = 40 + 200 * this.ease(b / 0.45), a = Math.max(0, 1 - b / 0.9);
+        ctx.save(); ctx.globalAlpha = a;
+        const grad = ctx.createRadialGradient?.(heroX, heroY, 4, heroX, heroY, R);
+        if (grad) { grad.addColorStop(0, "#ffffff"); grad.addColorStop(0.35, "#ffe27a"); grad.addColorStop(0.7, "#ff7a22"); grad.addColorStop(1, "rgba(200,40,10,0)"); ctx.fillStyle = grad; }
+        else ctx.fillStyle = "#ffb13b";
+        ctx.beginPath(); ctx.arc(heroX, heroY, R, 0, Math.PI * 2); ctx.fill();
+        this.spark(ctx, heroX, heroY, R * 1.25, "rgba(255,240,180,0.55)", b * 2);
+        ctx.restore();
+        if (b < 0.6) label("爆裂斜光!!", heroX, Math.max(70, heroY - R - 10), 54, "#fff3b0", "#7a2a08");
+      }
+    } else {
+      const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x);
+      if (!st.short && t >= F.arrive && t < F.buffEnd + 0.15 && st.after === null) label("強化魔法！", sx(A.witch.x), ground - 190, 30, "#ffd6f2");
+      if (!st.short && t >= F.buffEnd && t < F.upper && st.after === null) label(`巨大化!! ×${f.scale.toFixed(1)}`, fx, ground - 150 * f.scale - 20, 34, "#fff4c0");
+      const u = t + (st.after || 0) - F.upper;
+      if (st.short ? t >= 0 : u >= 0 && u < 1.0) {
+        const R = st.short ? 90 : 30 + 520 * this.ease(u / 0.6), a = st.short ? 0.6 : Math.max(0, 1 - u / 0.8);
+        ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = "#fffbe6"; ctx.lineWidth = st.short ? 6 : 14 * (1 - Math.min(1, u)); ctx.beginPath(); ctx.arc(heroX, heroY, R, 0, Math.PI * 2); ctx.stroke();
+        if (!st.short) for (let i = 0; i < 14; i++) { const ang = i * Math.PI / 7 + 0.2; this.line(ctx, [[heroX + Math.cos(ang) * R * 0.5, heroY + Math.sin(ang) * R * 0.5], [heroX + Math.cos(ang) * R * 0.95, heroY + Math.sin(ang) * R * 0.95]], "#ffe680", 5); }
+        this.spark(ctx, heroX, heroY, st.short ? 50 : 70 * Math.max(0.3, 1 - u), "#fff3a0", 0.3);
+        ctx.restore();
+        if (st.short || u < 0.6) label("連天蹴り!!", heroX, Math.max(70, heroY - 130), 54, "#e9ffd8", "#1f4d1c");
+      }
+    }
+    if (st.after === null && !st.short) { ctx.font = "bold 18px system-ui"; ctx.textAlign = "right"; ctx.fillStyle = "rgba(40,40,60,0.75)"; ctx.fillText("タップでスキップ ▶▶", c.width - 18, c.height - 18); }
+    ctx.restore();
   },
   objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; }
 };

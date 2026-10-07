@@ -55,6 +55,19 @@ Hop.CONFIG = Object.freeze({
   specialCutinFaceFill: 1.2, specialCutinFaceCenterX: 0.37, specialCutinPortraitScale: 3.2,
   specialCutinNameSize: 62, specialCutinNameX: 0.64, specialCutinNameY: 0.30, specialCutinNameSlide: 0.4,
   specialCutinShakePx: 5, specialCutinFlashPeak: 0.70, specialCutinPortraitPop: 1.10,
+  // Combo SPECIAL scenes (display only) for BOOST (魔法使い × 武闘家) and BOUNCE (武闘家 × 魔法使い) successes with
+  // their adjacent partner. The launch vector is applied at success exactly as before; the game step (physics,
+  // distance, play timers, RNG) is frozen while the scene plays, so the flight is identical — only later in
+  // wall time. Durations count from the success (cut-in included); the scene starts when the cut-in begins its
+  // fade (impact + wipe + hold). Tap skips (same result). reducedMotion: short still version. Merchant: none.
+  comboEnabled: true,
+  comboWitchDuration: 3.1, comboFighterDuration: 2.65, comboReducedDuration: 0.8, comboAfterglow: 0.6,
+  // Scene-relative key times (s after the scene start).
+  comboWitchTimes: Object.freeze({ dash: 0.30, rushEnd: 1.60, liftEnd: 1.90, blast: 2.15 }),
+  comboWitchHits: 14, comboWitchLiftPx: 110,
+  comboFighterTimes: Object.freeze({ arrive: 0.40, buffEnd: 0.85, growEnd: 1.35, upper: 1.60, hitstop: 0.10 }),
+  comboFighterScale: 2.8, comboFighterSteps: 3, comboFighterLiftPx: 120,
+  comboShakePx: 9,
   // State-based conditions; success sets a launch vector (px/s, degrees).
   specials: Object.freeze({
     BOOST: Object.freeze({ trigger: "adjacent", partner: "BOUNCE", speed: 2000, angle: 45, name: "爆裂斜光" }),
