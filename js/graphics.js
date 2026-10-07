@@ -116,160 +116,151 @@ Hop.Graphics = {
     }
     ctx.restore();
   },
-  // Display-only: flashy SPECIAL cut-in progress (pure). age = total - remaining.
-  // Returns wipe/slide/pops/shake/flash/ray phase for drawing; never mutates game.
+  // Display-only: early ToE/Destiny2/Symphonia-feel band cut-in progress (pure). age = total - remaining.
+  // Short flash → band wipe across → hold → fade. Original geometry — not a frame copy. Never mutates game.
   specialCutinStyle(age, reducedMotion = false, strong = false) {
     const c = Hop.CONFIG, total = c.specialCutinDuration;
-    const idle = { visible: false, alpha: 0, wipe: 0, slide: 0, portraitPop: 1, titlePop: 1, shakeX: 0, shakeY: 0, flash: 0, raySpin: 0, spark: 0 };
+    const idle = { visible: false, alpha: 0, wipe: 0, portraitPop: 1, shakeX: 0, shakeY: 0, flash: 0 };
     if (!(age >= 0) || age >= total) return idle;
     if (reducedMotion) {
       return age < c.specialCutinReducedDuration
-        ? { ...idle, visible: true, alpha: 1, wipe: 1, portraitPop: 1, titlePop: 1 }
+        ? { ...idle, visible: true, alpha: 1, wipe: 1, portraitPop: 1 }
         : idle;
     }
     const impactT = c.specialCutinImpact, wipeT = c.specialCutinWipe;
     const holdEnd = impactT + wipeT + c.specialCutinHold;
     const easeOut = t => 1 - (1 - Math.max(0, Math.min(1, t))) ** 3;
-    const easeOutBack = t => { t = Math.max(0, Math.min(1, t)); return 1 + 2.70158 * (t - 1) ** 3 + 1.70158 * (t - 1) ** 2; };
-    let alpha = 1, wipe = 1, slide = 0, portraitPop = 1, titlePop = 1, flash = 0, shakeX = 0, shakeY = 0;
-    const shakeMul = strong ? 1.55 : 1;
-    const flashMul = strong ? 1.25 : 1;
+    const shakeMul = strong ? 1.35 : 1, flashMul = strong ? 1.25 : 1;
+    let alpha = 1, wipe = 1, portraitPop = 1, flash = 0, shakeX = 0, shakeY = 0;
     if (age < impactT) {
-      const u = age / impactT;
-      flash = (1 - u) * c.specialCutinFlashPeak * flashMul;
+      const u = age / Math.max(1e-6, impactT);
+      flash = (1 - u * 0.4) * c.specialCutinFlashPeak * flashMul;
       const amp = (1 - u) * c.specialCutinShakePx * shakeMul;
-      shakeX = Math.sin(age * 90) * amp;
-      shakeY = Math.cos(age * 110) * amp * 0.65;
-      wipe = 0.15 + 0.2 * u;
-      slide = 1 - u * 0.4;
-      portraitPop = c.specialCutinPortraitPop;
-      titlePop = c.specialCutinTitlePop;
+      shakeX = Math.sin(age * 90) * amp; shakeY = Math.cos(age * 110) * amp * 0.6;
+      wipe = 0.08 + 0.2 * u; portraitPop = c.specialCutinPortraitPop;
     } else if (age < impactT + wipeT) {
       const u = (age - impactT) / wipeT;
-      wipe = 0.35 + 0.65 * easeOut(u);
-      slide = (1 - easeOut(u)) * 0.55;
-      portraitPop = c.specialCutinPortraitPop - (c.specialCutinPortraitPop - 1) * easeOutBack(u);
-      titlePop = c.specialCutinTitlePop - (c.specialCutinTitlePop - 1) * easeOut(Math.min(1, u * 1.2));
-      flash = Math.max(0, (1 - u) * 0.2 * flashMul);
+      wipe = 0.28 + 0.72 * easeOut(u);
+      portraitPop = c.specialCutinPortraitPop - (c.specialCutinPortraitPop - 1) * easeOut(u);
+      flash = Math.max(0, (1 - u) * 0.18 * flashMul);
+      const amp = (1 - u) * c.specialCutinShakePx * 0.25 * shakeMul;
+      shakeX = Math.sin(age * 60) * amp; shakeY = Math.cos(age * 70) * amp * 0.5;
     } else if (age <= holdEnd) {
-      wipe = 1; slide = 0; portraitPop = 1; titlePop = 1;
-      // Soft idle pulse on rays only (spark/raySpin below).
+      wipe = 1; portraitPop = 1;
     } else {
       const fadeT = Math.max(1e-6, total - holdEnd);
-      alpha = Math.max(0, 1 - (age - holdEnd) / fadeT);
-      wipe = 1;
+      const u = (age - holdEnd) / fadeT;
+      alpha = Math.max(0, 1 - u); wipe = 1;
     }
-    return {
-      visible: alpha > 0.01, alpha, wipe, slide, portraitPop, titlePop, shakeX, shakeY, flash,
-      raySpin: age * (strong ? 2.8 : 2.1), spark: age * 6.5
-    };
+    return { visible: alpha > 0.01, alpha, wipe, portraitPop, shakeX, shakeY, flash };
   },
-  // Flashy fighting-game cut-in. Reads game.specialCutin only; never mutates game.
+  // Early-Tales band insert (original). Flat/duotone character band sweeps across; skill name at the edge.
   specialCutin(ctx, g, visual) {
     const cut = g.specialCutin; if (!cut) return;
     const c = Hop.CONFIG, age = cut.total - cut.remaining;
     const style = this.specialCutinStyle(age, !!visual?.reducedMotion, !!cut.strong);
     if (!style.visible) return;
-    const bandH = c.specialCutinBandHeight, bandY = (c.height - bandH) / 2;
-    const accent = cut.strong ? "#e8c45a" : (Hop.CAST[cut.castId]?.color || "#674488");
-    const slidePx = style.slide * (c.width * 0.42);
+    const accent = cut.strong ? "#e8c878" : (Hop.CAST[cut.castId]?.color || "#674488");
+    const tilt = c.specialCutinBandTiltDeg * Math.PI / 180;
+    const bandH = c.specialCutinBandHeight;
+    const cy = c.height * 0.48;
+    const reveal = Math.max(0.02, Math.min(1, style.wipe));
+    const bandW = c.width * 1.15;
     ctx.save();
+    ctx.globalAlpha = style.alpha;
     ctx.translate(style.shakeX, style.shakeY);
-    // Impact white flash (screen-wide).
+    // Modest dim (early inserts were brief overlays)
+    ctx.fillStyle = cut.strong ? "rgba(36,28,10,0.28)" : "rgba(10,10,18,0.30)";
+    ctx.fillRect(-20, -20, c.width + 40, c.height + 40);
     if (style.flash > 0.01) {
-      ctx.globalAlpha = Math.min(1, style.flash);
-      ctx.fillStyle = cut.strong ? "#fff6c0" : "#ffffff";
-      ctx.fillRect(-20, -20, c.width + 40, c.height + 40);
-    }
-    // Speed lines / rays behind the band.
-    if (!visual?.reducedMotion && style.wipe > 0.2) {
       ctx.save();
-      ctx.globalAlpha = style.alpha * (cut.strong ? 0.55 : 0.38) * Math.min(1, style.wipe);
-      ctx.translate(c.width * 0.5, bandY + bandH * 0.5);
-      for (let i = 0; i < c.specialCutinRayCount; i++) {
-        const a = style.raySpin + i * Math.PI * 2 / c.specialCutinRayCount;
-        const len = 220 + (i % 3) * 90;
-        ctx.rotate(a);
-        ctx.fillStyle = cut.strong ? "#ffe9a0" : accent;
-        ctx.fillRect(40, -3 - (i % 2), len, 2 + (i % 3));
-        ctx.rotate(-a);
-      }
+      ctx.globalAlpha = Math.min(1, style.flash);
+      ctx.fillStyle = cut.strong ? "#fff6d8" : "#ffffff";
+      ctx.fillRect(-20, -20, c.width + 40, c.height + 40);
       ctx.restore();
     }
-    // Diagonal wipe clip for the band.
-    const wipeX = -80 + style.wipe * (c.width + 160);
     ctx.save();
+    ctx.translate(c.width * 0.5, cy);
+    ctx.rotate(-tilt);
+    const hw = bandW / 2, hh = bandH / 2, skew = 36;
+    // Wipe reveal left → right
     ctx.beginPath();
-    ctx.moveTo(-40 + style.shakeX, bandY - 30);
-    ctx.lineTo(wipeX, bandY - 30);
-    ctx.lineTo(wipeX - 70, bandY + bandH + 30);
-    ctx.lineTo(-40, bandY + bandH + 30);
-    ctx.closePath();
+    ctx.rect(-hw - 4, -hh - 30, bandW * reveal + 8, bandH + 60);
     ctx.clip();
-    ctx.globalAlpha = style.alpha * 0.78;
-    ctx.fillStyle = cut.strong ? "#2a2010" : "#1a1520";
-    ctx.fillRect(-20, bandY, c.width + 40, bandH);
-    // Accent stripes
-    ctx.globalAlpha = style.alpha;
-    ctx.fillStyle = accent;
-    ctx.fillRect(0, bandY, 18, bandH);
-    ctx.fillRect(0, bandY, c.width, 8);
-    ctx.fillRect(0, bandY + bandH - 8, c.width, 8);
-    // Diagonal slash highlight
+    // Opaque flat band (single-tone plate)
+    ctx.beginPath();
+    ctx.moveTo(-hw + skew, -hh); ctx.lineTo(hw + skew * 0.2, -hh);
+    ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
+    ctx.closePath();
+    ctx.fillStyle = cut.strong ? "#5a4218" : "#241830";
+    ctx.fill();
+    // Accent duotone wash on the plate (solid, not translucent over the stage)
     ctx.save();
-    ctx.globalAlpha = style.alpha * 0.35;
-    ctx.translate(c.width * 0.55 - slidePx, bandY + bandH * 0.5);
-    ctx.rotate(-0.35);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(-c.width, -10, c.width * 2, 20);
-    ctx.restore();
-    // Sparks along the wipe edge
-    if (!visual?.reducedMotion) {
-      ctx.globalAlpha = style.alpha * 0.9;
-      for (let i = 0; i < c.specialCutinSparkCount; i++) {
-        const t = (i / c.specialCutinSparkCount + style.spark * 0.02) % 1;
-        const sx = wipeX - 40 - t * 30;
-        const sy = bandY + 20 + (i * 97) % (bandH - 40);
-        const r = 2 + (i % 4);
-        this.circle(ctx, sx, sy, r, i % 2 ? accent : "#fff4c8");
-      }
-    }
-    // Portrait with pop scale
-    const px = 210 - slidePx, feet = bandY + bandH - 16;
+    ctx.clip();
+    const wash = ctx.createLinearGradient(0, -hh, 0, hh);
+    if (typeof wash?.addColorStop === "function") {
+      wash.addColorStop(0, accent);
+      wash.addColorStop(0.45, cut.strong ? "#8a6830" : "#3a2848");
+      wash.addColorStop(1, cut.strong ? "#3a2a10" : "#181020");
+      ctx.fillStyle = wash;
+    } else ctx.fillStyle = accent;
+    ctx.globalAlpha = style.alpha * 0.85;
+    ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
+    // Large portrait centered in band
+    ctx.globalAlpha = style.alpha;
     {
       const layer = Hop.Sprites?.castLayer?.(cut.castId, 0);
-      const base = (layer?.scale || 1.25) * c.specialCutinPortraitScale * style.portraitPop;
+      const feetY = hh - 14;
+      const scale = (layer?.scale || 1.25) * c.specialCutinPortraitScale * style.portraitPop;
       let drawn = false;
       if (layer?.asset?.ready) {
         if (layer.flip) {
           ctx.save();
-          try { ctx.translate(px, 0); ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feet, base); }
+          try { ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feetY, scale); }
           finally { ctx.restore(); }
-        } else drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, px, feet, base);
+        } else drawn = !!Hop.Sprites.draw(ctx, layer.asset, 0, 0, feetY, scale);
       }
-      if (!drawn) this.character(ctx, cut.castId, px, feet, 1.25 * c.specialCutinPortraitScale * 0.55 * style.portraitPop);
+      if (!drawn) this.character(ctx, cut.castId, 0, feetY, 1.15 * c.specialCutinPortraitScale * 0.5 * style.portraitPop);
+      // Light monochrome plate wash over the portrait (early single-tone insert feel)
+      ctx.globalAlpha = style.alpha * (cut.strong ? 0.18 : 0.22);
+      ctx.fillStyle = cut.strong ? "#ffe9a0" : accent;
+      ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
     }
-    // Titles with pop
-    const tx = 420 - slidePx * 0.35;
-    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.save();
-    ctx.translate(tx, bandY + 58);
-    ctx.scale(style.titlePop, style.titlePop);
-    ctx.fillStyle = "#fff8e8"; ctx.font = "bold 28px system-ui";
-    ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", 0, 0);
     ctx.restore();
-    ctx.save();
-    ctx.translate(tx, bandY + 128);
-    ctx.scale(style.titlePop, style.titlePop);
-    ctx.fillStyle = accent; ctx.font = "bold 56px system-ui";
-    ctx.fillText(cut.name, 0, 0);
-    ctx.restore();
+    // Thin rim
     ctx.globalAlpha = style.alpha;
-    ctx.fillStyle = "#f0e6d4"; ctx.font = "bold 26px system-ui";
-    const sub = cut.merchantType ? `Type ${cut.merchantType} / ${cut.castName}` : `${cut.castName} · ${cut.type}`;
-    ctx.fillText(sub, tx, bandY + 178);
-    ctx.restore(); // wipe clip
-    ctx.restore(); // shake
+    ctx.strokeStyle = cut.strong ? "#f0d890" : "#f5eef8";
+    ctx.lineWidth = cut.strong ? 5 : 3;
+    ctx.beginPath();
+    ctx.moveTo(-hw + skew, -hh); ctx.lineTo(hw + skew * 0.2, -hh);
+    ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
+    ctx.closePath(); ctx.stroke();
+    ctx.restore(); // band transform + wipe
+    // Skill name at band trailing edge / outside (large)
+    const nameX = c.width * (0.10 + reveal * 0.52);
+    const nameY = cy + bandH * 0.38 + 40;
+    ctx.save();
+    ctx.translate(nameX, nameY);
+    ctx.rotate(-tilt * 0.55);
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 11;
+    ctx.strokeStyle = cut.strong ? "#4a3010" : "#141018";
+    ctx.fillStyle = cut.strong ? "#ffe9a8" : "#fff6ee";
+    ctx.font = `bold ${c.specialCutinNameSize}px system-ui`;
+    ctx.strokeText(cut.name, 0, 0); ctx.fillText(cut.name, 0, 0);
+    ctx.restore();
+    // Cast / SPECIAL — subdued, above band
+    ctx.globalAlpha = style.alpha * 0.85;
+    ctx.textAlign = "left";
+    ctx.font = "bold 18px system-ui";
+    ctx.fillStyle = "#efe8f6";
+    const tag = cut.merchantType ? `MERCHANT · Type ${cut.merchantType}` : `${cut.castName}`;
+    ctx.fillText(tag, c.width * 0.06, cy - bandH * 0.5 - 22);
+    ctx.font = "bold 14px system-ui";
+    ctx.fillStyle = accent;
+    ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", c.width * 0.06, cy - bandH * 0.5 - 4);
+    ctx.restore();
   },
   draw(ctx, g, visual) {
     const c = Hop.CONFIG, ground = c.groundY + g.cameraY;
