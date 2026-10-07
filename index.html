@@ -84,12 +84,12 @@
       <p id="storage-status"></p>
     </section>
     <details class="rules"><summary>遊び方・仲間の効果・SPECIAL条件</summary>
-      <p>画面をタップ / 左クリックするだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。UPは落下を止めてから45°へ800px/s加算（魔法使いのBOOSTと同じ強さ）。DOWNは今の飛行角を水平線で折り返した反射角でダイブし、地面かキャラに触れるまでその角度を維持（浅い上昇は最低30°）。DOWNは使用後0%になり、通常飛行1.5秒で100%へ充電して再使用。SPECIAL受付・成功失敗表示・商人登場・浮遊中は充電停止。SPECIALは1秒以内にタップ。成功時は決め顔ドアップのカットインと、SPECIALごとの専用SEあり。RESULTも画面タップでRETRY。</p>
+      <p>画面をタップ / 左クリックするだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。UPは落下を止めてから45°へ800px/s加算（魔法使いのBOOSTと同じ強さ）。DOWNは今の飛行角を水平線で折り返した反射角でダイブし、地面かキャラに触れるまでその角度を維持（浅い上昇は最低30°）。DOWNは使用後0%になり、通常飛行1.5秒で100%へ充電して再使用。SPECIAL受付・成功失敗表示・浮遊中は充電停止。SPECIALは1秒以内にタップ。成功時は決め顔ドアップのカットインと、SPECIALごとの専用SEあり。RESULTも画面タップでRETRY。</p>
       <p>魔法使い（BOOST）：45°へ800px/s加算 / 武闘家（BOUNCE）：60°へ880px/s加算 / 盗賊（BRAKE）：速度全体を半減 / 遊び人（ANGLE）：速さを保ち90°−角度の絶対値へ変更 / 戦士（DASH）：25°へ880px/s加算 / 賢者（GUARD）：次の1接触まで結界 / 僧侶（STOPPER）：強制停止</p>
       <p id="special-rules"></p>
       <p>BRAKE SPECIAL成功は速度・角度を維持。ANGLE SPECIAL成功は速度を保ち水平へ。GUARD SPECIAL成功はSTOPPER専用防御10秒。通常GUARDは次の接触で消滅し、BOOST・BOUNCE・DASH・STOPPERを防ぎます（BRAKE・ANGLEは防ぎません）。</p>
-      <p>接触判定は商人SPECIAL → 通常SPECIAL → 通常GUARD → GUARD SPECIAL → 通常効果。GUARD SPECIALは受付・成功失敗表示・商人登場・浮遊中に残り時間が止まり、再GUARD接触でも時間は更新せず通常GUARDだけ追加します。商人成功でもGUARD SPECIALは消費しません。</p>
-      <p>商人：STOPPER→A（キャラ加速3回の正の追加量2倍）、DASH→B（加速で最大10CHARGE、停止時に復活）、BOOST→C（100体通過する水平浮遊）、BOUNCE→D（地面反発5回加速）。同時保持は1種類、獲得時に上書き。A/BはBRAKE・ANGLE・GUARD SPECIALを対象にしません。</p>
+      <p>接触判定は通常SPECIAL → 通常GUARD → GUARD SPECIAL → 通常効果。GUARD SPECIALは受付・成功失敗表示・浮遊中に残り時間が止まり、再GUARD接触でも時間は更新せず通常GUARDだけ追加します。</p>
+      <p>ごくまれに謎の商人が現れる…？</p>
       <details><summary>開発用：DキーでDEBUG切替</summary><p>DEBUGは7種を一定間隔で順に配置します（通常の100m境界枠は追加しません）。一度でもDEBUGを使ったプレイは記録対象外。OFFに戻してRETRYすると通常の記録対象に戻ります。</p></details>
     </details>
   </main>

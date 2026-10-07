@@ -114,7 +114,7 @@ Hop.UI = class {
     document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : success ? success.detail : g.specialMessage?.detail || "";
     document.getElementById("special-track").hidden = !g.special;
     document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
-    document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL、BOUNCE→BOOST隣接でBOUNCE SPECIAL（未使用キャラのx順）。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL。通常GUARDまたはGUARD SPECIAL中、各${c.boundaryMeters}m区間の最後${c.merchantZoneMeters}mから、その境界ちょうどのBOOST・BOUNCE・DASH・STOPPERに当たると、まれに（${Math.round(c.merchantChance * 100)}%）隠しキャラの商人SPECIAL（外れたら通常どおり判定）。BRAKE：AERIAL DOWN成功後、地面・他キャラ・UPなしで接触。ANGLE：接触時10%抽選。GUARD：通常GUARDを持って再GUARD。`;
+    document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL、BOUNCE→BOOST隣接でBOUNCE SPECIAL（未使用キャラのx順）。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL。BRAKE：AERIAL DOWN成功後、地面・他キャラ・UPなしで接触。ANGLE：接触時10%抽選。GUARD：通常GUARDを持って再GUARD。ごくまれに謎の商人が現れる…？`;
     const chargeText = g.downCharge >= 1 ? "READY" : `${Math.min(99, Math.floor(g.downCharge * 100 + 1e-9))}%`;
     document.getElementById("down-charge").value = g.downCharge;
     set("up-status", `AERIAL ↑ ×${g.upRemaining}`);
@@ -152,7 +152,10 @@ Hop.UI = class {
       document.getElementById("result-height").textContent = `${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m`;
       document.getElementById("result-speed").textContent = `${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s`;
       document.getElementById("contact-totals").textContent = `接触総数 ${g.history.length} / SPECIAL発生 ${g.specialCount} / 成功 ${g.specialSuccesses}`;
-      document.getElementById("merchant-totals").textContent = `商人SPECIAL発生 ${g.merchantStats.attempts} / 成功 ${g.merchantStats.successes} / 最終Type ${g.merchantStats.lastType || "—"} / 復活 ${g.merchantStats.revives}`;
+      // Hidden character: merchant totals only after meeting the merchant this run, or in DEBUG plays.
+      const metMerchant = g.debugUsed || g.merchantStats.attempts > 0 || g.merchantStats.successes > 0;
+      document.getElementById("merchant-totals").hidden = !metMerchant;
+      document.getElementById("merchant-totals").textContent = !metMerchant ? "" : `商人SPECIAL発生 ${g.merchantStats.attempts} / 成功 ${g.merchantStats.successes} / 最終Type ${g.merchantStats.lastType || "—"} / 復活 ${g.merchantStats.revives}`;
       document.getElementById("type-counts").textContent = Object.entries(g.counts).map(([type, count]) => `${Hop.CAST[type].name} ${type} ${count}`).join(" · ");
       document.getElementById("best-comparison").textContent = [
         `DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`,
@@ -182,10 +185,10 @@ Hop.UI = class {
       const eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner :
         rule.trigger === "guard" ? g.normalGuard && !g.guardSpecial.active :
         rule.trigger === "chance" ? false : g.specialArmed[rule.trigger]);
-      const merchant = zone && Math.abs(object.x / c.pixelsPerMeter - zone.boundary) < 1e-7 && c.merchantTypes[object.type];
-      // The merchant is a rare draw (merchantChance), so its preview only promises a chance ("MERCHANT?");
-      // a guaranteed ordinary SPECIAL keeps its own label.
-      return merchant || eligible ? [{ object, label: eligible ? "SPECIAL" : "MERCHANT?" }] : [];
+      // The merchant is a hidden character (rare draw): normal play never previews it. Only DEBUG plays (which
+      // skip the draw, so the merchant is certain there) mark the boundary target as "MERCHANT".
+      const merchant = g.debug && zone && Math.abs(object.x / c.pixelsPerMeter - zone.boundary) < 1e-7 && c.merchantTypes[object.type];
+      return merchant || eligible ? [{ object, label: merchant ? "MERCHANT" : "SPECIAL" }] : [];
     });
   }
   static highlights(g) {
@@ -222,7 +225,8 @@ Hop.UI = class {
     }
     el("ready-targets").hidden = !targets.size;
     el("ready-targets").textContent = targets.size ? "SPECIAL READY · 対象：" + [...targets].join(" / ") : "";
-    const zone = Hop.UI.zone(g);
+    // MERCHANT ZONE hint: DEBUG plays only (the merchant is hidden in normal play).
+    const zone = g.debug ? Hop.UI.zone(g) : null;
     el("merchant-zone").hidden = !zone || !!g.specialMessage;
     el("merchant-zone").textContent = zone ? "MERCHANT ZONE · あと " + zone.remaining.toFixed(1) + "m" : "";
     // Announce edges only: never percent, seconds or a repeated frame.
