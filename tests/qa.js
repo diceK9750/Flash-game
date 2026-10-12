@@ -70,6 +70,7 @@
       if (name === 'HUD CHARGE') { game.acquireMerchant('B'); game.merchant.charge = 7; game.downCharge = .63; }
 
       if (name === 'GUARD期限直前') game.guardSpecial = { active: true, remaining: 0.3 };
+      // B仕様: 専用防御中はSTOPPERを何回でも防ぐ（「次の通常STOPPER」を繰り返しても結界は残り、normalGuardはBOOST/BOUNCE/DASH用に温存）。終了は10秒タイマーのみ。
       if (name === 'GUARD二重防御') { game.guardSpecial = { active: true, remaining: 7.4 }; contact('GUARD'); }
       if (name === '通常GUARD防御') { game.normalGuard = 1; contact('STOPPER'); }
       if (name === 'GUARD SPECIAL防御') { game.guardSpecial = { active: true, remaining: 7.4 }; contact('STOPPER'); }

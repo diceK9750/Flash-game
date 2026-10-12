@@ -4,10 +4,12 @@ Hop.bindInput = function (game, ui) {
     if (event.button !== 0 || event.isPrimary === false) return;
     if (game.state === Hop.STATES.FLYING) event.preventDefault();
     Hop.Audio?.unlock();
+    try { Hop.Voice?.unlock(game.debug); } catch { /* Optional voice must never affect input. */ }
     game.act(); ui.update();
   });
   document.getElementById("se-toggle").addEventListener("click", () => {
     Hop.Audio.setMuted(!Hop.Audio.muted);
+    try { Hop.Voice?.syncMute(); } catch { /* Optional voice must never affect the mute control. */ }
     if (!Hop.Audio.muted) Hop.Audio.unlock();
     ui.update();
   });
