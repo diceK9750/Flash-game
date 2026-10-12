@@ -32,7 +32,7 @@ if (!process.argv.includes('--serve')) {
     assert(new URL(file, 'https://example.test/repo/').pathname.startsWith('/repo/'));
   }
   // Static publication contract: local assets must also work below a Pages subpath.
-  const required = ['index.html', '.nojekyll', 'favicon.svg', 'css/style.css', ...['config','game','physics','input','ui','graphics','audio','main'].map(name => 'js/' + name + '.js')];
+  const required = ['index.html', '.nojekyll', 'favicon.svg', 'css/style.css', 'assets/audio/voices/dist/hero_launch.mp3', 'assets/audio/voices/voice-registry.json', 'scripts/accept_voice_assets.cjs', ...['config','game','physics','input','ui','graphics','audio','voice','main'].map(name => 'js/' + name + '.js')];
   for (const file of required) assert(fs.statSync(path.join(root, file)).isFile(), 'Missing required file: ' + file);
   function localAsset(ref, base = "") {
     assert(ref && !/^(?:[a-z][a-z0-9+.-]*:|[/\\])/i.test(ref), 'Asset must be relative: ' + ref);
@@ -78,7 +78,7 @@ if (!process.argv.includes('--serve')) {
   const http = require('node:http');
   const spriteDirs = ['assets/sprites/hero/flight_loop/', 'assets/sprites/hero/hero_flight_comic_v1/', 'assets/sprites/hero/hero_aerial_up_v1_bundle/', 'assets/sprites/hero/hero_aerial_up_comic_v1/', 'assets/sprites/hero/hero_aerial_down_v1_bundle/', 'assets/sprites/hero/hero_aerial_down_comic_v1/', 'assets/sprites/hero/hero_ground_bounce_v1_bundle/', 'assets/sprites/hero/hero_ground_bounce_comic_v1/', 'assets/sprites/hero/hero_stop_result_v1_bundle/', 'assets/sprites/hero/hero_stop_result_comic_v1/', 'assets/sprites/hero/hero_hit_hd_v1/', 'assets/sprites/hero/idle/', 'assets/sprites/hero/hero_idle_comic_v1/', 'assets/sprites/hero/hero_special_reaction_v1_bundle/', 'assets/sprites/hero/hero_special_reaction_comic_v1/',
     ...['boost_witch', 'boost_witch_comic_v1', 'bounce_fighter', 'bounce_fighter_comic_v1', 'brake_thief', 'brake_thief_comic_v1', 'angle_jester', 'angle_jester_comic_v1', 'dash_warrior', 'dash_warrior_comic_v1', 'guard_sage', 'guard_sage_comic_v1', 'stopper_cleric', 'stopper_cleric_comic_v1', 'merchant', 'merchant_comic_v1', 'boost_witch_combo_v1', 'bounce_fighter_combo_v1'].flatMap(name => /_(?:comic|combo)_v1$/.test(name) ? [name] : [name, name + '_cutin_face', name + '_cutin_face_v2']).map(name => 'assets/sprites/cast/' + name + '/'), 'assets/sprites/truck/truck_comic_v1/'].filter(dir => fs.existsSync(path.join(root, dir)));
-  const allowed = new Set(['index.html', 'favicon.svg', 'css/style.css', ...fs.readdirSync(path.join(root, 'js')).map(f => 'js/' + f), ...spriteDirs.flatMap(dir => fs.readdirSync(path.join(root, dir)).filter(f => /\.(png|json|gif)$/.test(f)).map(f => dir + f))]);
+  const allowed = new Set(['index.html', 'favicon.svg', 'css/style.css', 'assets/audio/voices/dist/hero_launch.mp3', 'assets/audio/voices/voice-registry.json', ...fs.readdirSync(path.join(root, 'js')).map(f => 'js/' + f), ...spriteDirs.flatMap(dir => fs.readdirSync(path.join(root, dir)).filter(f => /\.(png|json|gif)$/.test(f)).map(f => dir + f))]);
   const qa = '<script>' + fs.readFileSync(path.join(__dirname, 'qa.js'), 'utf8') + '</script>';
   http.createServer((req, res) => {
     const prefix = '/NANACACRASH/';
@@ -86,7 +86,7 @@ if (!process.argv.includes('--serve')) {
     const file = req.url.slice(prefix.length) || 'index.html';
     if (file === 'qa.html') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html.replace('<script defer src="js/main.js"></script>', '').replace('</body>', qa + '</body>').replaceAll(' defer ', ' ')); return; }
     if (!allowed.has(file)) { res.writeHead(404); res.end(); return; }
-    res.setHeader('Content-Type', file.endsWith('.png') ? 'image/png' : file.endsWith('.gif') ? 'image/gif' : file.endsWith('.json') ? 'application/json' : file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8');
+    res.setHeader('Content-Type', file.endsWith('.mp3') ? 'audio/mpeg' : file.endsWith('.png') ? 'image/png' : file.endsWith('.gif') ? 'image/gif' : file.endsWith('.json') ? 'application/json' : file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8');
     fs.createReadStream(path.join(root, file)).pipe(res);
   }).listen(8765, '127.0.0.1', () => console.log('Preview http://127.0.0.1:8765/NANACACRASH/ | QA: /NANACACRASH/qa.html'));
 }

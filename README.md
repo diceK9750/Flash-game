@@ -38,7 +38,7 @@
 | STOPPER / 聖光反転 | BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER | 2300 px/s・35° |
 | BRAKE / 影すり抜け | AERIAL DOWN成功後、地面・他キャラ・UPなしでBRAKE | 接触前の速度・角度を完全維持 |
 | ANGLE / 水平曲芸 | 接触時10%抽選（Gameのrandomを使用） | 速度量を維持して0°へ |
-| GUARD / 聖護結界 | normalGuard所持で次の相手がGUARD | STOPPER専用防御10秒 |
+| GUARD / 聖護結界 | normalGuard所持で次の相手がGUARD | 10秒間STOPPERを何回でも防ぐ |
 
 ペアSPECIAL成功時は相手も使用済みになります。失敗時は接触元の通常効果だけ適用し、相手を残します。DASH準備は地面・BRAKE・ANGLE・GUARDでは解除されず、SPECIAL受付開始・成功・失敗で解除されます。STOPPER準備はBRAKE・ANGLEでは解除されず、地面バウンド・GUARD・STOPPERで解除されます。旧仕様の速度・飛距離しきい値は使用しません。
 
@@ -48,9 +48,9 @@ BRAKE準備に時間制限はありません。地面バウンド、BRAKE以外�
 
 normalGuardは次の誰か1人への接触で必ず終了します。BOOST・BOUNCE・DASH・STOPPERを防ぎ、BRAKE・ANGLEは防ぎません。SPECIAL判定は接触直前の保持状態で行い、受付後は通常GUARDを持ち越しません。失敗時の防御も、その接触に確保した1回分だけを使用します。
 
-GUARD SPECIALはSTOPPERの通常効果だけを1回防ぐか、プレイ可能時間10秒で消滅します。STOPPER SPECIAL成功時は温存、失敗時は専用防御で防ぎ消費します。受付・成功／失敗表示・商人登場演出・商人Type C中はタイマー停止。普通の接触エフェクト中は減少します。
+GUARD SPECIALはプレイ可能時間10秒のあいだ、STOPPERの通常効果を何回でも防ぎます（防いでも消費せず、終了は10秒の経過だけ）。STOPPER SPECIAL成功時も失敗時（専用防御で防ぐ）も結界は残ります。受付・成功／失敗表示・商人登場演出・商人Type C中はタイマー停止。普通の接触エフェクト中は減少します。
 
-専用防御中にGUARDへ再接触しても残時間は更新せず、normalGuardだけを追加します。この場合は両方保持でき、STOPPERに対して通常GUARD→専用防御の順で最大2回防げます。専用防御中の再GUARDではSPECIALを再受付しません。
+専用防御中にGUARDへ再接触しても残時間は更新せず、normalGuardだけを追加します。この場合は両方保持できます。STOPPERは専用防御が先に防ぐのでnormalGuardは消費せず、次のBOOST・BOUNCE・DASHへの防御に残ります（専用防御中のSTOPPERは回数制限なし）。専用防御中の再GUARDではSPECIALを再受付しません。
 
 ### 謎の商人
 
@@ -66,7 +66,7 @@ GUARD SPECIALはSTOPPERの通常効果だけを1回防ぐか、プレイ可能�
 
 同じキャラは1画面に1人まで：配置の抽選では、置く位置から `castRepeatWindow`（1400px＝画面幅1280px＋両端の名前札）以内にいる職業を除いて引き直します（乱数は1体につき1回で従来どおり。位置・間隔・境界の規則も従来どおり）。全職業が近くにいる場合は、いちばん遠くにいる職業を選びます（間隔の規則上、画面内の配置は最大6人なので通常は起きません）。除外で出現比率が珍しい職業に寄るのを抑えるため、抽選の重みは `castPickWeights`（実測で調整）を使い、結果の比率は `objectWeights` の目安に近くなります（測定：魔法使い28.0%→24.6%、武闘家22.0→21.8、盗賊18.0→18.8、遊び人12.0→12.8、戦士8.0→9.0、賢者6.9→7.7、僧侶5.1→5.3%）。魔法使いは1画面1人の条件だと約25%が上限です。商人は配置物ではなく、商人SPECIALのときだけ勇者の横に1人出ます。
 
-優先順位は **商人SPECIAL → 通常SPECIAL → normalGuard → GUARD SPECIAL → 通常効果**。normalGuardは接触判定後に終了します。GUARD SPECIALは商人の受付・成功では消費せず、商人失敗後の通常STOPPER防御時だけ消費します。失敗で別のSPECIAL受付を開始することはありません。
+優先順位は **商人SPECIAL → 通常SPECIAL → GUARD SPECIAL（STOPPERのみ） → normalGuard → 通常効果**。normalGuardは接触判定後に終了します（専用防御がSTOPPERを防いだ接触では温存）。GUARD SPECIALは商人の受付・成功・失敗でも、STOPPERを防いでも消費せず、10秒の経過でだけ終了します。失敗で別のSPECIAL受付を開始することはありません。
 
 | 接触先 | 商人効果 | 終了条件 |
 | --- | --- | --- |
@@ -160,7 +160,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 - `node tests/sprites-stop-result.cjs`：STOP_RESULTのフラグとファイルの整合、JSON（sequence）の検証、無効時に画像を要求しないこと、30/60/120/144Hzでのタイミング（停止したフレームで開始し、全コマを1回ずつ再生）、RESULT中は最後のコマを保持すること、RETRYでCanvas勇者に戻ること、動きを減らす設定では最後のコマ、素材なし・描画失敗時のフォールバック、空中停止の除外、Type Bの再出発で解除されること、描画してもゲーム状態と物理が変わらないこと。
 - `node tests/sprites-result-overlay.cjs`：RESULTオーバーレイの不透明度の推移（30/60/120/144Hz）、ゲーム状態とRESULT画面の内容がすぐに表示する場合と同じであること、透明な間のタップでRETRYになること、空中停止・素材なし・動きを減らす設定ではすぐに表示すること。
 - `node tests/release.cjs`：全テストに加え、描画・必須ファイル・.nojekyll・共有メタ情報・ローカルアセットのサブパス解決・維持した物理設定を照合。
-- `node tests/release.cjs --serve`：`/NANACACRASH/qa.html` は検証専用。シナリオを選択して「準備」で通常効果・7SPECIAL・商人A〜D・BRAKE準備・GUARD期限／二重防御／浮遊中の時間停止を再現します。準備時は時間停止し、画面タップでSPECIAL成功、「再生」でタイマーを再開してMISSを確認できます。「次の通常STOPPER」「次のGUARD」で防御の順序も確認できます。QAプレイは保存しません。
+- `node tests/release.cjs --serve`：`/NANACACRASH/qa.html` は検証専用。シナリオを選択して「準備」で通常効果・7SPECIAL・商人A〜D・BRAKE準備・GUARD期限／二重防御（専用防御中はSTOPPERを何回でも防ぐ）／浮遊中の時間停止を再現します。準備時は時間停止し、画面タップでSPECIAL成功、「再生」でタイマーを再開してMISSを確認できます。「次の通常STOPPER」「次のGUARD」で防御の順序も確認できます。QAプレイは保存しません。
 
 テスト用のサーバー・QA画面はGitHub Pagesには必要ありません。
 

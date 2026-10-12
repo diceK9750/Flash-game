@@ -74,12 +74,24 @@ for(const type of ['BOOST','BOUNCE','BRAKE','ANGLE','DASH','GUARD'])test('GUARD 
  if(type==='GUARD'){assert.equal(g.normalGuard,1);hit(g,'GUARD');assert.equal(g.special,null);near(g.guardSpecial.remaining,7.4);assert.equal(g.normalGuard,1);}
 });
 test('both shields: normal STOPPER first, special STOPPER second',()=>{
- const g=isolated();shield(g,7.4);hit(g,'GUARD');hit(g,'STOPPER');assert.equal(g.normalGuard,0);assert(g.guardSpecial.active);near(g.body.vx,500);
- hit(g,'STOPPER');assert(!g.guardSpecial.active);assert(!g.body.stopped);near(g.body.vx,500);
+ const g=isolated();shield(g,7.4);hit(g,'GUARD');hit(g,'STOPPER');assert.equal(g.normalGuard,1,'special blocks STOPPER; normalGuard kept');assert(g.guardSpecial.active);near(g.body.vx,500);
+ hit(g,'STOPPER');assert(g.guardSpecial.active,'B: 2nd STOPPER also blocked, shield stays');assert(!g.body.stopped);near(g.body.vx,500);assert.equal(g.normalGuard,1);
+ hit(g,'BOOST');assert.equal(g.normalGuard,0);near(g.body.vx,500);assert.match(g.contact.label,/GUARD BLOCK/);
+});
+test('B: GUARD SPECIAL blocks repeated STOPPERs, timer is the only end',()=>{
+ const g=isolated();high(g);shield(g);for(let i=0;i<3;i++){hit(g,'STOPPER');assert(g.guardSpecial.active);assert(!g.body.stopped);}
+ near(g.guardSpecial.remaining,10);high(g);advance(g,10);assert(!g.guardSpecial.active);
+ high(g);hit(g,'STOPPER');assert(g.body.stopped,'after 10s STOPPER is no longer blocked');assert(!g.contact.label.includes('GUARD BLOCK'));
+});
+test('B: merchant MISS -> STOPPER blocked by barrier keeps the normalGuard held at contact',()=>{
+ const g=isolated();shield(g,7.4);g.normalGuard=1;g.random=()=>c.merchantChance-1e-9;hit(g,'STOPPER',{x:800});
+ assert(g.special);assert.equal(g.special.merchantType,'A');assert.equal(g.special.guardAtContact,1);assert.equal(g.normalGuard,0);
+ g.resolveSpecial(false);assert.equal(g.merchant,null);assert(!g.body.stopped);near(g.body.vx,500);assert.match(g.contact.label,/GUARD BLOCK/);
+ assert(g.guardSpecial.active,'barrier stays up');near(g.guardSpecial.remaining,7.4);assert.equal(g.normalGuard,1,'normalGuard kept');
 });
 for(const success of [true,false])test('STOPPER SPECIAL before special shield '+success,()=>{
  const g=isolated();shield(g,7.4);hit(g,'BOOST');hit(g,'STOPPER');assert(g.special);g.resolveSpecial(success);
- assert.equal(g.guardSpecial.active,success);assert(!g.body.stopped);
+ assert(g.guardSpecial.active,'B: STOPPER SPECIAL success keeps the shield, MISS is blocked by it and it stays');assert(!g.body.stopped);
  if(success){near(Math.hypot(g.body.vx,g.body.vy),2300);assert(g.successVisual.strong);assert.equal(g.soundEvent,'SPECIAL_STOPPER');}
 });
 for(const fps of [30,60,120,144])test('10s playable guard timer at '+fps+' fps',()=>{

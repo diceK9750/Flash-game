@@ -2,18 +2,19 @@
   {
     "key": "hero_launch",
     "character": "勇者",
-    "gemini_voice": "Puck",
+    "gemini_voice": "unknown (Google AI Studio, user-made; voice name unverified)",
     "category": "HERO",
     "text": "うおおおっ、ぶっ飛ぶぜー！",
     "reading": "うおおおっ、ぶっとぶぜー！",
-    "style": "excitable shouted launch",
-    "duration_s": 0.9,
+    "style": "user-made Google AI Studio TTS",
+    "duration_s": 4.0,
     "peak_db": -1.72,
     "rms_db": -14.61,
     "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/hero_launch.wav",
     "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/hero_launch.mp3",
     "wav_bytes": 43244,
-    "mp3_bytes": 11853
+    "mp3_bytes": 11853,
+    "source": "user-made in Google AI Studio; not placeholder synthesis"
   },
   {
     "key": "hero_flight",
@@ -34,18 +35,19 @@
   {
     "key": "hero_stop",
     "character": "勇者",
-    "gemini_voice": "Puck",
+    "gemini_voice": "unknown (Google AI Studio, user-made; voice name unverified)",
     "category": "HERO",
     "text": "ぐはっ…ここまでか…",
     "reading": "ぐはっ…ここまでか…",
-    "style": "exhausted defeat reaction",
-    "duration_s": 0.85,
+    "style": "user-made Google AI Studio TTS",
+    "duration_s": 2.673,
     "peak_db": -1.72,
     "rms_db": -14.91,
     "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/hero_stop.wav",
     "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/hero_stop.mp3",
     "wav_bytes": 40844,
-    "mp3_bytes": 11277
+    "mp3_bytes": 11277,
+    "source": "user-made in Google AI Studio; not placeholder synthesis"
   },
   {
     "key": "special_boost",

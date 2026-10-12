@@ -7,7 +7,7 @@ Hop.UI = class {
     this.lastState = null;
     this.notices = { special: null, message: null, charge: 1, guard: false };
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, lastSpecialSuccesses: 0, lastMerchantSuccesses: 0, stopAt: null, frozenAt: null, reducedMotion: motion?.matches || false };
+    this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, lastSpecialSuccesses: 0, lastMerchantSuccesses: 0, flightVoicePlayed: false, stopAt: null, frozenAt: null, reducedMotion: motion?.matches || false };
     motion?.addEventListener?.("change", event => { this.visual.reducedMotion = event.matches; });
     this.initBacking();
   }
@@ -36,19 +36,56 @@ Hop.UI = class {
   update() {
     const g = this.game, c = Hop.CONFIG, s = Hop.STATES;
     this.updateQuality();
-    if (g.soundEvent) { Hop.Audio?.play(g.soundEvent); g.soundEvent = null; }
+    if (g.soundEvent) {
+      const sound = g.soundEvent; Hop.Audio?.play(sound); g.soundEvent = null;
+      if (sound === "SPECIAL_MERCHANT") {
+        const type = g.specialCutin?.merchantType || g.merchant?.type || g.merchantStats.lastType;
+        if (type && "ABCD".includes(type)) Hop.Voice?.play?.("special_merchant_" + type.toLowerCase(), g.debug, "MERCHANT_SUCCESS_" + type);
+      } else if (sound.startsWith("SPECIAL_")) {
+        const type = sound.slice("SPECIAL_".length).toLowerCase();
+        Hop.Voice?.play?.("special_" + type, g.debug, sound);
+      }
+    }
     // Combo scenes: the game picks the short version from this preference when a scene starts; the scene SE
     // track starts with the scene and is stopped when it is skipped (or on RETRY).
     if (g.comboShort !== !!this.visual.reducedMotion) g.comboShort = !!this.visual.reducedMotion;
     if (g.combo && g.combo !== this.comboSeen) {
       this.comboSeen = g.combo;
       Hop.Audio?.playCombo?.(`COMBO_${g.combo.type === "BOOST" ? "WITCH" : "FIGHTER"}${g.combo.short ? "_SHORT" : ""}`, g.combo.elapsed);
+      this.comboFinishVoicePlayed = false;
+      const kind = g.combo.type === "BOOST" ? "witch" : "fighter";
+      const id = g.combo.short ? `combo_${kind}_short` : `combo_${kind}_call`;
+      const event = g.combo.short ? `COMBO_${kind.toUpperCase()}_REDUCED_MOTION` : `COMBO_${kind.toUpperCase()}_START`;
+      Hop.Voice?.play?.(id, g.debug, event);
     } else if (!g.combo && this.comboSeen) {
-      if (this.comboSeen.skipped || g.state !== s.FLYING) Hop.Audio?.stopCombo?.();
+      if (this.comboSeen.skipped || g.state !== s.FLYING) {
+        Hop.Audio?.stopCombo?.();
+        try { Hop.Voice?.stop?.(); } catch { /* Optional voice interruption must not affect gameplay. */ }
+      }
       this.comboSeen = null;
+      this.comboFinishVoicePlayed = false;
+    }
+    if (g.combo && !g.combo.short && !this.comboFinishVoicePlayed) {
+      const witch = g.combo.type === "BOOST", threshold = witch ? c.comboWitchTimes.blast : c.comboFighterTimes.upper;
+      if (g.combo.elapsed >= threshold) {
+        this.comboFinishVoicePlayed = true;
+        const kind = witch ? "WITCH" : "FIGHTER";
+        Hop.Voice?.play?.(witch ? "combo_witch_blast" : "combo_fighter_upper", g.debug, `COMBO_${kind}_FINISH`);
+      }
+    }
+    if (this.lastState === s.FLYING && g.state !== s.FLYING) {
+      try {
+        Hop.Voice?.stop?.();
+        if (g.state === s.RESULT) Hop.Voice?.play?.("hero_stop", g.debug, "FLYING_TO_RESULT");
+      } catch { /* Optional voice must never affect gameplay. */ }
+    } else if (this.lastState === s.RESULT && g.state === s.AIM_ANGLE) {
+      try { Hop.Voice?.stop?.(); } catch { /* RETRY cannot be blocked by audio. */ }
     }
     const launched = g.state === s.FLYING && this.lastState === s.AIM_POWER;
-    if (launched) this.visual.launchAt = g.phaseTime;
+    if (launched) {
+      this.visual.launchAt = g.phaseTime;
+      try { Hop.Voice?.play?.("hero_launch", g.debug, "AIM_POWER_TO_FLYING"); } catch { /* Optional voice must never affect gameplay. */ }
+    }
     if (g.state === s.READY || g.state === s.AIM_ANGLE) this.visual.launchAt = -Infinity;
     // Display-only hero one-shots. A new AERIAL effect object or a new normal ground
     // bounce (body.bounces grew, still airborne, no new Type D "BOUND BOOST") starts the
@@ -58,7 +95,7 @@ Hop.UI = class {
     // RESULT keeps the last FLIGHT_LOOP frame when no STOP_RESULT plays (frozenAt = RESULT entry).
     if (g.state === s.RESULT) { if (!Number.isFinite(v.frozenAt)) v.frozenAt = g.phaseTime; }
     else v.frozenAt = null;
-    if (g.state !== s.FLYING) { v.oneShot = null; v.reactionAfterCombo = false; v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses; v.lastMerchantSuccesses = g.merchantStats.successes; }
+    if (g.state !== s.FLYING) { v.oneShot = null; v.reactionAfterCombo = false; v.flightVoicePlayed = false; v.lastEffect = g.effect; v.lastBounces = g.body.bounces; v.lastSpecialSuccesses = g.specialSuccesses; v.lastMerchantSuccesses = g.merchantStats.successes; }
     else {
       const fresh = g.effect !== v.lastEffect ? g.effect : null;
       const bounced = g.body.bounces > v.lastBounces;
@@ -71,6 +108,10 @@ Hop.UI = class {
       if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && sp?.groundBounceAllowed?.(v, g.phaseTime, g.body.vy)) sp.startOneShot(v, "GROUND_BOUNCE", g.phaseTime);
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
       if (aerial && sp?.startOneShot) sp.startOneShot(v, "AERIAL_" + aerial[1], g.phaseTime);
+      if (aerial && !v.flightVoicePlayed) {
+        v.flightVoicePlayed = true;
+        try { Hop.Voice?.play?.("hero_flight", g.debug, "AERIAL_SUCCESS_FIRST_PER_RUN"); } catch { /* Voice cannot affect AERIAL or flight. */ }
+      }
       // SPECIAL success (specialSuccesses grew via resolveSpecial(true), or a MERCHANT SPECIAL
       // success; MISS does not). Display-only.
       // A combo scene shows the hero being hit (HIT pose) first; the reaction then plays with the launch.
@@ -228,7 +269,7 @@ Hop.UI = class {
     const g = this.game, c = Hop.CONFIG, flying = g.state === Hop.STATES.FLYING;
     const el = id => document.getElementById(id);
     el("stage").className = flying ? "stage flying" : "stage";
-    el("se-toggle").textContent = Hop.Audio?.muted ? "SE OFF" : "SE ON";
+    el("se-toggle").textContent = Hop.Audio?.muted ? "音声・SE OFF" : "音声・SE ON";
     el("se-toggle").setAttribute("aria-pressed", String(!!Hop.Audio?.muted));
     el("flight-hud").hidden = !flying;
     el("aerial-hud").className = g.special || g.combo ? "subdued" : "";

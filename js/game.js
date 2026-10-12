@@ -264,10 +264,12 @@ Hop.Game = class {
     if (["GUARD", "STOPPER"].includes(type)) armed.stopper = false;
   }
   normalContact(type, entry, guardAtContact = 0) {
-    const normalBlock = guardAtContact && ["BOOST", "BOUNCE", "DASH", "STOPPER"].includes(type);
-    const specialBlock = !normalBlock && type === "STOPPER" && this.guardSpecial.active;
+    // Option B: GUARD SPECIAL blocks every STOPPER until its 10s timer ends (only the timer ends it).
+    // It takes priority over normalGuard for STOPPER, so a held normalGuard is kept for the next BOOST/BOUNCE/DASH.
+    const specialBlock = type === "STOPPER" && this.guardSpecial.active;
+    const normalBlock = !specialBlock && guardAtContact && ["BOOST", "BOUNCE", "DASH", "STOPPER"].includes(type);
     if (normalBlock || specialBlock) {
-      if (specialBlock) this.guardSpecial = { active: false, remaining: 0 };
+      if (specialBlock && guardAtContact) this.normalGuard = 1;
       if (entry) entry.label += " (GUARDED)";
       this.contact = { label: `${type} / GUARD BLOCK`, remaining: Hop.CONFIG.contactDuration };
     } else this.applyContact(type);
