@@ -38,9 +38,11 @@
 | STOPPER / 聖光反転 | BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER | 2300 px/s・35° |
 | BRAKE / 影すり抜け | AERIAL DOWN成功後、地面・他キャラ・UPなしでBRAKE | 接触前の速度・角度を完全維持 |
 | ANGLE / 水平曲芸 | 接触時10%抽選（Gameのrandomを使用） | 速度量を維持して0°へ |
-| GUARD / 聖護結界 | normalGuard所持で次の相手がGUARD | 10秒間STOPPERを何回でも防ぐ |
+| GUARD / 聖護結界 | normalGuard所持で次の相手がGUARD。それ以外の賢者の接触では `guardSpecialChance`（13%）の抽選（聖護結界中は抽選なし） | 10秒間STOPPERを何回でも防ぐ |
 
 戦士のSPECIAL発生率（2026-10-13調整）：1画面に同じキャラは1人まで（`castRepeatWindow`）なので、DASH準備（前の戦士）から次の戦士までの間にほぼ必ず魔法使い・武闘家・僧侶が入って準備が解除され、戦士の接触のうちSPECIALになるのは約5%でした（魔法使い約34%・武闘家約39%）。DASH準備がない戦士の接触でも `dashSpecialChance`（35%）の抽選で戦陣突破を出せるようにしました（準備済みなら従来どおり抽選なし。商人SPECIALになる接触では抽選しません。速度・角度は同じ）。シード固定3000プレイ（`tests/merchant-rare-cast-spacing.cjs` と同じ操作モデル）で、戦士 5.3%→36.2%（魔法使い・武闘家の平均 約36.5%）、平均飛距離 2802.5 m→2913.6 m。ほかのキャラの規則は変更なし（`tests/warrior-special.cjs`）。
+
+賢者のSPECIAL発生率（2026-10-13調整）：聖護結界は「GUARD所持（normalGuard）で次に触れる相手がGUARD」のときだけで、normalGuardは次の接触で必ず消えるため、賢者→（他キャラなし）→賢者が必要でした。1画面に同じキャラは1人まで（`castRepeatWindow`）なのでほぼ起きず、賢者の接触のうちSPECIALは約1.8%でした。条件を満たさない賢者の接触でも `guardSpecialChance`（13%）の抽選で聖護結界を出せるようにしました（条件を満たすときは従来どおり抽選なし。聖護結界中・商人SPECIALになる接触では抽選しません。効果は同じ10秒）。シード固定3000プレイで賢者 1.8%→13.6%、平均飛距離 2917.1 m→3027.6 m。ほかのキャラの規則は変更なし。`guardSpecialChance` 0 で従来の結果（`anim-physics-baseline-warrior.json`・debug-kindsの指紋 bd3ce787…）を完全に再現し、新しい基準は `anim-physics-baseline-sage.json`・指紋 1f0364eb…（`tests/sage-special.cjs`）。
 
 ペアSPECIAL成功時は相手も使用済みになります。失敗時は接触元の通常効果だけ適用し、相手を残します。DASH準備は地面・BRAKE・ANGLE・GUARDでは解除されず、SPECIAL受付開始・成功・失敗で解除されます。STOPPER準備はBRAKE・ANGLEでは解除されず、地面バウンド・GUARD・STOPPERで解除されます。旧仕様の速度・飛距離しきい値は使用しません。
 

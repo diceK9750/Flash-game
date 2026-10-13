@@ -45,6 +45,10 @@ Hop.CONFIG = Object.freeze({
   // (one random() only when not armed). The 1-per-screen spacing made a 2nd warrior with no BOOST/BOUNCE/STOPPER
   // between them rare (~5% of warrior contacts vs ~36% for 魔法使い/武闘家); tuned with the fixed-seed sim.
   dashSpecialChance: 0.35,
+  // Sage (GUARD) SPECIAL: eligible as before when a GUARD is still held from the previous contact (GUARD then GUARD
+  // with no other contact between, which the 1-per-screen spacing made ~2% of sage contacts), or else this draw at
+  // the sage contact (one random() only when not eligible, no 聖護結界 active and no merchant SPECIAL). Tuned with the fixed-seed sim.
+  guardSpecialChance: 0.13,
   angleSpecialChance: 0.10, guardSpecialDuration: 10.0,
   stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,

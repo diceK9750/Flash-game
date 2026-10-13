@@ -246,6 +246,8 @@ Hop.Game = class {
       const merchantType = merchantCandidate && (this.debug || this.random() < c.merchantChance) ? merchantCandidate : null;
       // Warrior (DASH) not armed: dashSpecialChance draw, only when no merchant SPECIAL takes this contact.
       if (rule?.trigger === "dash" && !eligible && !merchantType && c.dashSpecialChance > 0) eligible = this.random() < c.dashSpecialChance;
+      // Sage (GUARD) not eligible: guardSpecialChance draw, only when no 聖護結界 is active and no merchant SPECIAL takes this contact.
+      if (rule?.trigger === "guard" && !eligible && !merchantType && !this.guardSpecial.active && c.guardSpecialChance > 0) eligible = this.random() < c.guardSpecialChance;
       this.normalGuard = 0; // One contact lifetime; snapshot belongs only to this event.
       this.updateSpecialArming(object.type);
       if (merchantType || eligible) {
