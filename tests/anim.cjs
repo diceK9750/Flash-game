@@ -44,7 +44,9 @@ for (const st of states) for (let t = 0; t < 3; t += 0.03) for (const la of [-1,
 for (let i = 0; i < 6; i++) { const d = A.dust({}, i, 6, 0.2, 1); assert.deepEqual(d, A.dust({}, i, 6, 0.2, 1)); assert.equal(A.dust({}, i, 6, 0.45, 1).alpha, 0); }
 // Uniform-or-bounded: squash keeps sx * sy close to 1 (volume-ish) and never scales a part separately (one transform).
 assert.equal(A.clampScale(0.5), 0.92); assert.equal(A.clampScale(2), 1.08);
-// Physics unchanged: same seeds, Graphics.draw every frame (normal + reduced motion), vs the main baseline.
+// Physics unchanged by drawing: same seeds, Graphics.draw every frame (normal + reduced motion), vs the baseline.
+// Baseline: anim-physics-baseline-warrior.json (warrior dashSpecialChance, 2026-10-13); the older
+// anim-physics-baseline.json is still reproduced exactly with dashSpecialChance 0 (tests/warrior-special.cjs).
 function sim(draw) {
   const out = [];
   for (let seed = 1; seed <= 24; seed++) {
@@ -56,7 +58,7 @@ function sim(draw) {
   }
   return out;
 }
-const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline.json'), 'utf8'));
+const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-warrior.json'), 'utf8'));
 assert.deepEqual(sim(true), baseline); assert.deepEqual(sim(false), baseline);
 console.log(`anim.cjs OK (${checks} pose checks, ${baseline.length} fixed-seed runs identical to baseline)`);
 // Kill switch: identity poses.

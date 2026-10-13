@@ -41,6 +41,10 @@ Hop.CONFIG = Object.freeze({
   dashImpulseRatio: 1.10, dashAngle: 25,
   brakeRetention: 0.5,
   aerialDirectionThreshold: 40,
+  // Warrior (DASH) SPECIAL: armed by an earlier warrior contact as before, or else this draw at the warrior contact
+  // (one random() only when not armed). The 1-per-screen spacing made a 2nd warrior with no BOOST/BOUNCE/STOPPER
+  // between them rare (~5% of warrior contacts vs ~36% for 魔法使い/武闘家); tuned with the fixed-seed sim.
+  dashSpecialChance: 0.35,
   angleSpecialChance: 0.10, guardSpecialDuration: 10.0,
   stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
