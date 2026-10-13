@@ -78,12 +78,14 @@ Hop.CONFIG = Object.freeze({
   // wall time. Durations count from the success (cut-in included); the scene starts when the cut-in begins its
   // fade (impact + wipe + hold). Tap skips (same result). reducedMotion: short still version. Merchant: none.
   comboEnabled: true,
-  comboWitchDuration: 3.1, comboFighterDuration: 2.65, comboReducedDuration: 0.8, comboAfterglow: 0.6,
+  comboWitchDuration: 3.1, comboFighterDuration: 3.2, comboReducedDuration: 0.8, comboAfterglow: 0.6,
   // Scene-relative key times (s after the scene start).
   comboWitchTimes: Object.freeze({ dash: 0.30, rushEnd: 1.60, liftEnd: 1.90, blast: 2.15 }),
   comboWitchHits: 14, comboWitchLiftPx: 110,
-  comboFighterTimes: Object.freeze({ arrive: 0.40, buffEnd: 0.85, growEnd: 1.35, upper: 1.60, hitstop: 0.10 }),
-  comboFighterScale: 2.8, comboFighterSteps: 3, comboFighterLiftPx: 120,
+  // Fighter SPECIAL (2026-10-13 upper): witch buff -> crouch -> drop out of the bottom of the screen -> hidden
+  // rumble (ゴゴゴ…) -> erupts from below as a uniformly scaled giant, fist first -> uppercut (hit-stop) -> launch.
+  comboFighterTimes: Object.freeze({ arrive: 0.40, buffEnd: 0.85, crouch: 1.05, gone: 1.25, rise: 1.72, upper: 1.90, hitstop: 0.10 }),
+  comboFighterScale: 3.4, comboFighterLiftPx: 260, comboFighterFollowPx: 110,
   comboShakePx: 9,
   // Combo camera (display only): max zoom, part of the canvas the actors' box may fill, box margin (px), zoom-in / back times (s).
   comboLabelMaxW: 0.5, comboZoomMax: 2.4, comboZoomFill: 0.82, comboZoomMargin: 26, comboZoomIn: 0.3, comboZoomOut: 0.5,

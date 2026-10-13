@@ -9,9 +9,9 @@ const step = (g, seconds) => { for (let i = 0, n = Math.round(seconds / c.physic
 
 // 0) Config (scene lengths incl. the cut-in part; short version for reducedMotion).
 assert.equal(c.comboEnabled, true);
-assert.deepEqual([c.comboWitchDuration, c.comboFighterDuration, c.comboReducedDuration, c.comboAfterglow], [3.1, 2.65, 0.8, 0.6]);
-assert(c.comboWitchDuration >= 3.0 && c.comboWitchDuration <= 3.5 && c.comboFighterDuration >= 2.5 && c.comboFighterDuration <= 3.0);
-assert(c.comboFighterScale >= 2.5 && c.comboFighterScale <= 3.0 && c.comboFighterSteps === 3);
+assert.deepEqual([c.comboWitchDuration, c.comboFighterDuration, c.comboReducedDuration, c.comboAfterglow], [3.1, 3.2, 0.8, 0.6]);
+assert(c.comboWitchDuration >= 3.0 && c.comboWitchDuration <= 3.5 && c.comboFighterDuration >= 3.0 && c.comboFighterDuration <= 3.5);
+assert(c.comboFighterScale >= 3.0 && c.comboFighterScale <= 3.6); // giant fist (2026-10-13 upper, tests/fighter-upper.cjs)
 assert(Object.isFrozen(c.comboWitchTimes) && Object.isFrozen(c.comboFighterTimes));
 cases++;
 
@@ -28,7 +28,7 @@ function scene(type, partnerType, { short = false, seed = 1 } = {}) {
 }
 
 // 1) Both SPECIALs start their scene with the right partner; launch vector applied at once (unchanged).
-for (const [type, partnerType, total, speed, angle] of [['BOOST', 'BOUNCE', 3.1, c.specials.BOOST.speed, c.specials.BOOST.angle], ['BOUNCE', 'BOOST', 2.65]]) {
+for (const [type, partnerType, total, speed, angle] of [['BOOST', 'BOUNCE', 3.1, c.specials.BOOST.speed, c.specials.BOOST.angle], ['BOUNCE', 'BOOST', 3.2]]) {
   const { g, source, partner } = scene(type, partnerType);
   assert(g.combo, type + ' combo started');
   assert.equal(g.combo.type, type); assert.equal(g.combo.source, source); assert.equal(g.combo.partner, partner);
@@ -64,7 +64,7 @@ for (const [type, partnerType, total, speed, angle] of [['BOOST', 'BOUNCE', 3.1,
 // 3) Natural end after total; afterglow is display-only.
 {
   const { g } = scene('BOUNCE', 'BOOST'); const x0 = g.body.x;
-  step(g, 2.6); assert(g.combo); assert.equal(g.body.x, x0);
+  step(g, 3.15); assert(g.combo); assert.equal(g.body.x, x0);
   step(g, 0.06); assert.equal(g.combo, null); assert.equal(g.comboAfter.skipped, false);
   step(g, 0.1); assert(g.body.x > x0);
   step(g, 1); assert.equal(g.comboAfter, null, 'afterglow ends');
@@ -143,12 +143,10 @@ function play(seed, mode) {
 
 // 7) Giant fighter: 3 steps up to comboFighterScale, uniform scale, feet fixed to the ground.
 {
+  // Normal size until she has dropped out of the screen, giant (one uniform factor) from then on.
   const T = c.comboFighterTimes, max = c.comboFighterScale;
-  assert.equal(G.comboFighterScale(0), 1); assert.equal(G.comboFighterScale(T.buffEnd - 0.01), 1);
-  near(G.comboFighterScale(T.growEnd), max, 'max'); near(G.comboFighterScale(T.upper), max, 'held');
-  const span = (T.growEnd - T.buffEnd) / 3;
-  for (let k = 1; k <= 3; k++) near(G.comboFighterScale(T.buffEnd + k * span - 1e-6), 1 + (max - 1) * k / 3, 'step ' + k, 0.01);
-  for (let k = 0; k < 3; k++) near(G.comboFighterScale(T.buffEnd + k * span + span * 0.75), 1 + (max - 1) * (k + 1) / 3, 'plateau ' + k, 0.01);
+  assert.equal(G.comboFighterScale(0), 1); assert.equal(G.comboFighterScale(T.gone - 0.01), 1);
+  near(G.comboFighterScale(T.gone), max, 'giant once hidden'); near(G.comboFighterScale(T.upper), max, 'held');
   // Uniform scale + feet anchor through the real Sprites.draw (mock asset, affine-tracking ctx).
   const data = { frameWidth: 288, frameHeight: 288, unit: 3, frames: 1, fps: 1, loop: false, pivot: { x: 144, y: 264 }, smooth: true };
   const savedLayer = S.castLayer; S.castLayer = () => ({ asset: { ready: true, data, image: { complete: true, naturalWidth: 288 } }, scale: 1.365, flip: false });
@@ -170,15 +168,16 @@ function play(seed, mode) {
     near(box.top + box.h * data.pivot.y / data.frameHeight, 600, 'box feet');
   }
   S.castLayer = savedLayer;
-  // Scene placements: fighter / witch always drawn with feet on the ground, fighter scale from the steps.
+  // Scene placements: witch feet on the ground; fighter feet at ground + dy (drops below / rises from below), scale from comboActors.
   const { g } = scene('BOUNCE', 'BOOST'); const calls = [];
   const savedDraw = S.drawCastScaled; S.drawCastScaled = (ctx, id, x, feet, pose, mul, opts) => { calls.push({ id, feet, mul, rotate: opts.rotate || 0 }); return { w: 1, h: 1, left: 0, top: 0, scale: 1 }; };
   const nullCtx = new Proxy({}, { get: (o, k) => k in o ? o[k] : k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
   const sx = x => x, sy = y => 600 - 18 - y;
-  for (let t = 0; t < 2.65; t += 0.05) {
+  for (let t = 0; t < 3.2 - G.comboSceneStart(false); t += 0.05) {
     g.combo.elapsed = G.comboSceneStart(false) + t; calls.length = 0; G.comboBack(nullCtx, G.comboState(g), sx, sy, 600);
-    for (const call of calls) assert.equal(call.feet, 600, 'feet on ground');
-    const f = calls.filter(k => k.id === 'BOUNCE').pop(); near(f.mul, G.comboActors(G.comboState(g)).fighter.scale, 'fighter scale');
+    const fa = G.comboActors(G.comboState(g)).fighter;
+    for (const call of calls) if (call.id === 'BOOST') assert.equal(call.feet, 600, 'witch feet on ground'); else assert(call.feet >= 600 + fa.dy - 1e-9, 'afterimages trail below');
+    const f = calls.filter(k => k.id === 'BOUNCE').pop(); if (fa.beat === 'hidden') assert.equal(f, undefined); else { near(f.mul, fa.scale, 'fighter scale'); near(f.feet, 600 + fa.dy, 'fighter feet'); }
   }
   S.drawCastScaled = savedDraw;
   cases++;
@@ -187,7 +186,7 @@ function play(seed, mode) {
 // 8) Drawing is display-only and works for every scene time (full, short, afterglow, reducedMotion).
 {
   const ctx2 = new Proxy({}, { get: (o, k) => k in o ? o[k] : k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k === 'measureText' ? () => ({ width: 10 }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
-  for (const [type, p, total] of [['BOOST', 'BOUNCE', 3.1], ['BOUNCE', 'BOOST', 2.65]]) for (const short of [false, true]) {
+  for (const [type, p, total] of [['BOOST', 'BOUNCE', 3.1], ['BOUNCE', 'BOOST', 3.2]]) for (const short of [false, true]) {
     const { g } = scene(type, p, { short });
     const visual = { reducedMotion: short, launchAt: -Infinity, contactAt: -Infinity, readyTargets: [] };
     const snap = () => JSON.stringify({ body: g.body, combo: g.combo, msg: g.specialMessage, cut: g.specialCutin });
@@ -286,13 +285,17 @@ function play(seed, mode) {
       // Actors (hero, witch, fighter feet / head) are inside the zoomed view.
       const st = G.comboState(g), A = G.comboActors(st);
       assert(inView(cam, sx(st.heroWX) + A.hero.dx, sy(st.heroY) + A.hero.dy), 'hero in view');
-      assert(inView(cam, sx(A.witch.x), ground) && inView(cam, sx(A.witch.x), ground - 110), 'witch in view');
-      if (type === 'BOUNCE') assert(inView(cam, sx(A.fighter.x), ground - 110 * A.fighter.scale), 'giant fighter head in view');
+      const erupt = type === 'BOUNCE' && st.t >= c.comboFighterTimes.rise;
+      if (!erupt) assert(inView(cam, sx(A.witch.x), ground) && inView(cam, sx(A.witch.x), ground - 110), 'witch in view');
+      if (type === 'BOUNCE' && ['arrive', 'buff', 'crouch'].includes(A.fighter.beat)) assert(inView(cam, sx(A.fighter.x), ground - 110), 'fighter in view');
+      if (erupt) assert(inView(cam, sx(A.fighter.x) + G.comboFighterFistDx(A.fighter.scale), sy(st.heroY)), 'giant fist (under the hero) in view');
       minZ = Math.min(minZ, cam.z); maxZ = Math.max(maxZ, cam.z);
     }
     if (type === 'BOUNCE') {
-      const T = c.comboFighterTimes; g.combo.elapsed = S0 + T.arrive + 0.1; const zBuff = camOf(g).cam.z; g.combo.elapsed = S0 + T.growEnd + 0.05; const zGiant = camOf(g).cam.z;
-      assert(zGiant < zBuff - 0.3, `camera pulls back for the giant (${zBuff.toFixed(2)} -> ${zGiant.toFixed(2)})`);
+      // Eruption: tight on the hero and the giant fist; then the camera tilts up with the launched hero.
+      const T = c.comboFighterTimes; g.combo.elapsed = S0 + T.arrive + 0.1; const zBuff = camOf(g).cam.z; g.combo.elapsed = S0 + T.rise + 0.05; const zRise = camOf(g).cam.z;
+      assert(zRise > zBuff, `closer on the eruption (${zBuff.toFixed(2)} -> ${zRise.toFixed(2)})`);
+      g.combo.elapsed = S0 + T.upper; const fy0 = camOf(g).cam.fy; g.combo.elapsed = S0 + T.upper + T.hitstop + 0.25; assert(camOf(g).cam.fy < fy0 - 20, 'follows the launched hero up');
     } else {
       const W = c.comboWitchTimes; g.combo.elapsed = S0 + (W.dash + W.rushEnd) / 2; assert(camOf(g).cam.z >= 2, 'rush close-up (>= 2x)');
       // Launch: the camera follows the hero up.
@@ -342,12 +345,13 @@ function play(seed, mode) {
     for (let t = W.rushEnd; t < W.liftEnd + 0.15; t += 0.02) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'UPPER'); assert(towardHero(A.fighter, st)); }
     for (let t = W.liftEnd; t < g.combo.total - S0; t += 0.05) assert.equal(at(g, t).A.witch.pose, 'USED');
   }
-  // Fighter SPECIAL: witch walks in facing left, then CAST toward the fighter; giant UPPER (uniform scale).
+  // Fighter SPECIAL: witch walks in facing left, then CAST toward the fighter until she dives; IDLE crouch / drop,
+  // giant UPPER (uniform scale) from the eruption on.
   { const { g } = scene('BOUNCE', 'BOOST'), F = c.comboFighterTimes;
     assert.equal(at(g, 0.1).A.witch.face, 'left'); assert.equal(at(g, 0.1).A.witch.pose, 'IDLE');
-    for (let t = F.arrive + 0.01; t < F.growEnd - 0.01; t += 0.05) { const { A } = at(g, t); assert.equal(A.witch.pose, 'CAST'); assert.equal(A.witch.face, 'right'); assert(A.witch.x < A.fighter.x, 'witch casts at the fighter'); }
-    for (let t = 0; t < F.upper - 0.05; t += 0.05) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'IDLE'); assert(towardHero(A.fighter, st)); }
-    for (let t = F.upper; t < g.combo.total - S0; t += 0.05) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'UPPER'); assert(towardHero(A.fighter, st)); near(A.fighter.scale, c.comboFighterScale, 'giant'); }
+    for (let t = F.arrive + 0.01; t < F.gone - 0.01; t += 0.05) { const { A } = at(g, t); assert.equal(A.witch.pose, 'CAST'); assert.equal(A.witch.face, 'right'); assert(A.witch.x < A.fighter.x, 'witch casts at the fighter'); }
+    for (let t = 0; t < F.rise - 0.01; t += 0.05) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'IDLE'); assert(towardHero(A.fighter, st)); }
+    for (let t = F.rise; t < g.combo.total - S0; t += 0.05) { const { A, st } = at(g, t); assert.equal(A.fighter.pose, 'UPPER'); assert(towardHero(A.fighter, st)); near(A.fighter.scale, c.comboFighterScale, 'giant'); }
   }
   // Short versions use the poses too.
   { const a = scene('BOOST', 'BOUNCE', { short: true }).g; a.combo.elapsed = 0.5; const A = G.comboActors(G.comboState(a)); assert.deepEqual([A.witch.pose, A.fighter.pose], ['CAST', 'UPPER']);
@@ -398,7 +402,7 @@ function play(seed, mode) {
   g.combo.elapsed = G.comboSceneStart(false) + c.comboFighterTimes.upper + 0.1;
   const ground = c.groundY + g.cameraY, sx = x => c.launchX + x - g.cameraX, sy = y => ground - c.playerRadius - y;
   const nullCtx = new Proxy({}, { get: (o, k) => k in o ? o[k] : k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
-  assert(G.comboFront(nullCtx, G.comboState(g), sx, sy, ground).some(i => i.kind === 'label' && i.text === '巨神昇天拳!!'), 'combo label');
+  assert(G.comboFront(nullCtx, G.comboState(g), sx, sy, ground).some(i => i.kind === 'label' && i.text === '巨神昇天拳！！'), 'combo label');
   // Fitting: a recorder whose measureText is font size x characters (x0.8 for the combo font).
   const recorder = (k) => { const out = []; let font = ''; return { out, ctx: new Proxy({}, { get: (o, key) => key === 'measureText' ? s => ({ width: +/(\d+)px/.exec(font)[1] * [...s].length * k }) :
     key === 'fillText' ? (s, x) => out.push({ s, x, size: +/(\d+)px/.exec(font)[1] }) : key === 'createLinearGradient' || key === 'createRadialGradient' ? () => ({ addColorStop() {} }) : key in o ? o[key] : () => {},
