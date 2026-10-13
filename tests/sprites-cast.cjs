@@ -177,6 +177,9 @@ if (process.argv.includes('--loader')) {
       }
     }
   }
+  // Exact feet-geometry contract below is checked with the display-only motion off (Hop.Anim.enabled = false);
+  // the motion itself (bounds, whole-sprite scale, determinism, no physics change) is covered by tests/anim.cjs.
+  H.Anim.enabled = false;
   // Rendering: recording context. drawImage records the sprite, character() records Canvas figures.
   const fake = (id, animation) => ({ ready: true, image: { complete: true, naturalWidth: 96, id, animation }, data: still(id, animation) });
   const graphics = H.Graphics, origChar = graphics.character;
