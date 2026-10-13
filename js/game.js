@@ -31,7 +31,7 @@ Hop.Game = class {
     this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
     this.history = []; this.counts = Object.fromEntries(Object.keys(Hop.CONFIG.objectWeights).map(type => [type, 0]));
-    this.specialCount = 0; this.specialSuccesses = 0; this.sageQuiet = 0;
+    this.specialCount = 0; this.specialSuccesses = 0;
     this.debugUsed = this.debug; this.newRecords = []; this.debugIndex = 0;
     this.objects = [];
     this.nextBoundaryX = Hop.CONFIG.boundaryMeters * Hop.CONFIG.pixelsPerMeter;
@@ -246,12 +246,9 @@ Hop.Game = class {
       const merchantType = merchantCandidate && (this.debug || this.random() < c.merchantChance) ? merchantCandidate : null;
       // Warrior (DASH) not armed: dashSpecialChance draw, only when no merchant SPECIAL takes this contact.
       if (rule?.trigger === "dash" && !eligible && !merchantType && c.dashSpecialChance > 0) eligible = this.random() < c.dashSpecialChance;
-      // Sage (GUARD) not eligible: guardSpecialChance draw, only when no 聖護結界 is active and no merchant SPECIAL takes this contact.
-      if (rule?.trigger === "guard" && !eligible && !merchantType && !this.guardSpecial.active) {
-        if ((c.sageCondition || "chance") === "chance") { if (c.guardSpecialChance > 0) eligible = this.random() < c.guardSpecialChance; }
-        else eligible = this.sageConditionMet(object, previous);
-      }
-      this.sageQuiet = 0;
+      // Sage (GUARD) not eligible: 先見の結界 (sageConditionMet, deterministic, no random()), only when no 聖護結界 is
+      // active and no merchant SPECIAL takes this contact.
+      if (rule?.trigger === "guard" && !eligible && !merchantType && !this.guardSpecial.active) eligible = this.sageConditionMet(object);
       this.normalGuard = 0; // One contact lifetime; snapshot belongs only to this event.
       this.updateSpecialArming(object.type);
       if (merchantType || eligible) {
@@ -268,14 +265,16 @@ Hop.Game = class {
       if (b.stopped) break;
     }
   }
-  // Sage-specific condition (config.sageCondition), deterministic: also used by the UI for the sage READY glow.
-  sageConditionMet(object, at = this.body) {
-    const c = Hop.CONFIG, mode = c.sageCondition;
-    if (mode === "calm") return Math.hypot(at.vx ?? this.body.vx, at.vy ?? this.body.vy) <= c.sageCalmMaxSpeed;
-    if (mode === "foresight") return this.objects.some(o => !o.used && (o.type === "STOPPER" || o.type === "BRAKE") && o.x > object.x && o.x - object.x <= c.sageForesightRange);
-    if (mode === "quiet") return this.sageQuiet >= c.sageQuietTime;
-    return false;
+  // 先見の結界 (config.sageCondition "foresight"): the nearest untouched 僧侶 (STOPPER) or 盗賊 (BRAKE) beyond the sage
+  // within sageForesightRange px, or null. Deterministic; graphics.js uses it for the hint line. "none" disables it.
+  sageForesightTarget(object) {
+    const c = Hop.CONFIG;
+    if (c.sageCondition !== "foresight" || !object || object.type !== "GUARD") return null;
+    let best = null;
+    for (const o of this.objects) if (!o.used && (o.type === "STOPPER" || o.type === "BRAKE") && o.x > object.x && o.x - object.x <= c.sageForesightRange && (!best || o.x < best.x)) best = o;
+    return best;
   }
+  sageConditionMet(object) { return this.sageForesightTarget(object) !== null; }
   updateSpecialArming(type) {
     const armed = this.specialArmed;
     if (type !== "BRAKE") armed.brake = false;
@@ -534,7 +533,6 @@ Hop.Game = class {
         continue;
       }
       this.generateObjects();
-      this.sageQuiet += c.physicsStep;
       const previous = { x: this.body.x, y: this.body.y, vx: this.body.vx, vy: this.body.vy };
       if (this.merchant?.type === "C") this.floatStep(c.physicsStep);
       else {
