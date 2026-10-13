@@ -347,7 +347,8 @@ Hop.Graphics = {
       ctx.save(); ctx.globalAlpha = (object.used ? 0.35 : 1) * (actor ? Math.min(1, combo.after / combo.afterTotal) : 1);
       // Phase C: CAST sprite when loaded, else the Canvas figure (same feet point; alpha above applies).
       const ready = visual.readyTargets?.find(target => target.object === object);
-      A.cast(pose, object.type, g.phaseTime, !!ready && !object.used, A.usedAge(anim, object, g.phaseTime), rm, D && !object.used ? Hop.Smooth.near(bodyX - object.x, bodyY) : 0);
+      A.cast(pose, object.type, g.phaseTime, !!ready && !object.used, A.usedAge(anim, object, g.phaseTime), rm, D && !object.used ? Hop.Smooth.near(bodyX - object.x, bodyY) : 0,
+        A.specialNear(anim, object, g.phaseTime), g.state === "FLYING" ? A.overhead(bodyX - object.x, bodyY) : 0, A.seedOf(object));
       ctx.save(); ctx.translate(ox + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.scale(pose.sx, pose.sy); ctx.translate(-ox, -ground);
       if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
       ctx.restore();
@@ -1081,24 +1082,47 @@ Hop.Anim = {
           out.sy = 1 - 0.07 * amp; out.sx = 1 + 0.07 * amp;
           if (!rm) out.dx = 3.5 * Math.sin(a * 320);
         } else { // comic spin and follow-through stretch
-          const p = (a - 0.07) / 0.48;
-          if (!rm) out.rot += TAU * this.easeOutCubic(p) * (ev.hitDir < 0 ? -1 : 1);
-          out.sy = 1 + 0.06 * (1 - p) * amp; out.sx = 1 - 0.05 * (1 - p) * amp;
+          const p = (a - 0.07) / 0.48, f = this.HIT_FLAVOR[ev.hitType] || this.HIT_FLAVOR.DEFAULT;
+          if (!rm) { out.rot += TAU * f.turns * this.easeOutCubic(p) * (ev.hitDir < 0 ? -1 : 1); out.dx += f.dx * Math.sin(Math.PI * p); out.dy += f.dy * Math.sin(Math.PI * p); }
+          out.sy = 1 + f.st * (1 - p) * amp; out.sx = 1 - f.st * 0.8 * (1 - p) * amp;
         }
       }
+      if (ev.effAge < 0.5) this.heroEffect(out, ev.effKind, ev.effAge / 0.5, amp, rm); // AERIAL UP / DOWN, BOOST, DASH, BOUNCE poses
+      if (ev.skid > 0 && !rm) { out.rot += -0.16 * ev.skid + 0.05 * ev.skid * Math.sin(t * 40); out.dy += 1.5 * ev.skid * Math.abs(Math.sin(t * 31)); } // ground skid / tumble
       if (ev.landAge < 0.5) { const q = this.settle(ev.landAge) * amp; out.sy = 1 - 0.08 * q; out.sx = 1 + 0.07 * q; } // squash, overshoot, settle
       if (ev.specialAge < 0.6) { const s = 1 + 0.08 * Math.sin(Math.PI * ev.specialAge / 0.6) * amp; out.sx *= s; out.sy *= s; }
     } else if (state === "RESULT") {
       const b = Math.sin(TAU * t / 2.4) * amp;
       out.sy = 1 + 0.015 * b; out.sx = 1 - 0.01 * b;
-      if (!rm) out.dy = -1.5 * (1 + Math.sin(TAU * t / 1.2)); // relaxed bob on the result screen
+      if (!rm) {
+        if (ev.tier === 2) { out.dy = -7 * Math.abs(Math.sin(Math.PI * t / 0.6)); out.rot = 0.06 * Math.sin(TAU * t / 1.2); } // far: victory hops
+        else if (ev.tier === 1) { out.dy = -3 * (1 + Math.sin(TAU * t / 0.9)); out.rot = -0.04; }                            // mid: proud chest-out bob
+        else { out.dy = -1.5 * (1 + Math.sin(TAU * t / 1.2)); out.rot = 0.05 * Math.sin(TAU * t / 3.6); }                      // short: relaxed bob, sheepish sway
+      }
       if (ev.landAge < 0.5) { const q = this.settle(ev.landAge) * amp; out.sy -= 0.07 * q; out.sx += 0.06 * q; }
     }
     return this.finish(out);
   },
+  // Hit flavour by character: spin turns, stretch, and a sideways / vertical nudge (px) during the follow-through.
+  HIT_FLAVOR: {
+    BOOST: { turns: 1, st: 0.07, dx: 10, dy: -6 }, BOUNCE: { turns: 1, st: 0.08, dx: 0, dy: -12 }, BRAKE: { turns: -0.5, st: 0.03, dx: -10, dy: 4 },
+    ANGLE: { turns: 2, st: 0.05, dx: 0, dy: -4 }, DASH: { turns: 1.5, st: 0.08, dx: 14, dy: 0 }, GUARD: { turns: 0.5, st: 0.04, dx: 0, dy: -8 },
+    STOPPER: { turns: -1, st: 0.04, dx: -6, dy: 0 }, SPECIAL_ONLY: { turns: 1, st: 0.06, dx: 4, dy: -10 }, DEFAULT: { turns: 1, st: 0.06, dx: 0, dy: 0 }
+  },
+  // Hero flight-effect pose, p 0..1 over 0.5 s.
+  heroEffect(out, kind, p, amp, rm) {
+    const s = Math.sin(Math.PI * p);
+    if (kind === "UP") { out.sy *= 1 + 0.06 * s * amp; out.sx *= 1 - 0.04 * s * amp; if (!rm) { out.dy -= 6 * s; out.rot -= 0.15 * s; } }        // AERIAL UP: reach up
+    else if (kind === "DOWN") { out.sy *= 1 - 0.05 * s * amp; out.sx *= 1 + 0.04 * s * amp; if (!rm) { out.rot += 0.4 * s; out.dy += 4 * s; } } // AERIAL DOWN: dive tuck
+    else if (kind === "BOOST") { out.sx *= 1 + 0.06 * s * amp; out.sy *= 1 - 0.04 * s * amp; if (!rm) out.rot += 0.22 * s; }                    // BOOST: streamline forward
+    else if (kind === "DASH") { if (!rm) { out.dx += 8 * Math.sin(Math.PI * 2 * p) * (1 - p); out.rot += 0.3 * s; } }                           // DASH: lunge
+    else if (kind === "BOUNCE") { const q = p < 0.3 ? p / 0.3 : 1 - (p - 0.3) / 0.7; out.sy *= 1 - 0.06 * q * amp + 0.05 * s * amp; out.sx *= 1 + 0.05 * q * amp; } // BOUNCE: squash, pop
+    return out;
+  },
   // Roadside character. ready = a READY target (anticipation pose), recoilAge = s since it was used.
   // near (display only, -1..1): hero proximity from Smooth.near; > 0 approaching (lean away + flinch), < 0 just passed (look after it).
-  cast(out, type, t, ready, recoilAge, rm, near = 0) {
+  // sp = s since the last SPECIAL near it (Infinity = none), over (-1..1) = hero overhead (sign = side), seed = display seed.
+  cast(out, type, t, ready, recoilAge, rm, near = 0, sp = Infinity, over = 0, seed = 0) {
     this.reset(out); if (!this.enabled) return out;
     const st = this.CAST_STYLE[type] || this.CAST_STYLE.DASH, amp = rm ? this.RM : 1, TAU = Math.PI * 2;
     const idx = this.CAST_ORDER.indexOf(type), ph = (idx < 0 ? 0 : idx) * 0.7;
@@ -1114,13 +1138,70 @@ Hop.Anim = {
       out.sy = 1 - 0.04 * amp; out.sx = 1 + 0.03 * amp;
       if (!rm) { out.rot = -0.06 + 0.02 * Math.sin(t * 8); out.dy = -3 * Math.abs(Math.sin(t * 7)); }
     }
-    if (recoilAge < 0.5) { // follow-through recoil after the hit: knocked back, squash, settle
-      const k = 1 - recoilAge / 0.5, d = k * k;
-      out.sy = 1 - 0.06 * d * amp; out.sx = 1 + 0.05 * d * amp;
-      if (!rm) { out.dx = 12 * d; out.rot = 0.14 * d * Math.sin(recoilAge * 26); }
-    }
+    if (!ready && recoilAge >= this.HIT_T && sp >= this.SP_T && !rm) this.fidget(out, type, t, seed); // occasional idle fidget
+    if (over && !rm && recoilAge >= this.HIT_T) { const w = over < 0 ? -over : over; out.rot = out.rot * (1 - w) - 0.12 * over; out.dy -= 2 * w; out.sy += 0.015 * w; } // look up and track the hero overhead
+    if (recoilAge < this.HIT_T) this.castHit(out, type, recoilAge / this.HIT_T, amp, rm); // per-character hit reaction
+    else if (sp < this.SP_T) this.castSpecial(out, type, sp / this.SP_T, amp, rm); // per-character reaction to a nearby SPECIAL
     if (near && !rm) { out.rot += near > 0 ? 0.11 * near : 0.06 * near; out.dy -= 3 * Math.abs(near); out.dx += near > 0 ? 3 * near : 0; }
     return this.finish(out);
+  },
+  // Hero overhead weight (-1..1): high above and within ~350 px; sign = which side the hero is on.
+  overhead(dx, heroY) { if (heroY < 220 || dx < -350 || dx > 350) return 0; const h = Math.min(1, (heroY - 220) / 200); return (dx / 350) * h; },
+  HIT_T: 0.6, SP_T: 0.8, FIDGET_EVERY: 3.5, FIDGET_T: 0.6,
+  // Display-only hash RNG in [0,1) (never the game RNG): per-object seed x slot index.
+  drand(seed, i) { let h = Math.imul((seed | 0) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(i | 0, 0xc2b2ae35); h ^= h >>> 15; h = Math.imul(h, 0x27d4eb2d); h ^= h >>> 13; return (h >>> 0) / 4294967296; },
+  seedOf(object) { return object ? Math.round(object.x * 7) ^ 0x5bd1e995 : 0; },
+  // Every FIDGET_EVERY s slot, ~60% of slots play a short per-character fidget at a random offset (deterministic).
+  fidget(out, type, t, seed) {
+    const slot = Math.floor(t / this.FIDGET_EVERY), r = this.drand(seed, slot);
+    if (r > 0.6) return out;
+    const start = slot * this.FIDGET_EVERY + this.drand(seed, slot + 7919) * (this.FIDGET_EVERY - this.FIDGET_T), p = (t - start) / this.FIDGET_T;
+    if (p < 0 || p >= 1) return out;
+    const s = Math.sin(Math.PI * p), TAU = Math.PI * 2;
+    switch (type) {
+      case "BOOST": out.rot += 0.08 * Math.sin(TAU * p); out.dy -= 4 * s; break;                   // witch: little broom-float lift
+      case "BOUNCE": out.dx += 4 * Math.sin(TAU * 2 * p); out.dy -= 3 * Math.abs(Math.sin(TAU * p)); break; // fighter: shadow-box shuffle
+      case "BRAKE": out.dx -= 5 * s; out.rot -= 0.07 * s; break;                                  // thief: glance back over the shoulder
+      case "ANGLE": out.rot += 0.18 * Math.sin(TAU * p); break;                                    // jester: head-tilt wiggle
+      case "DASH": out.sy *= 1 + 0.03 * s; out.sx *= 1 + 0.03 * s; break;                         // warrior: chest-out flex (uniform)
+      case "GUARD": out.dy -= 5 * s; break;                                                       // sage: slow levitate
+      case "STOPPER": out.rot -= 0.06 * s; out.dy += 1.5 * s; break;                              // priest: small bow
+      default: out.dy -= 6 * Math.abs(Math.sin(TAU * p)); break;                                  // merchant: double hop
+    }
+    return out;
+  },
+  // Per-character hit reaction, p 0..1 over HIT_T. Reduced motion: squash only (faint).
+  castHit(out, type, p, amp, rm) {
+    const k = 1 - p, d = k * k, TAU = Math.PI * 2, s = Math.sin(Math.PI * p);
+    out.sx = 1 + 0.05 * d * amp; out.sy = 1 - 0.06 * d * amp; out.rot = 0; out.dx = 0; out.dy = 0;
+    if (rm) return out;
+    switch (type) {
+      case "BOOST": out.rot = TAU * this.easeOutCubic(p) * 0.5 * Math.sin(Math.PI * p); out.dy = -10 * s; out.dx = 6 * d; break;   // witch: staff twirl lift
+      case "BOUNCE": out.dy = -14 * s; out.rot = -0.2 * s; out.sx = 1 - 0.03 * s * amp; out.sy = 1 + 0.06 * s * amp; break;         // fighter: fist-pump jump
+      case "BRAKE": out.dx = 22 * s; out.dy = 6 * s; out.rot = 0.3 * s; out.sy = 1 - 0.07 * s * amp; break;                         // thief: duck and dodge sideways
+      case "ANGLE": out.rot = TAU * this.easeOutCubic(p); out.dy = -18 * s; out.dx = 10 * s; break;                                  // jester: cartwheel spin
+      case "DASH": out.dx = 3 * Math.sin(p * 60) * d; out.sx = 1 + 0.07 * d * amp; out.sy = 1 - 0.07 * d * amp; break;               // warrior: plants and braces (shudder)
+      case "GUARD": out.dx = 8 * d; out.dy = -12 * this.easeOutCubic(p) * k; out.rot = 0.05 * s; out.sy = 1; out.sx = 1; break;      // sage: calm float-up
+      case "STOPPER": out.rot = -0.22 * s; out.dy = 4 * Math.abs(Math.sin(TAU * p)); out.dx = 6 * d; break;                          // priest: deep bow / prayer bob
+      default: out.dy = -8 * Math.abs(Math.sin(TAU * 1.5 * p)) * k; out.rot = 0.1 * Math.sin(TAU * 3 * p) * k; out.dx = 8 * d; break; // merchant: coin-counting bounce
+    }
+    return out;
+  },
+  // Per-character reaction to a SPECIAL near it (hero within ~700 px), p 0..1 over SP_T.
+  castSpecial(out, type, p, amp, rm) {
+    const s = Math.sin(Math.PI * p), TAU = Math.PI * 2;
+    if (rm) { const u = 1 + 0.02 * s * amp; out.sx *= u; out.sy *= u; return out; }
+    switch (type) {
+      case "BOOST": out.rot += 0.25 * Math.sin(TAU * 2 * p) * s; out.dy -= 6 * s; break;          // witch: staff twirl
+      case "BOUNCE": out.dy -= 10 * Math.abs(Math.sin(TAU * p)); out.rot -= 0.12 * s; break;      // fighter: fist pump x2
+      case "BRAKE": out.dx -= 14 * s; out.dy += 4 * s; out.sy *= 1 - 0.05 * s; break;             // thief: ducks back
+      case "ANGLE": out.rot += TAU * this.easeOutCubic(p); out.dy -= 12 * s; break;               // jester: celebratory spin
+      case "DASH": out.sx *= 1 + 0.04 * s; out.sy *= 1 + 0.04 * s; out.dx += 1.5 * Math.sin(p * 50) * s; break; // warrior: plants, braces
+      case "GUARD": out.dy -= 14 * s; out.rot += 0.03 * Math.sin(TAU * p); break;                 // sage: calm float-up
+      case "STOPPER": out.rot -= 0.12 * Math.abs(Math.sin(TAU * p)); out.dy += 3 * Math.abs(Math.sin(TAU * p)); break; // priest: prayer bobs
+      default: out.dy -= 7 * Math.abs(Math.sin(TAU * 2 * p)); out.rot += 0.08 * Math.sin(TAU * 4 * p); break; // merchant: coin-count bounce
+    }
+    return out;
   },
   // Truck: engine idle shimmy, revving on AIM_POWER, launch recoil + damped suspension bounce. No scaling.
   truck(out, state, t, launchAge, rm) {
@@ -1131,6 +1212,8 @@ Hop.Anim = {
     if (launchAge >= 0 && launchAge < 0.5) {
       const e = Math.exp(-7 * launchAge);
       out.dx = -14 * e; out.dy = -6 * e * Math.cos(launchAge * 24); out.rot = -0.035 * e * Math.sin(launchAge * 24);
+      if (launchAge > 0.12) { const u = (launchAge - 0.12) / 0.38, h = Math.sin(Math.PI * Math.min(1, u * 1.6)); // after-impact hop + skid
+        out.dy -= 5 * h * (1 - u); out.rot += 0.03 * h * (1 - u); out.dx += 1.5 * Math.sin(launchAge * 70) * (1 - u); }
     }
     return out;
   },
@@ -1149,8 +1232,9 @@ Hop.Anim = {
   cache: new WeakMap(),
   track(g, visual) {
     let a = this.cache.get(visual);
-    if (!a) this.cache.set(visual, a = { ev: { launchAge: Infinity, hitAge: Infinity, hitDir: 1, landAge: Infinity, specialAge: Infinity },
-      bounces: 0, landAt: -Infinity, landX: 0, landV: 0, contact: null, hitAt: -Infinity, hitDir: 1, specials: 0, specialAt: -Infinity, state: null, used: new WeakMap(), pose: {}, puff: {} });
+    if (!a) this.cache.set(visual, a = { ev: { launchAge: Infinity, hitAge: Infinity, hitDir: 1, landAge: Infinity, specialAge: Infinity, effAge: Infinity, effKind: null, hitType: null, skid: 0, tier: 0 },
+      bounces: 0, landAt: -Infinity, landX: 0, landV: 0, contact: null, hitAt: -Infinity, hitDir: 1, specials: 0, specialAt: -Infinity, state: null, used: new WeakMap(), pose: {}, puff: {},
+      effect: null, effAt: -Infinity, effKind: null, hitType: null, specialX: 0 });
     const t = g.phaseTime, b = g.body;
     if (a.state !== g.state) {
       if (a.state === "FLYING" && g.state === "RESULT") { a.landAt = t; a.landX = b.x; a.landV = 0.6; }
@@ -1160,15 +1244,25 @@ Hop.Anim = {
     if (b.bounces > a.bounces) { a.landAt = t; a.landX = b.x; a.landV = Math.min(1.4, 0.6 + Math.abs(b.vy) / 900); }
     a.bounces = b.bounces;
     if (g.contact && g.contact !== a.contact) { a.hitAt = t; a.hitDir = b.vy > 0 ? -1 : 1; }
-    a.contact = g.contact;
-    if (g.specialSuccesses > a.specials) a.specialAt = t;
+    if (g.specialSuccesses > a.specials) { a.specialAt = t; a.specialX = b.x; }
+    if (g.contact && g.contact !== a.contact) a.hitType = String(g.contact.label).split(" ")[0];
+    const fx = g.effect, fk = fx && fx !== a.effect ? (fx.label === "AERIAL UP" ? "UP" : fx.label === "AERIAL DOWN" ? "DOWN" : fx.label === "BOUND BOOST" ? "BOUNCE" : null) : null;
+    if (fk) { a.effAt = t; a.effKind = fk; }
+    else if (g.contact && g.contact !== a.contact && (a.hitType === "BOOST" || a.hitType === "DASH" || a.hitType === "BOUNCE")) { a.effAt = t; a.effKind = a.hitType; }
+    a.effect = fx;
     a.specials = g.specialSuccesses;
     const ev = a.ev;
     ev.launchAge = Math.max(0, t - visual.launchAt); ev.hitAge = Math.max(0, t - a.hitAt); ev.hitDir = a.hitDir;
+    a.contact = g.contact;
     ev.landAge = Math.max(0, t - a.landAt); ev.specialAge = Math.max(0, t - a.specialAt);
+    ev.effAge = Math.max(0, t - a.effAt); ev.effKind = a.effKind; ev.hitType = a.hitType;
+    ev.skid = g.state === "FLYING" && b.grounded && !b.stopped && b.vx > 0 ? Math.min(1, b.vx / 600) : 0;
+    const m = g.finalDistance ?? 0; ev.tier = m >= 400 ? 2 : m >= 150 ? 1 : 0;
     if (!Number.isFinite(ev.launchAge)) ev.launchAge = Infinity;
     return a;
   },
+  // Seconds since a SPECIAL fired within 700 px of this object (display only).
+  specialNear(a, object, t) { return a.ev.specialAge < this.SP_T && Math.abs(object.x - a.specialX) < 700 ? a.ev.specialAge : Infinity; },
   usedAge(a, object, t) {
     if (!object.used) { a.used.delete(object); return Infinity; }
     let at = a.used.get(object);
