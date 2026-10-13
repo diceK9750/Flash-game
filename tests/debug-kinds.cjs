@@ -248,7 +248,10 @@ test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEB
   // in tests/warrior-special.cjs).
   assert.equal(lines.filter(l => /MERCHANT/.test(l)).length, 6); assert.equal(lines.filter(l => /SPECIAL/.test(l)).length, 60);
   assert.equal(lines[0], 'RESULT|5600.456|1238.924|2175.900|32|ANGLE,DASH,ANGLE SPECIAL,BOUNCE,ANGLE,BOOST SPECIAL,BOOST SPECIAL,BOUNCE SPECIAL,BOUNCE,BOOST,ANGLE,BRAKE SPECIAL,BOOST SPECIAL,ANGLE,BOUNCE,ANGLE,BRAKE,BOUNCE SPECIAL,GUARD,BOUNCE / MERCHANT TYPE D,STOPPER|7|7|{"attempts":1,"successes":1,"lastType":"D","revives":0}|184|6339');
-  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), '7f377a47b91a953399150288cacd71dd8d5deb62b3cb04402a5b01635a5a108d');
+  // Updated 2026-10-13 (fighter upper): the fighter combo scene is 0.55 s longer (display only, game step frozen), so the
+  // frame count f of the 13 plays that watch it grows; every other field (distances, contacts, draws) is byte-identical
+  // to 0cb33fb (whose hash was 7f377a47...); distances are also checked against 0cb33fb in tests/fighter-upper.cjs.
+  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), '785246634874e0aba2db2732ab2e8071b343b249f1765bf89d960fb65fbcf1ae');
 });
 
 test('reducedMotion still respected in DEBUG kinds (combo short version)', () => {

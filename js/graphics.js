@@ -686,16 +686,15 @@ Hop.Graphics = {
       heroWX: k.heroX, heroY: k.heroY, source: k.source, partner: k.partner, skipped: !!k.skipped };
   },
   ease(u) { u = Math.max(0, Math.min(1, u)); return 1 - (1 - u) ** 3; },
-  // Uniform growth of the giant fighter (pure): 1 until the buff ends, then comboFighterSteps eased steps
-  // (small overshoot) up to comboFighterScale at growEnd.
-  comboFighterScale(t) {
-    const c = Hop.CONFIG, T = c.comboFighterTimes, n = c.comboFighterSteps, max = c.comboFighterScale;
-    if (!(t >= T.buffEnd)) return 1;
-    if (t >= T.growEnd) return max;
-    const span = (T.growEnd - T.buffEnd) / n, k = Math.min(n - 1, Math.floor((t - T.buffEnd) / span)), u = (t - T.buffEnd - k * span) / span;
-    const from = 1 + (max - 1) * k / n, to = 1 + (max - 1) * (k + 1) / n, x = Math.min(1, u / 0.45) - 1;
-    return from + (to - from) * (1 + 2.70158 * x ** 3 + 1.70158 * x ** 2);
-  },
+  // Uniform size of the fighter (pure): normal until she has dropped out of the bottom of the screen, giant
+  // (comboFighterScale, the whole sprite, one factor for x and y) from then on — the growth happens off-screen.
+  comboFighterScale(t) { const c = Hop.CONFIG; return t >= c.comboFighterTimes.gone ? c.comboFighterScale : 1; },
+  // Fighter feet offset below the ground line (screen px, + = down) that puts the whole sprite (mul x) below the
+  // canvas bottom (ground >= groundY since cameraY >= 0), and the offset that puts the giant fist on the hero.
+  comboFighterHiddenDy(mul) { const c = Hop.CONFIG; return c.height - c.groundY + 112 * mul + 40; },
+  // UPPER still: fist top ~96 px x mul above the feet, ~19 px x mul in front of them (comboFighterFistDx).
+  comboFighterContactDy(st, mul) { const c = Hop.CONFIG; return Math.max(-60, -c.playerRadius - (st.heroY || 0) + 96 * mul - 30); },
+  comboFighterFistDx(mul) { return 19 * mul; },
   // Actor placements in world x / pose / scale for a scene time (pure). Used by the drawing and by tests.
   // pose = CAST slot name (combo poses PUNCH / UPPER / CAST, else IDLE / KICK / USED); face = "left" / "right"
   // (Sprites.drawCastScaled mirrors a slot whose drawn facing differs, about the feet).
@@ -730,19 +729,36 @@ Hop.Graphics = {
       }
       return out;
     }
-    const F = c.comboFighterTimes;
-    // Fighter faces the hero; giant UPPER with a short lunge (uniform scale, feet on the ground).
-    const lunge = st.short ? (t >= 0 ? 1 : 0) : this.ease((t - (F.upper - 0.08)) / 0.08);
-    out.fighter = { x: (st.short && t >= 0 ? H - 150 : lerp(src, H - 150, t / F.arrive)) + 80 * lunge, pose: "IDLE", rotate: 0,
-      scale: st.short ? (t >= 0 ? c.comboFighterScale : 1) : this.comboFighterScale(t) };
-    out.fighter.face = out.fighter.x < H ? "right" : "left";
+    const F = c.comboFighterTimes, max = c.comboFighterScale, easeIn = u => Math.max(0, Math.min(1, u)) ** 2;
     const arrived = st.short ? t >= 0 : t >= F.arrive;
     // Witch comes from the right (facing her way), then turns to the fighter and casts the buff (CAST).
-    out.witch = { x: st.short && t >= 0 ? H - 330 : lerp(par, H - 330, t / F.arrive), pose: arrived && (st.short || t < F.growEnd) ? "CAST" : "IDLE", face: arrived ? "right" : "left", scale: 1 };
-    if (st.short ? t >= 0 : t >= F.upper - 0.04) out.fighter.pose = "UPPER";
-    if (!st.short && t >= F.upper + F.hitstop) out.hero.dy = -c.comboFighterLiftPx * this.ease((t - F.upper - F.hitstop) / 0.18);
-    if (!st.short && t >= F.growEnd && t < F.upper) out.fighter.charge = (t - F.growEnd) / (F.upper - F.growEnd);
-    if (st.after !== null && !st.short) out.fighter.scale = 1 + (out.fighter.scale - 1) * (1 - this.ease(st.after / 0.35)); // back to normal size
+    out.witch = { x: st.short && t >= 0 ? H - 330 : lerp(par, H - 330, t / F.arrive), pose: arrived && (st.short || t < F.gone) ? "CAST" : "IDLE", face: arrived ? "right" : "left", scale: 1 };
+    if (st.short) { // calm still: the giant fighter's fist already on the hero (no drop / rumble / shake)
+      out.fighter = t >= 0 ? { x: H - this.comboFighterFistDx(max), pose: "UPPER", face: "right", scale: max, rotate: 0, dy: this.comboFighterContactDy(st, max), beat: "upper" }
+        : { x: src, pose: "IDLE", face: src < H ? "right" : "left", scale: 1, rotate: 0, dy: 0, beat: "arrive" };
+      return out;
+    }
+    let f;
+    if (t < F.rise) { // walk in, buff, crouch, drop out of the bottom of the screen, hidden
+      const x = lerp(src, H - 150, t / F.arrive), scale = this.comboFighterScale(t);
+      let dy = 0, beat = t < F.arrive ? "arrive" : t < F.buffEnd ? "buff" : t < F.crouch ? "crouch" : t < F.gone ? "drop" : "hidden";
+      if (beat === "crouch") dy = 10 * this.ease((t - F.buffEnd) / (F.crouch - F.buffEnd));
+      else if (beat === "drop") dy = 10 + (this.comboFighterHiddenDy(1) - 10) * easeIn((t - F.crouch) / (F.gone - F.crouch));
+      else if (beat === "hidden") dy = this.comboFighterHiddenDy(scale);
+      f = { x: beat === "hidden" ? H - this.comboFighterFistDx(max) : x, pose: "IDLE", scale, rotate: 0, dy, beat };
+      if (beat === "hidden") f.rumble = (t - F.gone) / (F.rise - F.gone);
+    } else { // erupt from below, fist first (UPPER), hit at F.upper, hit-stop, follow-through upward
+      const contact = this.comboFighterContactDy(st, max), hidden = this.comboFighterHiddenDy(max);
+      let dy, beat;
+      if (t < F.upper) { beat = "rise"; dy = hidden + (contact - hidden) * this.ease((t - F.rise) / (F.upper - F.rise)); }
+      else { beat = "upper"; dy = contact - c.comboFighterFollowPx * this.ease((t - F.upper - F.hitstop) / 0.3); }
+      f = { x: H - this.comboFighterFistDx(max), pose: "UPPER", scale: max, rotate: 0, dy, beat };
+      if (beat === "rise") f.rise = (t - F.rise) / (F.upper - F.rise);
+    }
+    f.face = f.x < H ? "right" : "left";
+    out.fighter = f;
+    if (t >= F.upper + F.hitstop) out.hero.dy = -c.comboFighterLiftPx * this.ease((t - F.upper - F.hitstop) / 0.25);
+    else if (t >= F.gone && t < F.upper) { out.hero.dx = Math.sin(t * 61) * 1.5; out.hero.dy = Math.cos(t * 47) * 1.5; } // trembling with the ground
     return out;
   },
   // 先見の結界 hint (display only, 2026-10-13d): for each untouched on-screen sage whose game.sageConditionMet is
@@ -803,10 +819,16 @@ Hop.Graphics = {
     const cast = (x, s = 1) => boxes.push([sx(x) - 48 * s, ground - 122 * s, sx(x) + 48 * s, ground]);
     const hx = sx(H) + A.hero.dx, hy = sy(st.heroY) + A.hero.dy;
     boxes.push([hx - 42, hy + c.playerRadius - 88, hx + 42, hy + c.playerRadius]);
-    if (A.witch) cast(A.witch.x, A.witch.scale || 1);
-    if (A.fighter) {
+    // Fighter SPECIAL eruption / uppercut: tight on the hero and the fist below her (the witch leaves the frame),
+    // following the launched hero upward.
+    const erupt = st.type === "BOUNCE" && !st.short && st.t >= c.comboFighterTimes.rise;
+    if (erupt) { const hy0 = sy(st.heroY), fist = sx(A.fighter.x) + this.comboFighterFistDx(A.fighter.scale); const up = c.comboFighterFollowPx * this.ease((st.t - c.comboFighterTimes.upper - c.comboFighterTimes.hitstop) / 0.3);
+      boxes.push([fist - 90, hy0 - 40 - up, fist + 90, hy0 + 150 - up * 1.2]); }
+    if (A.witch && !erupt) cast(A.witch.x, A.witch.scale || 1);
+    if (A.fighter && !erupt) {
       const W = c.comboWitchTimes;
-      if (st.type === "BOOST" && st.t >= W.dash) cast(H + 75); else cast(A.fighter.x, A.fighter.scale || 1);
+      // Fighter SPECIAL: the camera frames the normal-size stance only, so the giant fist bursts out of the frame.
+      if (st.type === "BOOST" && st.t >= W.dash) cast(H + 75); else if (st.type === "BOUNCE") cast(A.fighter.x); else cast(A.fighter.x, A.fighter.scale || 1);
     }
     const l = Math.min(...boxes.map(b => b[0])) - m, t = Math.min(...boxes.map(b => b[1])) - m;
     const r = Math.max(...boxes.map(b => b[2])) + m, b = Math.max(...boxes.map(b => b[3])) + m * 0.5;
@@ -824,18 +846,19 @@ Hop.Graphics = {
       else if (t >= W.dash && t < W.rushEnd) amp = 1.5;
     } else {
       const F = c.comboFighterTimes, u = t - F.upper;
-      if (u >= 0) { amp = c.comboShakePx * (u < F.hitstop ? 1.2 : Math.max(0, 1 - (u - F.hitstop) / 0.5)); flash = Math.max(0, 0.6 - u * 2.4); }
-      else if (t >= F.buffEnd && t < F.growEnd) amp = 2.5;
-      else if (t >= F.growEnd) amp = 1.5;
+      if (u >= 0) { amp = c.comboShakePx * (u < F.hitstop ? 1.4 : Math.max(0, 1 - (u - F.hitstop) / 0.55)); flash = u < F.hitstop ? 0.55 : Math.max(0, 0.45 - (u - F.hitstop) * 2.5); }
+      else if (t >= F.rise) amp = c.comboShakePx * 0.6;                                   // eruption
+      else if (t >= F.gone) amp = 1.5 + 3 * (t - F.gone) / (F.rise - F.gone);             // rumble (ゴゴゴ…) builds up
+      else if (t >= F.crouch) amp = 2;                                                    // drop into the ground
     }
     const s = Math.floor(t * 60);
     return { x: Math.sin(s * 2.3) * amp, y: Math.cos(s * 3.1) * amp * 0.7, flash };
   },
   comboCast(ctx, id, a, sx, ground, alpha = 1) {
     if (!a) return;
-    const ok = Hop.Sprites?.drawCastScaled?.(ctx, id, sx(a.x), ground, a.pose, a.scale || 1, { face: a.face, rotate: a.rotate, alpha });
+    const ok = Hop.Sprites?.drawCastScaled?.(ctx, id, sx(a.x), ground + (a.dy || 0), a.pose, a.scale || 1, { face: a.face, rotate: a.rotate, alpha });
     // Canvas fallback (no sprite): pose 0 / 1, the Canvas figures face the viewer's left.
-    if (!ok) { ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(sx(a.x), ground); if (a.rotate) ctx.rotate(a.rotate); if (a.face === "right") ctx.scale(-1, 1); this.character(ctx, id, 0, 0, 1.365 * (a.scale || 1), a.pose === "IDLE" ? 0 : 1); ctx.restore(); }
+    if (!ok) { ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(sx(a.x), ground + (a.dy || 0)); if (a.rotate) ctx.rotate(a.rotate); if (a.face === "right") ctx.scale(-1, 1); this.character(ctx, id, 0, 0, 1.365 * (a.scale || 1), a.pose === "IDLE" ? 0 : 1); ctx.restore(); }
   },
   spark(ctx, x, y, r, color, rot = 0) {
     const pts = Array.from({ length: 16 }, (_, i) => { const a = rot + i * Math.PI / 8, rr = i % 2 ? r * 0.38 : r; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; });
@@ -872,30 +895,66 @@ Hop.Graphics = {
       if (f.ghost) this.comboCast(ctx, "BOUNCE", { ...f, x: st.heroWX + f.ghost * 75, face: f.ghost > 0 ? "left" : "right" }, sx, ground, 0.35 * (1 - f.ghostU) * fade);
       this.comboCast(ctx, "BOUNCE", f, sx, ground);
     } else {
-      const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x), mid = ground - 70 * f.scale;
-      if (st.short ? t >= 0 : t >= F.arrive) { // aura (pulsing) around the fighter
-        const pulse = st.short ? 1 : 1 + 0.06 * Math.sin(t * 22);
-        ctx.save(); ctx.globalAlpha = fade * (st.short ? 0.35 : Math.min(0.55, (t - F.arrive) * 1.5));
-        ctx.fillStyle = f.charge ? "#ffef7a" : "#ffd0f0";
-        ctx.beginPath(); ctx.ellipse(fx, mid, 55 * f.scale * pulse, 80 * f.scale * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x), feet = ground + (f.dy || 0), mid = feet - 70 * f.scale, heroX = sx(st.heroWX);
+      const visible = st.short || f.beat === "arrive" || f.beat === "buff" || f.beat === "crouch" || f.beat === "drop";
+      if (!st.short && visible && t >= F.arrive) { // buff aura (pulsing), brighter while crouching
+        const pulse = 1 + 0.06 * Math.sin(t * 22), k = f.beat === "crouch" || f.beat === "drop" ? 0.7 : Math.min(0.55, (t - F.arrive) * 1.5);
+        ctx.save(); ctx.globalAlpha = fade * k; ctx.fillStyle = f.beat === "buff" ? "#ffd0f0" : "#ffef7a";
+        ctx.beginPath(); ctx.ellipse(fx, mid, 55 * pulse, 80 * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       }
-      if (!st.short && t >= F.arrive && t < F.growEnd) { // rings of the buff spell
+      if (!st.short && t >= F.arrive && t < F.crouch) { // rings of the buff spell
         for (let i = 0; i < 3; i++) {
           const ph = ((t - F.arrive) * 1.8 + i / 3) % 1;
           ctx.save(); ctx.globalAlpha = fade * (1 - ph); ctx.strokeStyle = "#ff8ad8"; ctx.lineWidth = 5;
-          ctx.beginPath(); ctx.ellipse(fx, mid, (30 + ph * 70) * f.scale, (12 + ph * 26) * f.scale, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+          ctx.beginPath(); ctx.ellipse(fx, mid, 30 + ph * 70, 12 + ph * 26, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        }
+      }
+      // Ground cracks from where she dived to under the hero, glowing brighter until the eruption.
+      const crackAge = st.short ? -1 : t - F.crouch;
+      if (crackAge >= 0) {
+        const dive = sx(st.heroWX - 150), glow = t < F.upper ? Math.min(1, crackAge / (F.rise - F.crouch)) : Math.max(0, 1 - (t - F.upper) / 0.5);
+        const reach = Math.min(1, crackAge / (F.rise - F.crouch));
+        ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+        const crack = (x0, x1, seed, w) => { ctx.beginPath(); ctx.moveTo(x0, ground + 2);
+          for (let k = 1; k <= 8; k++) { const x = x0 + (x1 - x0) * k / 8 * reach; ctx.lineTo(x, ground + 3 + ((k * seed * 7) % 11) + (k % 2 ? 4 : -1)); } ctx.lineWidth = w; ctx.stroke(); };
+        ctx.globalAlpha = fade * 0.9; ctx.strokeStyle = "#3b2a1a"; crack(dive, heroX + 40, 3, 6); crack(dive, dive - 90, 5, 4); crack(heroX - 24, heroX + 110, 2, 5);
+        if (glow > 0) { ctx.globalAlpha = fade * glow; ctx.strokeStyle = "#ffe36b"; crack(dive, heroX + 40, 3, 2.5); crack(heroX - 24, heroX + 110, 2, 2); }
+        ctx.restore();
+        // Light leaking up from below the hero while hidden.
+        if (t >= F.gone && t < F.upper + 0.3) {
+          const a = t < F.upper ? 0.25 + 0.35 * (t - F.gone) / (F.upper - F.gone) : 0.6 * (1 - (t - F.upper) / 0.3);
+          const lx = sx(st.heroWX), grad = ctx.createRadialGradient?.(lx, ground + 10, 4, lx, ground + 10, 130);
+          ctx.save(); ctx.globalAlpha = fade * a;
+          if (grad) { grad.addColorStop(0, "rgba(255,236,140,0.95)"); grad.addColorStop(1, "rgba(255,230,120,0)"); ctx.fillStyle = grad; } else ctx.fillStyle = "rgba(255,230,120,0.5)";
+          ctx.beginPath(); ctx.ellipse(lx, ground + 10, 130, 70, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         }
       }
       this.comboCast(ctx, "BOOST", A.witch, sx, ground);
-      if (!st.short && t >= F.arrive && t < F.growEnd) { // sparkles from the staff to the fighter
+      if (!st.short && t >= F.arrive && t < F.crouch) { // sparkles from the staff to the fighter
         const wx = sx(A.witch.x) + 40, wy = ground - 110;
         for (let i = 0; i < 10; i++) { const ph = (t * 2 + i / 10) % 1; this.spark(ctx, wx + (fx - wx) * ph, wy + (mid - wy) * ph - Math.sin(ph * Math.PI) * 50, 7, "#fff1a8", t * 5 + i); }
       }
-      const shake = f.charge ? Math.sin(t * 90) * 3 * (1 + f.charge) : 0;
-      this.comboCast(ctx, "BOUNCE", { ...f, x: f.x + shake }, sx, ground);
-      if (f.charge) { // speed lines into the fighter while charging
-        ctx.save(); ctx.globalAlpha = fade * 0.7; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
-        for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 + t * 3, r1 = 260 - f.charge * 60, r2 = 170; ctx.beginPath(); ctx.moveTo(fx + Math.cos(a) * r1, mid + Math.sin(a) * r1); ctx.lineTo(fx + Math.cos(a) * r2, mid + Math.sin(a) * r2); ctx.stroke(); }
+      if (f.beat === "rise") { // upward speed lines in the fighter's column + afterimages of the same sprite
+        ctx.save(); ctx.globalAlpha = fade * 0.75; ctx.strokeStyle = "#ffffff"; ctx.lineCap = "round";
+        for (let i = 0; i < 16; i++) { const lx = fx + ((i * 53) % 340) - 170, len = 120 + (i * 37) % 160, y0 = ground + 140 - ((t * 2400 + i * 97) % 760);
+          ctx.lineWidth = 2 + (i % 3) * 2; ctx.beginPath(); ctx.moveTo(lx, y0); ctx.lineTo(lx, y0 + len); ctx.stroke(); }
+        ctx.restore();
+        for (let k = 3; k >= 1; k--) this.comboCast(ctx, "BOUNCE", { ...f, dy: f.dy + k * 70 }, sx, ground, 0.16 * (4 - k) * fade);
+      }
+      if (f.beat === "rise" || (f.beat === "upper" && t < F.upper + 0.45)) { // fist-shaped energy aura: same sprite, slightly larger (uniform)
+        const a = f.beat === "rise" ? 0.45 : 0.55 * (1 - (t - F.upper) / 0.45);
+        ctx.save(); ctx.globalCompositeOperation = "lighter";
+        this.comboCast(ctx, "BOUNCE", { ...f, scale: f.scale * 1.07 }, sx, ground, a * fade); ctx.restore();
+      }
+      if (st.short || f.beat !== "hidden") this.comboCast(ctx, "BOUNCE", f, sx, ground);
+      // Dust puffs where she dived in and where she bursts out.
+      for (const [at, x, big] of [[F.crouch, sx(st.heroWX - 150), 1], [F.rise, sx(f.x), 2]]) {
+        const age = t - at; if (st.short || age < 0 || age > 0.7) continue;
+        ctx.save(); ctx.globalAlpha = fade * 0.85 * (1 - age / 0.7); ctx.fillStyle = "#e9dcb8";
+        for (let i = 0; i < 9; i++) { const side = i % 2 ? 1 : -1, d = (20 + i * 12) * big * this.ease(age / 0.5);
+          this.circle(ctx, x + side * d, ground - 8 - (i % 3) * 10 * big * this.ease(age / 0.4), (14 + (i % 4) * 6) * big * (0.6 + age), "#e9dcb8"); }
+        if (big > 1) for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i - 4.5) * 0.22, d = 60 + 520 * age; // rocks thrown up
+          ctx.fillStyle = i % 2 ? "#6b5136" : "#8a6a48"; ctx.fillRect(x + Math.cos(a) * d - 6, ground + Math.sin(a) * d + 300 * age * age - 6, 12 + (i % 3) * 4, 10 + (i % 2) * 5); }
         ctx.restore();
       }
     }
@@ -946,15 +1005,25 @@ Hop.Graphics = {
     } else {
       const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x);
       if (!st.short && t >= F.arrive && t < F.buffEnd + 0.15 && st.after === null) label("強化魔法！", sx(A.witch.x), ground - 125, 30, "#ffd6f2", undefined, 0, -30);
-      if (!st.short && t >= F.buffEnd && t < F.upper && st.after === null) label(`巨大化!! ×${f.scale.toFixed(1)}`, fx, ground - 125 * f.scale, 34, "#fff4c0", undefined, 0, -24);
+      if (!st.short && t >= F.buffEnd && t < F.gone && st.after === null) label("溜め…！", fx, ground - 130, 30, "#fff4c0", undefined, 0, -24);
+      if (!st.short && t >= F.gone && t < F.upper && st.after === null) { // ゴゴゴ… rumble texts
+        const n = Math.min(3, 1 + Math.floor((t - F.gone) / 0.15));
+        for (let i = 0; i < n; i++) label("ゴゴゴ…", sx(st.heroWX) + [-150, 140, -10][i], ground - 20, 40 + 4 * i, "#ffe9b0", "#4a2f12", Math.sin(t * 40 + i) * 3, -30 - 60 * i);
+      }
       const u = t + (st.after || 0) - F.upper;
       if (st.short ? t >= 0 : u >= 0 && u < 1.0) {
-        const R = st.short ? 90 : 30 + 520 * this.ease(u / 0.6), a = st.short ? 0.6 : Math.max(0, 1 - u / 0.8);
-        ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = "#fffbe6"; ctx.lineWidth = st.short ? 6 : 14 * (1 - Math.min(1, u)); ctx.beginPath(); ctx.arc(heroX, heroY, R, 0, Math.PI * 2); ctx.stroke();
-        if (!st.short) for (let i = 0; i < 14; i++) { const ang = i * Math.PI / 7 + 0.2; this.line(ctx, [[heroX + Math.cos(ang) * R * 0.5, heroY + Math.sin(ang) * R * 0.5], [heroX + Math.cos(ang) * R * 0.95, heroY + Math.sin(ang) * R * 0.95]], "#ffe680", 5); }
-        this.spark(ctx, heroX, heroY, st.short ? 50 : 70 * Math.max(0.3, 1 - u), "#fff3a0", 0.3);
+        const R = st.short ? 90 : 30 + 600 * this.ease(u / 0.6), a = st.short ? 0.6 : Math.max(0, 1 - u / 0.8);
+        ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = "#fffbe6"; ctx.lineWidth = st.short ? 6 : 16 * (1 - Math.min(1, u)); ctx.beginPath(); ctx.arc(heroX, heroY, R, 0, Math.PI * 2); ctx.stroke();
+        if (!st.short) { ctx.lineWidth = 8 * (1 - Math.min(1, u)); ctx.beginPath(); ctx.arc(heroX, heroY, R * 0.62, 0, Math.PI * 2); ctx.stroke();
+          for (let i = 0; i < 16; i++) { const ang = i * Math.PI / 8 + 0.2; this.line(ctx, [[heroX + Math.cos(ang) * R * 0.5, heroY + Math.sin(ang) * R * 0.5], [heroX + Math.cos(ang) * R * 0.95, heroY + Math.sin(ang) * R * 0.95]], "#ffe680", 5); } }
+        this.spark(ctx, heroX, heroY, st.short ? 50 : 90 * Math.max(0.3, 1 - u), "#fff3a0", 0.3);
         ctx.restore();
-        if (st.short || u < 0.6) label(`${c.specials.BOUNCE.name}!!`, heroX, heroY - 70, 54, "#e9ffd8", "#1f4d1c", 170, -70);
+        if (!st.short && u > F.hitstop && u < 0.6) { // upward speed lines behind the launched hero
+          ctx.save(); ctx.globalAlpha = 0.7 * (1 - u / 0.6); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4;
+          for (let i = 0; i < 10; i++) { const lx = heroX + ((i * 41) % 160) - 80, y0 = heroY + 30 + (i * 23) % 60; ctx.beginPath(); ctx.moveTo(lx, y0); ctx.lineTo(lx, y0 + 140 + (i % 3) * 40); ctx.stroke(); }
+          ctx.restore();
+        }
+        if (st.short || u < 0.75) label(`${c.specials.BOUNCE.name}！！`, heroX, heroY - 70, st.short ? 54 : 72, "#e9ffd8", "#1f4d1c", 0, -90);
       }
     }
     if (st.after === null && !st.short) overlay.push({ kind: "hint", text: "タップでスキップ ▶▶" });

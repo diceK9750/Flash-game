@@ -73,13 +73,18 @@ Hop.Audio = {
         ["tone", S + 1.90, 0.26, 0.04, "sawtooth", 200, 1100, 0.02],                                      // fireball charge
         ["noise", S + 2.15, 0.95, 0.11, "lowpass", 3200, 140, 0.8], ["tone", S + 2.15, 0.7, 0.08, "sine", 95, 28, 0.004], // big explosion
         ["noise", S + 2.15, 0.12, 0.05, "highpass", 3000, 3000, 0.7]]);
+    // Fighter SPECIAL (2026-10-13 upper): buff -> crouch -> drop into the ground -> rumble -> whoosh up -> massive impact.
     const fighter = [["noise", S, 0.35, 0.04, "bandpass", 600, 2000, 1.0]]                                 // witch runs in
       .concat([["tone", S + 0.40, 0.45, 0.04, "triangle", 300, 1200, 0.03]]                                  // buff spell rising
         .concat([1568, 2093, 2637].map((f, i) => ["tone", S + 0.45 + i * 0.12, 0.2, 0.018, "sine", f, f * 1.02, 0.004])))
-      .concat([0, 1, 2].map(i => ["tone", S + 0.85 + i * 0.165, 0.2, 0.06, "sine", 150 - i * 25, 70 - i * 12, 0.01]))  // grow x3 (deeper each step)
-      .concat([["noise", S + 1.35, 0.25, 0.035, "lowpass", 300, 600, 0.8],                                  // charge rumble
-        ["tone", S + 1.60, 0.55, 0.1, "sine", 105, 32, 0.003], ["noise", S + 1.60, 0.6, 0.09, "lowpass", 2600, 110, 0.8], // heavy uppercut
-        ["noise", S + 1.60, 0.07, 0.05, "highpass", 2500, 2500, 0.7], ["noise", S + 1.72, 0.3, 0.04, "bandpass", 500, 2800, 1.0]]);
+      .concat([["tone", S + 0.85, 0.22, 0.03, "triangle", 180, 360, 0.05],                                  // crouch (charge)
+        ["noise", S + 1.05, 0.2, 0.05, "bandpass", 2600, 400, 1.0],                                         // whoosh down
+        ["tone", S + 1.22, 0.18, 0.07, "sine", 95, 38, 0.004], ["noise", S + 1.22, 0.2, 0.05, "lowpass", 900, 150, 0.8], // thud into the ground
+        ["noise", S + 1.25, 0.5, 0.05, "lowpass", 120, 260, 0.9], ["tone", S + 1.25, 0.5, 0.045, "sine", 42, 58, 0.15], // rumble (ゴゴゴ…)
+        ["noise", S + 1.70, 0.22, 0.06, "bandpass", 400, 3400, 1.1],                                        // whoosh up
+        ["tone", S + 1.90, 0.85, 0.12, "sine", 110, 26, 0.003], ["noise", S + 1.90, 0.9, 0.1, "lowpass", 3000, 100, 0.8], // massive impact
+        ["noise", S + 1.90, 0.08, 0.06, "highpass", 2500, 2500, 0.7], ["tone", S + 1.90, 0.3, 0.04, "sawtooth", 70, 40, 0.003],
+        ["noise", S + 2.02, 0.35, 0.045, "bandpass", 500, 3000, 1.0]]);                                     // hero launched up
     const R = 0.4; // reducedMotion short version: scene from the still cut-in end
     return {
       COMBO_WITCH: witch, COMBO_FIGHTER: fighter,

@@ -53,7 +53,7 @@ try {
   // Combo start and one threshold crossing are discrete; short variants replace both long lines.
   for (const [type, kind, threshold, startId, finishId] of [
     ['BOOST', 'WITCH', 2.15, 'combo_witch_call', 'combo_witch_blast'],
-    ['BOUNCE', 'FIGHTER', 1.6, 'combo_fighter_call', 'combo_fighter_upper']
+    ['BOUNCE', 'FIGHTER', 1.9, 'combo_fighter_call', 'combo_fighter_upper']
   ]) {
     const { game, ui } = fixture(); game.combo = { type, short: false, elapsed: 0, skipped: false };
     ui.update(); ui.update(); assert.deepEqual(heard, [{ id: startId, event: `COMBO_${kind}_START` }]);
