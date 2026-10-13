@@ -11,6 +11,8 @@ function load(chance) {
   for (const name of ['config', 'physics', 'game']) {
     let src = fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8');
     if (name === 'config' && chance !== undefined) { assert(/dashSpecialChance: [\d.]+,/.test(src)); src = src.replace(/dashSpecialChance: [\d.]+,/, `dashSpecialChance: ${chance},`); }
+    // Sage guardSpecialChance (2026-10-13c) held at 0 here so this test isolates the warrior draw (see sage-special.cjs).
+    if (name === 'config') { assert(/guardSpecialChance: [\d.]+,/.test(src)); src = src.replace(/guardSpecialChance: [\d.]+,/, 'guardSpecialChance: 0,'); }
     vm.runInContext(src, scope, { filename: name });
   }
   return scope.Hop;

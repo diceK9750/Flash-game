@@ -80,10 +80,10 @@ const peak = (k, mode = 'full', rm = false) => {
   checks++;
 }
 
-// Physics / distance identical to the baseline (anim-physics-baseline-warrior.json; see anim.cjs) over fixed seeds (same runs as anim.cjs), with the cut-in drawn
+// Physics / distance identical to the baseline (anim-physics-baseline-sage.json; see anim.cjs) over fixed seeds (same runs as anim.cjs), with the cut-in drawn
 // every frame (full / repeat / reduced, played out or skipped) before the baseline input sequence starts.
 {
-  const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-warrior.json'), 'utf8'));
+  const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8'));
   for (const variant of ['play', 'skip']) {
     const out = [];
     for (let seed = 1; seed <= 24; seed++) {

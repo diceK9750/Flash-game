@@ -242,11 +242,12 @@ test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEB
     return [g.state, g.finalDistance.toFixed(3), g.maxHeight.toFixed(3), g.maxSpeed.toFixed(3), g.body.bounces, g.history.map(e => e.label).join(','), g.specialCount, g.specialSuccesses, JSON.stringify(g.merchantStats), draws, f].join('|');
   }
   const lines = []; for (let seed = 1; seed <= 160; seed++) lines.push(play(seed));
-  // Updated 2026-10-13 for the warrior dashSpecialChance draw (only change); the 4c3aec7 fingerprint
-  // (3 / 56 / 8cfecc1b...) is still reproduced exactly with dashSpecialChance 0 in tests/warrior-special.cjs.
-  assert.equal(lines.filter(l => /MERCHANT/.test(l)).length, 5); assert.equal(lines.filter(l => /SPECIAL/.test(l)).length, 60);
-  assert.equal(lines[0], 'RESULT|5600.456|1238.924|2175.900|32|ANGLE,DASH,ANGLE SPECIAL,BOUNCE,ANGLE,BOOST SPECIAL,BOOST SPECIAL,BOUNCE SPECIAL,BOUNCE,BOOST,ANGLE,BRAKE SPECIAL,BOOST SPECIAL,ANGLE,BOUNCE,ANGLE,BRAKE,BOUNCE SPECIAL,GUARD,BOUNCE / MERCHANT TYPE D,STOPPER|7|7|{"attempts":1,"successes":1,"lastType":"D","revives":0}|184|6339');
-  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), 'bd3ce7876ece75a432333172e6940557398cff0bc32ab6428f852ca1fd86dcdd');
+  // Updated 2026-10-13c for the sage guardSpecialChance draw (only change); the warrior-fix fingerprint
+  // (5 / 60 / bd3ce787...) is still reproduced exactly with guardSpecialChance 0 in tests/sage-special.cjs
+  // (and 3 / 56 / 8cfecc1b... with both chances 0 in tests/warrior-special.cjs).
+  assert.equal(lines.filter(l => /MERCHANT/.test(l)).length, 6); assert.equal(lines.filter(l => /SPECIAL/.test(l)).length, 61);
+  assert.equal(lines[0], 'RESULT|8640.687|1238.924|2175.900|58|ANGLE,DASH,ANGLE SPECIAL,BOUNCE,ANGLE,BOOST SPECIAL,BOOST SPECIAL,BOUNCE SPECIAL,BOUNCE,BOOST,ANGLE,BRAKE SPECIAL,BOOST SPECIAL,ANGLE,BOUNCE,ANGLE,BRAKE,BOUNCE SPECIAL,GUARD SPECIAL,BOUNCE,BOUNCE SPECIAL,BRAKE SPECIAL,GUARD,DASH (GUARDED),BOOST,DASH SPECIAL,BOUNCE SPECIAL,BOOST,DASH,BRAKE,GUARD SPECIAL,BOOST SPECIAL,BOUNCE,BOOST,BOOST,BRAKE,BOUNCE,BRAKE|14|14|{"attempts":0,"successes":0,"lastType":null,"revives":0}|293|9766');
+  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), '1f0364eb25b63bf3b49f9622aae9ce9aef13bc7fbe8726384e47669fc259ef65');
 });
 
 test('reducedMotion still respected in DEBUG kinds (combo short version)', () => {
