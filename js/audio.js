@@ -98,6 +98,25 @@ Hop.Audio = {
         ["tone", 0.1, 0.5, 0.02, "triangle", 1568, 1520, 0.004], ["tone", 0.1, 0.5, 0.015, "triangle", 2349, 2290, 0.004]])
     };
   })(),
+  // Tempo feedback SE (same voice format; no files, no voices). CHAIN / MILESTONE are pitched per event (opts.pitch).
+  fxRecipes: {
+    // hit chain "2HIT! 3HIT!": a punchy tick + a bright blip whose pitch climbs with the chain (opts.pitch)
+    CHAIN: [["noise", 0, 0.05, 0.05, "bandpass", 2200, 1400, 1.2], ["tone", 0, 0.14, 0.06, "square", 660, 990, 0.003], ["tone", 0.05, 0.16, 0.035, "sine", 1320, 1320, 0.004]],
+    // every 100 m: a light two-note chime
+    MILESTONE: [["tone", 0, 0.12, 0.04, "triangle", 1046.5, 1046.5, 0.004], ["tone", 0.07, 0.18, 0.04, "triangle", 1568, 1568, 0.004]],
+    // every 500 m: rising fanfare arpeggio + shimmer
+    MILESTONE_BIG: [523.25, 659.25, 783.99, 1046.5].map((f, i) => ["tone", i * 0.07, 0.35 - i * 0.04, 0.04, "square", f, f, 0.005])
+      .concat([["noise", 0.2, 0.4, 0.015, "highpass", 6000, 9000, 0.7], ["tone", 0.28, 0.4, 0.03, "sine", 2093, 2093, 0.01]]),
+    // passing the best distance in flight
+    NEW_RECORD: [783.99, 987.77, 1174.66, 1567.98].map((f, i) => ["tone", i * 0.09, 0.3, 0.045, "triangle", f, f * 1.005, 0.006])
+      .concat([["noise", 0.3, 0.6, 0.02, "highpass", 5000, 8000, 0.7], ["tone", 0.3, 0.6, 0.03, "sine", 3136, 3200, 0.01]]),
+    // RESULT rank stamp: a thud + paper slap (S adds a ring)
+    RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
+    RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
+      ["tone", 0.06, 0.7, 0.03, "triangle", 1318.5, 1318.5, 0.004], ["tone", 0.06, 0.7, 0.02, "triangle", 1975.5, 1975.5, 0.004], ["noise", 0.08, 0.5, 0.015, "highpass", 6000, 9000, 0.7]]
+  },
+  // Pitch for the n-th chain hit: +2 semitones per hit from 2HIT, capped at +16.
+  chainPitch(n) { return 2 ** (Math.min(16, Math.max(0, (n - 2) * 2)) / 12); },
   // Worst-case summed peak: the largest total of voice peaks that are sounding at the same moment.
   peakSum(voices) {
     return Math.max(...voices.map(([, t]) => voices.reduce((sum, v) => sum + (v[1] <= t && t < v[1] + v[2] ? v[3] : 0), 0)));
@@ -112,8 +131,12 @@ Hop.Audio = {
     return buffer;
   },
   // Schedule a special recipe on ctx at time `at` (also used for offline WAV renders). Returns the master gain.
-  render(ctx, kind, at = ctx.currentTime) {
-    const voices = this.specialRecipes[kind] || this.comboRecipes[kind] || this.launchRecipes[kind];
+  // opts.pitch multiplies every frequency (tones and filters); opts.rate > 1 plays the timeline faster (repeat combos).
+  render(ctx, kind, at = ctx.currentTime, opts = null) {
+    const recipe = this.specialRecipes[kind] || this.comboRecipes[kind] || this.launchRecipes[kind] || this.fxRecipes[kind];
+    const pitch = opts?.pitch > 0 ? opts.pitch : 1, rate = opts?.rate > 0 ? opts.rate : 1;
+    const voices = recipe && (pitch === 1 && rate === 1 ? recipe : recipe.map(([type, t, dur, peak, a, b, c, d]) =>
+      [type, t / rate, dur / rate, peak, a, b * pitch, c * pitch, type === "tone" ? d / rate : d]));
     if (!voices) return null;
     const master = ctx.createGain(), sources = [];
     master.sources = sources;
@@ -155,13 +178,13 @@ Hop.Audio = {
   },
   // Combo scene track: kind = COMBO_WITCH / COMBO_FIGHTER (+ _SHORT). offset = seconds already elapsed since the
   // success. Only one track at a time; stopCombo (skip / RETRY) stops every voice still pending or sounding.
-  playCombo(kind, offset = 0) {
+  playCombo(kind, offset = 0, rate = 1) {
     this.stopCombo();
     if (this.muted) return null;
     try {
       const ctx = this.context;
       if (!ctx || ctx.state !== "running" || !this.comboRecipes[kind]) return null;
-      this.comboTrack = this.render(ctx, kind, ctx.currentTime - Math.max(0, Math.min(0.5, offset || 0)));
+      this.comboTrack = this.render(ctx, kind, ctx.currentTime - Math.max(0, Math.min(0.5, (offset || 0) / (rate || 1))), rate !== 1 ? { rate } : null);
       return this.comboTrack;
     } catch { return null; }
   },
@@ -170,12 +193,12 @@ Hop.Audio = {
     if (!track?.sources) return;
     for (const source of track.sources) { try { source.stop(); } catch {} }
   },
-  play(kind) {
+  play(kind, opts = null) {
     if (this.muted) return;
     try {
       const ctx = this.context;
       if (!ctx || ctx.state !== "running") return;
-      if (this.specialRecipes[kind] || this.launchRecipes[kind]) { this.render(ctx, kind); return; }
+      if (this.specialRecipes[kind] || this.launchRecipes[kind] || this.fxRecipes[kind]) { this.render(ctx, kind, ctx.currentTime, opts); return; }
       const notes = kind === "STOPPER" ? [[100, 0, 0.16], [520, 0.12, 0.16], [1100, 0.24, 0.28]] :
         kind === "GUARD" ? [[660, 0, 0.22], [990, 0.08, 0.25]] : [[520, 0, 0.10], [780, 0.08, 0.16]];
       for (const [frequency, delay, duration] of notes) {

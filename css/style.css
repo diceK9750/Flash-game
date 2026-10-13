@@ -128,6 +128,15 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 .special-panel.resolved { inset: auto 5% 13%; padding: 7px; background: #fffbedec; gap: 3px; }
 .special-panel.resolved strong { font-size: clamp(17px, 2vw, 28px); }
 #result-highlights { color: #714815; font-weight: 700; font-size: 13px; line-height: 1.6; }
+/* Tempo feedback: RESULT rank stamp (C/B/A/S) and the NEW RECORD flourish (no animation under reduced motion). */
+.rank-stamp { position: absolute; right: 7%; top: 14%; width: clamp(64px, 11vw, 132px); aspect-ratio: 1; display: grid; place-items: center; border: 6px solid currentColor; border-radius: 50%; font: 900 clamp(40px, 7vw, 92px)/1 system-ui, sans-serif; color: #8a5a2b; background: #fffdf3cc; transform: rotate(-14deg); animation: rank-stamp 0.32s cubic-bezier(.2,1.6,.4,1) both; pointer-events: none; }
+.rank-stamp.rank-b { color: #2f6aa3; }
+.rank-stamp.rank-a { color: #c2410c; }
+.rank-stamp.rank-s { color: #c9a300; text-shadow: 0 0 12px #fff3a0; box-shadow: 0 0 22px #ffe36e; }
+@keyframes rank-stamp { 0% { transform: rotate(-14deg) scale(2.6); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(-14deg) scale(1); opacity: 1; } }
+.overlay.new-record #overlay-title { color: #c2410c; animation: record-pulse 0.9s ease-in-out 2; }
+.overlay.new-record #overlay-label::before { content: "NEW RECORD! · "; color: #c2410c; font-weight: 900; }
+@keyframes record-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); text-shadow: 0 0 18px #ffd34d; } }
 @media (prefers-reduced-motion: reduce) {
   .stage *, .stage { animation: none !important; transition: none !important; }
 }

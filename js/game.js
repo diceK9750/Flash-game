@@ -9,6 +9,9 @@ Hop.Game = class {
     // callers keep the original immediate flight. launchCutinReduced mirrors reduced motion (UI); views counts
     // plays per session (kept across RETRY) so later launches use the shorter repeat version.
     this.launchCutinEnabled = false; this.launchCutinReduced = false; this.launchCutinViews = 0;
+    // Tempo & feedback (display / UX only; see config "Tempo & feedback"). tempoEnabled is switched on by main.js;
+    // headless callers keep the original wall-clock behaviour. comboViews counts combo scenes per type per session.
+    this.tempoEnabled = false; this.comboViews = { BOOST: 0, BOUNCE: 0 };
     this.best = this.readBest(); this.reset();
   }
   reset() {
@@ -28,6 +31,12 @@ Hop.Game = class {
     this.aerialMode = "DOWN"; this.aerialDownLock = null; this.successVisual = null; this.specialCutin = null; this.soundEvent = null;
     this.merchant = null; this.merchantVisual = null;
     this.combo = null; this.comboAfter = null; this.launchCutin = null;
+    // Tempo (display time only): timeScale = current game-time multiplier, hitStop = real seconds of freeze left.
+    this.timeScale = 1; this.hitStop = 0; this.tailFinished = false;
+    // Feedback bookkeeping (deterministic; never read by physics): hit chain, milestones, in-flight record pass.
+    // fxEvents is a short queue the UI consumes (SE + pops); capped so headless runs never grow it unbounded.
+    this.hype = { chain: 0, bestChain: 0, milestone: 0, recordPassed: false };
+    this.fxEvents = [];
     this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
     this.history = []; this.counts = Object.fromEntries(Object.keys(Hop.CONFIG.objectWeights).map(type => [type, 0]));
@@ -226,6 +235,7 @@ Hop.Game = class {
     for (const object of this.objects) {
       if (object.used || !this.touches(object, previous)) continue;
       object.used = true; // Single use per run, including a later re-entry.
+      this.noteHit(object, previous);
       this.clearAerialDownLock();
       this.counts[object.type]++;
       const entry = { type: object.type, label: object.type };
@@ -261,7 +271,9 @@ Hop.Game = class {
         } else this.specialCount++;
         break;
       }
+      const speedBefore = Math.hypot(b.vx, b.vy);
       this.normalContact(object.type, entry, guardAtContact);
+      this.noteImpact(Math.abs(Math.hypot(b.vx, b.vy) - speedBefore));
       if (b.stopped) break;
     }
   }
@@ -354,6 +366,7 @@ Hop.Game = class {
     return true;
   }
   groundImpact(impact) {
+    this.hype.chain = 0; // touching the ground ends the hit chain
     this.clearAerialDownLock();
     this.specialArmed.stopper = false;
     this.specialArmed.brake = false;
@@ -404,6 +417,7 @@ Hop.Game = class {
         this.specialSuccesses++; pending.entry.label = `${pending.type} SPECIAL`;
         if (pending.partner) pending.partner.used = true;
       }
+      if (this.tempoEnabled) this.hitStop = Math.max(this.hitStop, c.hitStopSpecial);
       this.flash = c.specialFlashDuration; this.specialTrail = c.specialTrailDuration;
       const strong = !pending.merchantType && pending.type === "STOPPER";
       if (strong) { this.flash = c.stopperFlashDuration; this.specialTrail = c.stopperTrailDuration; }
@@ -440,8 +454,11 @@ Hop.Game = class {
     this.combo = {
       type: pending.type, source: pending.source || null, partner: pending.partner,
       heroX: this.body.x, heroY: this.body.y, elapsed: 0, short, skipped: false,
-      total: short ? c.comboReducedDuration : pending.type === "BOOST" ? c.comboWitchDuration : c.comboFighterDuration
+      total: short ? c.comboReducedDuration : pending.type === "BOOST" ? c.comboWitchDuration : c.comboFighterDuration,
+      // Repeat view of this combo type in the session (tempo mode): the scene clock runs comboRepeatRate x.
+      rate: this.tempoEnabled && !short && this.comboViews[pending.type] > 0 ? c.comboRepeatRate : 1
     };
+    this.comboViews[pending.type] = (this.comboViews[pending.type] || 0) + 1;
   }
   endCombo(skipped = false) {
     const combo = this.combo; if (!combo) return false;
@@ -470,6 +487,66 @@ Hop.Game = class {
     return true;
   }
   skipLaunchCutin() { return this.endLaunchCutin(true); }
+  // ---- Tempo & feedback (display / UX; never changes physics, contacts or RNG) ----------------------------------
+  // Tail of the run: no cut-in / combo / SPECIAL window / merchant, it has bounced at least once, and it is rolling
+  // or airborne slower than tailSpeed.
+  tailActive() {
+    const c = Hop.CONFIG, b = this.body;
+    if (this.state !== Hop.STATES.FLYING || this.launchCutin || this.combo || this.special || this.merchant || this.merchantVisual || b.stopped) return false;
+    if (b.bounces < 1) return false;
+    return b.grounded || b.vx < c.tailSpeed;
+  }
+  // Fast-forward factor for the tail: tailFastForward when nothing can be done (rolling, or no AERIAL UP left);
+  // a gentler tailAirFastForward while airborne with AERIAL UP still available (the tap still works).
+  tailScale() {
+    const c = Hop.CONFIG; if (!this.tailActive()) return 1;
+    return this.body.grounded || this.upRemaining <= 0 ? c.tailFastForward : c.tailAirFastForward;
+  }
+  // Instant finish: run the remaining fixed steps now (exactly the steps update() would run). Stops early when a
+  // SPECIAL window opens or the hero is relaunched (tail no longer active), so no decision is ever skipped.
+  finishTail() {
+    const c = Hop.CONFIG; if (!this.tailActive()) return false;
+    const tempo = this.tempoEnabled; this.tempoEnabled = false;
+    let n = 0;
+    try { while (n++ < c.tailFinishMaxSteps && this.tailActive()) this.update(c.physicsStep); }
+    finally { this.tempoEnabled = tempo; }
+    this.tailFinished = true;
+    return true;
+  }
+  pushFx(event) { this.fxEvents.push(event); if (this.fxEvents.length > 32) this.fxEvents.shift(); }
+  // Hit chain: consecutive character contacts without touching the ground (a contact while rolling starts at 1).
+  noteHit(object, previous) {
+    const h = this.hype;
+    h.chain = this.body.grounded && previous.y <= 0 ? 1 : h.chain + 1;
+    h.bestChain = Math.max(h.bestChain, h.chain);
+    if (h.chain >= 2) this.pushFx({ kind: "CHAIN", n: h.chain, x: object.x, type: object.type });
+  }
+  // Hit-stop scaled by the velocity change of a normal contact (tempo mode only).
+  noteImpact(deltaV) {
+    const c = Hop.CONFIG; if (!this.tempoEnabled) return;
+    const k = Math.max(0, Math.min(1, deltaV / c.hitStopRefSpeed));
+    this.hitStop = Math.max(this.hitStop, c.hitStopMin + (c.hitStopMax - c.hitStopMin) * k);
+    this.pushFx({ kind: "IMPACT", k });
+  }
+  static milestoneKind(meters) {
+    const c = Hop.CONFIG; return meters > 0 && meters % c.milestoneBigMeters === 0 ? "MILESTONE_BIG" : "MILESTONE";
+  }
+  noteDistance() {
+    const c = Hop.CONFIG, h = this.hype, m = this.body.x / c.pixelsPerMeter;
+    const reached = Math.floor(m / c.milestoneMeters + 1e-9);
+    while (h.milestone < reached) { h.milestone++; const meters = h.milestone * c.milestoneMeters; this.pushFx({ kind: Hop.Game.milestoneKind(meters), meters }); }
+    if (!h.recordPassed && !this.debugUsed && this.best.distance > 0 && m > this.best.distance) { h.recordPassed = true; this.pushFx({ kind: "NEW_RECORD", meters: this.best.distance }); }
+  }
+  // RESULT rank by final distance (config.rankThresholds, highest first).
+  static rank(distance) {
+    const d = Number.isFinite(distance) ? distance : 0;
+    return (Hop.CONFIG.rankThresholds.find(([, min]) => d >= min) || ["C"])[0];
+  }
+  // RESULT entrance timing (s) for the tempo measurement: overlay wait and distance count-up.
+  resultTiming() {
+    const c = Hop.CONFIG;
+    return this.tempoEnabled ? { wait: c.resultOverlayLead + c.resultOverlayFade, count: c.resultCountTime } : { wait: 10 / 12 + 0.2, count: 0.8 };
+  }
   act() {
     const s = Hop.STATES;
     switch (this.state) {
@@ -482,12 +559,25 @@ Hop.Game = class {
         if (this.launchCutinEnabled && Hop.CONFIG.launchCutinEnabled !== false) this.startLaunchCutin();
         break;
       case s.RESULT: this.reset(); this.act(); break;
-      case s.FLYING: if (this.launchCutin) this.skipLaunchCutin(); else if (this.combo) this.skipCombo(); else if (this.special) this.resolveSpecial(true); else this.aerial(this.updateAerialMode()); break;
+      case s.FLYING: if (this.launchCutin) this.skipLaunchCutin(); else if (this.combo) this.skipCombo(); else if (this.special) this.resolveSpecial(true);
+        // Rolling on the ground (no AERIAL possible): a tap finishes the run instantly (same steps, same distance).
+        else if (this.tempoEnabled && this.body.grounded && this.tailActive()) this.finishTail();
+        else this.aerial(this.updateAerialMode()); break;
     }
   }
   update(deltaTime) {
     const c = Hop.CONFIG;
-    const dt = Math.max(0, Math.min(deltaTime, c.maxFrameDelta));
+    let dt = Math.max(0, Math.min(deltaTime, c.maxFrameDelta));
+    // Tempo (display time only): hit-stop freezes the game step for a few real ms; the tail fast-forward runs game
+    // time faster. Physics still advances in identical fixed steps, so results never change.
+    this.realTime = (this.realTime || 0) + dt;
+    if (this.tempoEnabled && this.state === Hop.STATES.FLYING) {
+      if (this.hitStop > 0) { const used = Math.min(this.hitStop, dt); this.hitStop -= used; dt -= used; }
+      const target = this.tailScale();
+      // Ramp up smoothly; drop back to 1 at once (a SPECIAL window or a relaunch is always real time).
+      this.timeScale = target <= 1 ? 1 : Math.min(target, this.timeScale + (target - 1) * dt / Math.max(1e-6, c.tailRampTime));
+      dt *= this.timeScale;
+    } else { this.timeScale = 1; this.hitStop = 0; }
     this.phaseTime += dt;
     // Display only (render interpolation / smoothing clock); never read by physics, contacts or results.
     this.frameDt = dt; this.displayTime = (this.displayTime || 0) + dt;
@@ -511,9 +601,10 @@ Hop.Game = class {
         continue;
       }
       if (this.combo) {
-        this.combo.elapsed += c.physicsStep; this.accumulator -= c.physicsStep;
-        this.flash = Math.max(0, this.flash - c.physicsStep);
-        if (this.specialCutin) { this.specialCutin.remaining -= c.physicsStep; if (this.specialCutin.remaining < 1e-9) this.specialCutin = null; }
+        const r = this.combo.rate || 1;
+        this.combo.elapsed += c.physicsStep * r; this.accumulator -= c.physicsStep;
+        this.flash = Math.max(0, this.flash - c.physicsStep * r);
+        if (this.specialCutin) { this.specialCutin.remaining -= c.physicsStep * r; if (this.specialCutin.remaining < 1e-9) this.specialCutin = null; }
         if (this.combo.elapsed >= this.combo.total - 1e-9) this.endCombo(false);
         continue;
       }
@@ -548,6 +639,7 @@ Hop.Game = class {
         this.contactObjects(previous);
       }
       this.accumulator -= c.physicsStep;
+      this.noteDistance();
       this.maxHeight = Math.max(this.maxHeight, this.body.y);
       this.maxSpeed = Math.max(this.maxSpeed, Math.hypot(this.body.vx, this.body.vy));
       this.updateAerialMode();

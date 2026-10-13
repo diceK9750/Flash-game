@@ -51,7 +51,7 @@ Hop.UI = class {
     if (g.comboShort !== !!this.visual.reducedMotion) g.comboShort = !!this.visual.reducedMotion;
     if (g.combo && g.combo !== this.comboSeen) {
       this.comboSeen = g.combo;
-      Hop.Audio?.playCombo?.(`COMBO_${g.combo.type === "BOOST" ? "WITCH" : "FIGHTER"}${g.combo.short ? "_SHORT" : ""}`, g.combo.elapsed);
+      Hop.Audio?.playCombo?.(`COMBO_${g.combo.type === "BOOST" ? "WITCH" : "FIGHTER"}${g.combo.short ? "_SHORT" : ""}`, g.combo.elapsed, g.combo.rate || 1);
       this.comboFinishVoicePlayed = false;
       const kind = g.combo.type === "BOOST" ? "witch" : "fighter";
       const id = g.combo.short ? `combo_${kind}_short` : `combo_${kind}_call`;
@@ -108,6 +108,7 @@ Hop.UI = class {
     // sprite; Hop.Sprites.startOneShot applies the priority table (SPECIAL_REACTION is never cut
     // by HIT / AERIAL / GROUND_BOUNCE). Settling into rolling does not trigger.
     const v = this.visual, sp = Hop.Sprites;
+    this.updateFx();
     // RESULT keeps the last FLIGHT_LOOP frame when no STOP_RESULT plays (frozenAt = RESULT entry).
     if (g.state === s.RESULT) { if (!Number.isFinite(v.frozenAt)) v.frozenAt = g.phaseTime; }
     else v.frozenAt = null;
@@ -206,22 +207,37 @@ Hop.UI = class {
     const labels = { READY: "画面をタップ / クリック", AIM_ANGLE: "タップで角度決定", AIM_POWER: "タップで発射", RESULT: "画面をタップしてRETRY" };
     const mode = g.aerialMode;
     const flightHint = g.combo ? "TAP → SKIP" : g.special ? "TAP → SPECIAL!" : floating ? "FLOAT / 浮遊中" : !airborne ? "AERIAL / 空中で使用可能" : mode === "DOWN" ? `AERIAL ↓ ${chargeText}` : `AERIAL ↑ ×${g.upRemaining}`;
-    set("hint", labels[g.state] || flightHint);
+    const fastHint = g.timeScale > 1.05 ? `スキップ ▶▶ ×${Math.round(g.timeScale)}${g.body.grounded ? " · タップで結果へ" : ""}` : null;
+    set("hint", labels[g.state] || fastHint || flightHint);
     // Display only: let a playing STOP_RESULT show through, then fade the overlay in. Runs every
     // update (before the state-change early return). The overlay stays un-hidden with the same
     // content, aria and tap handling; only its opacity changes.
-    const overlayAlpha = Hop.Sprites?.resultOverlayAlpha ? Hop.Sprites.resultOverlayAlpha(this.visual, g.phaseTime, g.state) : 1;
+    const overlayAlpha = g.tempoEnabled ? Hop.UI.tempoOverlayAlpha(this.visual, g.phaseTime, g.state)
+      : Hop.Sprites?.resultOverlayAlpha ? Hop.Sprites.resultOverlayAlpha(this.visual, g.phaseTime, g.state) : 1;
     const opacity = overlayAlpha >= 1 ? "" : String(Math.round(overlayAlpha * 1000) / 1000);
     if (this.overlay.style.opacity !== opacity) this.overlay.style.opacity = opacity;
     // RESULT entrance (smooth display only): the distance counts up with an ease-out once the overlay shows.
     if (Hop.Graphics?.smooth && g.state === s.RESULT && g.state === this.lastState && Number.isFinite(g.finalDistance)) {
       if (this.countFrom === null && overlayAlpha > 0) this.countFrom = g.phaseTime;
-      const u = this.visual.reducedMotion || this.countFrom === null ? 1 : Math.min(1, (g.phaseTime - this.countFrom) / 0.8);
+      const u = this.visual.reducedMotion || this.countFrom === null ? 1 : Math.min(1, (g.phaseTime - this.countFrom) / (g.tempoEnabled ? c.resultCountTime : 0.8));
       const text = `${(g.finalDistance * (u >= 1 ? 1 : Hop.Smooth.easeOutCubic(u))).toFixed(1)} m`, el = document.getElementById("result-distance");
       if (this.countFrom !== null && el.textContent !== text) el.textContent = text;
     }
+    // Rank stamp (tempo mode): revealed with its SE once the RESULT overlay is fully in.
+    const rankEl = document.getElementById("result-rank");
+    if (rankEl && g.state === s.RESULT && g.state === this.lastState && this.rankPending && overlayAlpha >= 1) {
+      this.rankPending = false; rankEl.hidden = false;
+      try { Hop.Audio?.play?.(rankEl.textContent === "S" ? "RANK_STAMP_S" : "RANK_STAMP"); } catch { /* SE is optional. */ }
+    }
     if (g.state === this.lastState) return;
     this.countFrom = null;
+    if (rankEl) {
+      const rank = g.state === s.RESULT && g.tempoEnabled ? Hop.Game.rank(g.finalDistance) : null;
+      rankEl.hidden = true; this.rankPending = !!rank;
+      rankEl.textContent = rank || ""; if (rankEl.dataset) rankEl.dataset.rank = rank || "";
+      rankEl.className = rank ? "rank-stamp rank-" + rank.toLowerCase() : "rank-stamp";
+    }
+    this.overlay.classList?.toggle?.("new-record", g.state === s.RESULT && !g.debugUsed && g.newRecords.includes("distance"));
     this.lastState = g.state;
     document.getElementById("result-highlights").textContent = g.state === s.RESULT ? "今回のハイライト：" + Hop.UI.highlights(g).join(" · ") : "";
     this.overlay.hidden = g.state !== s.READY && g.state !== s.RESULT;
@@ -249,6 +265,30 @@ Hop.UI = class {
         `SPEED 今回 ${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s / BEST ${g.best.speed.toFixed(1)} m/s`
       ].join("\n");
       document.getElementById("storage-status").textContent = g.debugUsed ? "このDEBUGプレイは自己ベストを更新・保存していません。" : g.storageAvailable ? "自己ベストはこのブラウザに保存されます。" : "保存領域を使用できません。自己ベストは今回の起動中のみ保持します。";
+    }
+  }
+  // Tempo RESULT overlay: transparent for resultOverlayLead s of the victory pose, then fades in (resultOverlayFade).
+  // No victory pose (mid-air stop / asset missing) or reduced motion: shown at once.
+  static tempoOverlayAlpha(visual, phaseTime, state) {
+    const c = Hop.CONFIG, at = visual?.stopAt;
+    if (state !== Hop.STATES.RESULT || visual?.reducedMotion || !Hop.Sprites?.heroStopResult?.ready || !Number.isFinite(at)) return 1;
+    const t = phaseTime - at - c.resultOverlayLead;
+    return t < 0 ? 0 : c.resultOverlayFade > 0 ? Math.min(1, t / c.resultOverlayFade) : 1;
+  }
+  // Feedback events from the game (CHAIN / MILESTONE / NEW_RECORD / IMPACT): SE + display pops in visual.fx
+  // (aged on the real-time clock, so fast-forward does not rush them). Reset on RETRY.
+  updateFx() {
+    const g = this.game, v = this.visual, now = g.realTime || 0;
+    if (g.state !== Hop.STATES.FLYING) { if (g.state !== Hop.STATES.RESULT) { v.fx = []; v.kick = null; } g.fxEvents.length = 0; return; }
+    v.fx = (v.fx || []).filter(f => now - f.at < 1.6);
+    for (const e of g.fxEvents.splice(0)) {
+      if (e.kind === "IMPACT") { v.kick = { at: now, k: e.k }; continue; }
+      if (e.kind === "CHAIN") { v.fx = v.fx.filter(f => f.kind !== "CHAIN"); }
+      v.fx.push({ ...e, at: now });
+      try {
+        if (e.kind === "CHAIN") Hop.Audio?.play?.("CHAIN", { pitch: Hop.Audio.chainPitch(e.n) });
+        else Hop.Audio?.play?.(e.kind);
+      } catch { /* SE is optional. */ }
     }
   }
   static zone(g) {
