@@ -49,6 +49,12 @@ Hop.CONFIG = Object.freeze({
   // with no other contact between, which the 1-per-screen spacing made ~2% of sage contacts), or else this draw at
   // the sage contact (one random() only when not eligible, no 聖護結界 active and no merchant SPECIAL). Tuned with the fixed-seed sim.
   guardSpecialChance: 0.13,
+  // Sage-specific condition candidates (2026-10-13d, replaces the guardSpecialChance draw when not "chance"; no random()).
+  // "chance" = current main behaviour. "calm" (A 静謐): hero speed at the sage contact <= sageCalmMaxSpeed px/s.
+  // "foresight" (B 先見): an unused hazard (僧侶 STOPPER or 盗賊 BRAKE) stands within sageForesightRange px ahead of the sage.
+  // "quiet" (C 静寂): >= sageQuietTime s of flight with no character contact (since launch or the last contact).
+  // The held-GUARD path stays in every mode; not while 聖護結界 is active or a merchant SPECIAL takes the contact.
+  sageCondition: "chance", sageCalmMaxSpeed: 600, sageForesightRange: 460, sageQuietTime: 4.2,
   angleSpecialChance: 0.10, guardSpecialDuration: 10.0,
   stopperFlashDuration: 0.32, stopperTrailDuration: 1.8,
   specialWindow: 1.0, specialMessageDuration: 1.3, specialFlashDuration: 0.18,
