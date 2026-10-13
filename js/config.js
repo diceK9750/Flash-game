@@ -116,6 +116,26 @@ Hop.CONFIG = Object.freeze({
   // before launch (every 10–70° / 30–100% launch touches it during the first ascent, before any ground bounce),
   // an adjacent partner debugPartnerGap px further on (= objectGapMin). Chosen in flight: debugFirst ahead.
   debugSetupAhead: 56, debugPartnerGap: 420,
+  // Tempo & feedback (2026-10-13 tempo; display / UX only, browser game only via game.tempoEnabled — headless
+  // callers keep the exact old wall-clock behaviour). Physics is always stepped with the same fixed physicsStep,
+  // so fast-forward / hit-stop / instant finish never change distances, contacts or RNG.
+  // Tail fast-forward: while the run is winding down (rolling on the ground, or airborne slower than tailSpeed px/s
+  // after a bounce) with no cut-in / combo / SPECIAL window / merchant, game time runs tailFastForward x (rolling or
+  // no AERIAL UP left) or tailAirFastForward x (AERIAL UP still usable), ramped over tailRampTime s; a tap while
+  // rolling finishes the run instantly (same final distance).
+  tailFastForward: 3, tailAirFastForward: 2, tailSpeed: 400, tailRampTime: 0.25, tailFinishMaxSteps: 120000,
+  // Hit-stop (real-time freeze of the game step) on character contacts, scaled by the velocity change.
+  hitStopMin: 0.025, hitStopMax: 0.085, hitStopRefSpeed: 1600, hitStopSpecial: 0.07,
+  // Repeat views (same combo type, same session) of a combo scene play comboRepeatRate x faster (still skippable).
+  comboRepeatRate: 1.6,
+  // Feedback: distance milestones (small every milestoneMeters, big every milestoneBigMeters), hit chain
+  // (consecutive character contacts without touching the ground), rank stamp thresholds (m) for the RESULT.
+  milestoneMeters: 100, milestoneBigMeters: 500,
+  rankThresholds: Object.freeze([["S", 3000], ["A", 1200], ["B", 400], ["C", 0]]),
+  shakeMaxPx: 6, shakeSpeedFrom: 1200, shakeSpeedTo: 2000, hitShakePx: 7,
+  // RESULT entrance in tempo mode: the overlay appears resultOverlayLead s into the victory pose (fade
+  // resultOverlayFade s) and the distance counts up in resultCountTime s. RETRY input is immediate either way.
+  resultOverlayLead: 0.35, resultOverlayFade: 0.15, resultCountTime: 0.4,
   storageKey: "hop-distance-best-v1"
 });
 Hop.STATES = Object.freeze({ READY: "READY", AIM_ANGLE: "AIM_ANGLE", AIM_POWER: "AIM_POWER", FLYING: "FLYING", RESULT: "RESULT" });

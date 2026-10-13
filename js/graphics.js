@@ -294,7 +294,9 @@ Hop.Graphics = {
     // Combo scene (display only): one state per frame; screen shake wraps the world, not the cut-in.
     const combo = this.comboState(g), impact = this.comboImpact(combo, !!visual?.reducedMotion);
     ctx.fillStyle = "#bce9f3"; ctx.fillRect(0, 0, c.width, c.height);
-    ctx.save(); ctx.translate(impact.x, impact.y);
+    // Tempo feedback shake (speed + hit kick, capped; none in reduced motion or while a scene / cut-in plays).
+    const shake = combo || g.launchCutin ? { x: 0, y: 0 } : this.tempoShake(g, visual);
+    ctx.save(); ctx.translate(impact.x + shake.x, impact.y + shake.y);
     // Combo camera (display only): zoom toward the scene actors; identity when cam.w = 0.
     const cam = this.comboCamera(combo, !!visual?.reducedMotion, sx, sy, ground, sx(bodyX), sy(bodyY));
     ctx.save();
@@ -371,6 +373,7 @@ Hop.Graphics = {
     }); ctx.globalAlpha = 1;
     const x = sx(bodyX), y = sy(bodyY);
     if (D && !D.rm && g.state === "FLYING" && !g.launchCutin && !combo) this.speedLines(ctx, x, y, g.body.vx, g.body.vy, D.time);
+    if (g.tempoEnabled && !visual.reducedMotion && g.state === "FLYING" && !g.launchCutin && !combo) this.windLines(ctx, g.body.vx, g.body.vy, g.realTime || 0, cam.w > 0 ? 0 : 1);
     if (combo) this.comboBack(ctx, combo, sx, sy, ground);
     const comboHero = combo && combo.after === null ? this.comboActors(combo).hero : null;
     if (g.contact && !visual.reducedMotion) this.contactEffect(ctx, g.contact.label.split(" ")[0], x, y, g.phaseTime - visual.contactAt);
@@ -455,6 +458,8 @@ Hop.Graphics = {
     ctx.restore(); // screen shake
     if (impact.flash > 0) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
+    // Tempo feedback pops (chain / milestones / record) and the fast-forward badge, under the cut-ins.
+    if (g.tempoEnabled) this.tempoOverlay(ctx, g, visual, x, y);
     // SPECIAL success cut-in above the world / flash; DOM special-panel stays separate.
     this.specialCutin(ctx, g, visual);
     // Launch cut-in (truck x hero) above everything while it plays.
@@ -1016,6 +1021,75 @@ Hop.Graphics = {
   },
   WHEELS: [-80, 12],
   // Speed-line strip behind the hero at high speed (display only; fixed lanes, no allocation).
+  // ---- Tempo feedback (display only; reads game + visual, never writes the game) ---------------------------------
+  // Screen shake offset: a gentle speed rumble (shakeSpeedFrom..To px/s -> 0..shakeMaxPx/2) plus a decaying kick
+  // after a character hit (scaled by the impact), total capped at shakeMaxPx. Deterministic in realTime.
+  tempoShake(g, visual) {
+    const c = Hop.CONFIG;
+    if (!g.tempoEnabled || visual?.reducedMotion || g.state !== "FLYING") return { x: 0, y: 0 };
+    const t = g.realTime || 0, v = Math.hypot(g.body.vx, g.body.vy);
+    const sp = Math.max(0, Math.min(1, (v - c.shakeSpeedFrom) / (c.shakeSpeedTo - c.shakeSpeedFrom))) * c.shakeMaxPx * 0.5;
+    const kick = visual?.kick, ka = kick ? t - kick.at : Infinity;
+    const kp = ka < 0.22 ? c.hitShakePx * (0.35 + 0.65 * kick.k) * (1 - ka / 0.22) : 0;
+    const a = Math.min(c.shakeMaxPx, sp + kp);
+    return a <= 0 ? { x: 0, y: 0 } : { x: a * Math.sin(t * 71.3) * Math.cos(t * 23.1), y: a * Math.sin(t * 57.7 + 1.3) * 0.8 };
+  },
+  // Full-screen wind streaks that thicken with speed (from 900 px/s; densest at the 2000 px/s cap).
+  windLines(ctx, vx, vy, time, alpha = 1) {
+    const c = Hop.CONFIG, v = Math.hypot(vx, vy), k = Math.max(0, Math.min(1, (v - 900) / 1100)) * alpha;
+    if (k <= 0) return;
+    const n = Math.round(6 + 18 * k), ux = vx / v, uy = -vy / v;
+    ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.lineCap = "round";
+    for (let i = 0; i < n; i++) {
+      const r1 = this.lcRand(i * 3 + 1), r2 = this.lcRand(i * 3 + 2), sp = 1.6 + 1.4 * r2;
+      const ph = (time * sp + r1) % 1, len = 60 + 180 * k * (0.5 + r2);
+      const px = c.width * (1.15 - ph * 1.3), py = 40 + (c.height - 140) * this.lcRand(i * 3 + 3);
+      ctx.globalAlpha = (0.12 + 0.28 * k) * Math.sin(Math.PI * ph); ctx.lineWidth = 1.5 + 2 * r1 * k;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - ux * len, py - uy * len); ctx.stroke();
+    }
+    ctx.restore();
+  },
+  // Pop scale for a text that lands at age a (s): overshoot 1.6 -> 1 in 0.18 s (reduced motion: 1).
+  popScale(a, rm) { if (rm) return 1; if (a < 0) return 0; const u = Math.min(1, a / 0.18); return 1 + 0.6 * (1 - u) * (1 - u) - 0.08 * Math.sin(Math.PI * u); },
+  tempoText(ctx, text, x, y, size, fill, scale = 1, alpha = 1, rot = 0) {
+    if (alpha <= 0 || scale <= 0) return;
+    ctx.save(); ctx.globalAlpha = Math.min(1, alpha); ctx.translate(x, y); if (rot) ctx.rotate(rot); ctx.scale(scale, scale);
+    ctx.font = `900 ${size}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.lineJoin = "round"; ctx.lineWidth = Math.max(4, size * 0.16); ctx.strokeStyle = "#1a0f08"; ctx.strokeText(text, 0, 0);
+    ctx.fillStyle = fill; ctx.fillText(text, 0, 0); ctx.restore();
+  },
+  tempoOverlay(ctx, g, visual, heroX, heroY) {
+    const c = Hop.CONFIG, rm = !!visual?.reducedMotion, now = g.realTime || 0;
+    for (const f of visual?.fx || []) {
+      const a = now - f.at, life = f.kind === "CHAIN" ? 0.9 : f.kind === "MILESTONE" ? 0.9 : 1.5;
+      if (a < 0 || a > life) continue;
+      const fade = Math.min(1, (life - a) / 0.3), sc = this.popScale(a, rm);
+      if (f.kind === "CHAIN") {
+        const n = Math.min(f.n, 12), hue = ["#ffe066", "#ffb340", "#ff7a3d", "#ff4d6d", "#d06bff"][Math.min(4, n - 2)];
+        const x = Math.max(120, Math.min(c.width - 120, heroX + 40)), y = Math.max(90, heroY - 120) - (rm ? 0 : a * 30);
+        this.tempoText(ctx, `${f.n}HIT!`, x, y, 44 + 5 * n, hue, sc, fade, rm ? 0 : -0.08);
+      } else if (f.kind === "MILESTONE") {
+        this.tempoText(ctx, `${f.meters} m`, c.width / 2, 92 - (rm ? 0 : a * 12), 40, "#ffffff", sc * 0.95, fade);
+      } else if (f.kind === "MILESTONE_BIG") {
+        if (!rm && a < 0.5) { ctx.save(); ctx.globalAlpha = 0.6 * (1 - a / 0.5); ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(c.width / 2, 110, 40 + a * 360, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+        this.tempoText(ctx, `${f.meters} m!!`, c.width / 2, 110, 74, "#ffe066", sc, fade, rm ? 0 : -0.04);
+      } else if (f.kind === "NEW_RECORD") {
+        const y = 200;
+        ctx.save(); ctx.globalAlpha = 0.85 * fade; ctx.fillStyle = "#c2410c";
+        const w = rm ? c.width : c.width * Math.min(1, a / 0.2); ctx.fillRect((c.width - w) / 2, y - 38, w, 76); ctx.restore();
+        this.tempoText(ctx, "NEW RECORD!", c.width / 2, y, 64, "#fff3a0", sc, fade);
+      }
+    }
+    // Fast-forward badge (the hint line says the same in DOM text).
+    if (g.state === "FLYING" && g.timeScale > 1.05) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, (g.timeScale - 1) * 2); ctx.fillStyle = "#1a0f08cc";
+      const tap = g.body.grounded, w = tap ? 300 : 210; ctx.fillRect(c.width - w - 24, 24, w, tap ? 78 : 48);
+      ctx.font = "900 30px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillStyle = "#ffffff";
+      ctx.fillText(`スキップ ▶▶ ×${Math.round(g.timeScale)}`, c.width - w - 8, 49);
+      if (tap) { ctx.font = "bold 22px system-ui, sans-serif"; ctx.fillStyle = "#ffe066"; ctx.fillText("タップで結果へ", c.width - w - 8, 84); }
+      ctx.restore();
+    }
+  },
   speedLines(ctx, x, y, vx, vy, time) {
     const v = Math.hypot(vx, vy), k = Math.min(1, (v - 1050) / 650);
     if (k <= 0) return;
