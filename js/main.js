@@ -2,6 +2,7 @@
 (() => {
   const game = new Hop.Game();
   game.launchCutinEnabled = true; // launch cut-in in the browser game (display only; see Game.startLaunchCutin)
+  Hop.Graphics.smooth = true; // smooth display: render interpolation, spring camera, cross-fades (display only)
   const ui = new Hop.UI(game, document.getElementById("canvas"));
   Hop.bindInput(game, ui);
   // ?debug=<kind> opens straight into that DEBUG check (?debug=boost, ?debug=merchant-a, ?debug=all ...).

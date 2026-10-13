@@ -489,6 +489,9 @@ Hop.Game = class {
     const c = Hop.CONFIG;
     const dt = Math.max(0, Math.min(deltaTime, c.maxFrameDelta));
     this.phaseTime += dt;
+    // Display only (render interpolation / smoothing clock); never read by physics, contacts or results.
+    this.frameDt = dt; this.displayTime = (this.displayTime || 0) + dt;
+    if (this.state !== Hop.STATES.FLYING || this.renderPrevX === undefined) { this.renderPrevX = this.body.x; this.renderPrevY = this.body.y; this.renderAlpha = 1; }
     // Triangle waves: a full period includes both outbound and return sweeps.
     const sweep = period => 1 - Math.abs(2 * ((this.phaseTime / period) % 1) - 1);
     if (this.state === Hop.STATES.AIM_ANGLE) this.angle = c.angleMin + (c.angleMax - c.angleMin) * sweep(c.anglePeriod);
@@ -499,6 +502,9 @@ Hop.Game = class {
       // Combo scene: only display timers (cut-in, success flash) run; physics, play timers, generation and
       // RNG are frozen until the scene ends or is skipped.
       // Launch cut-in: same freeze; only its own clock runs.
+      // Display only: the interpolation start point is the body before the newest physics step (frozen
+      // steps pin it to the current body so a paused scene never oscillates).
+      this.renderPrevX = this.body.x; this.renderPrevY = this.body.y;
       if (this.launchCutin) {
         this.launchCutin.elapsed += c.physicsStep; this.accumulator -= c.physicsStep;
         if (this.launchCutin.elapsed >= this.launchCutin.total - 1e-9) this.endLaunchCutin(false);
@@ -549,6 +555,8 @@ Hop.Game = class {
         if (!this.revive()) { this.finish(); break; }
       }
     }
+    // Display only: fraction of a physics step left in the accumulator (0..1) for render interpolation.
+    this.renderAlpha = this.state === Hop.STATES.FLYING ? Math.max(0, Math.min(1, this.accumulator / c.physicsStep)) : 1;
     const follow = 1 - Math.exp(-c.cameraFollowRate * dt);
     this.cameraX += (Math.max(0, c.launchX + this.body.x - c.cameraAnchorX) - this.cameraX) * follow;
     // Lift the view on high shots, keeping the player visible at maximum power.

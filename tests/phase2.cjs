@@ -20,6 +20,10 @@ vm.createContext(scope);
 for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input', 'main']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), scope, { filename: name });
 }
+// main.js turns on the smooth display (spring camera, interpolation, eased tilt, cross-fades). The geometry / sprite
+// suites sharing this scope assert the exact raw display contract (g.cameraX, body position, vy tilt), so it is
+// switched back off here; the smooth display itself is covered by tests/smooth.cjs.
+scope.Hop.Graphics.smooth = false;
 const { Game, CONFIG: c } = scope.Hop;
 function random(seed) { return () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296); }
 function launch(seed = 1, angle = 40, power = 1) {
