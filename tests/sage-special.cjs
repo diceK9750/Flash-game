@@ -1,18 +1,26 @@
-// Sage (GUARD 聖護結界) SPECIAL rate (2026-10-13c). Before: eligible only when normalGuard was still held at the
-// sage contact, i.e. GUARD then GUARD with no other contact between (every contact clears normalGuard); the
-// 1-per-screen spacing (castRepeatWindow) made that ~1.8% of sage contacts. Now a sage contact that is not eligible
-// also draws guardSpecialChance (no draw while 聖護結界 is active or when a merchant SPECIAL takes the contact).
-// 聖護結界 itself (10 s STOPPER block) is unchanged. guardSpecialChance 0 reproduces the warrior-fix game exactly.
+// Sage (GUARD 聖護結界) SPECIAL condition (2026-10-13d, 先見の結界 / "foresight").
+// History: before 2026-10-13c the SPECIAL needed a held GUARD (GUARD then GUARD with no other contact; ~1.8% of
+// sage contacts). 2026-10-13c (main 3d13336) added a flat guardSpecialChance 0.13 draw. 2026-10-13d replaces that
+// draw with a sage-specific, deterministic condition (no random()): an untouched 僧侶 (STOPPER) or 盗賊 (BRAKE)
+// within sageForesightRange (460 px) beyond the sage at the contact. The held-GUARD path is unchanged; nothing
+// triggers while 聖護結界 is active or when a merchant SPECIAL takes the contact; the effect (10 s STOPPER block)
+// is unchanged. sageCondition "none" reproduces the warrior-fix game exactly (fixture + fingerprint bd3ce787...).
+// Main 3d13336's 1000-play rates are stored in fixtures/sage-main-rates-1000.json (same seeded player as below).
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-function load(chance) {
-  const scope = {}; scope.window = scope; vm.createContext(scope);
-  for (const name of ['config', 'physics', 'game']) {
+function load(mode, patch = s => s) {
+  const els = new Map();
+  const stub = () => new Proxy({ calls: [] }, { get: (o, k) => k in o ? o[k] : (...a) => { o.calls.push(k); return k === 'measureText' ? { width: 10 } : undefined; }, set: (o, k, v) => (o[k] = v, true) });
+  const element = id => { if (!els.has(id)) els.set(id, { setAttribute() {}, textContent: '', hidden: false, style: {}, addEventListener() {}, getContext: stub }); return els.get(id); };
+  const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {} }; scope.window = scope; vm.createContext(scope);
+  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics']) {
     let src = fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8');
-    if (name === 'config' && chance !== undefined) { assert(/guardSpecialChance: [\d.]+,/.test(src)); src = src.replace(/guardSpecialChance: [\d.]+,/, `guardSpecialChance: ${chance},`); }
+    if (name === 'config' && mode !== undefined) { assert(/sageCondition: "foresight",/.test(src)); src = src.replace(/sageCondition: "foresight",/, `sageCondition: "${mode}",`); }
+    if (name === 'config') src = patch(src);
     vm.runInContext(src, scope, { filename: name });
   }
+  scope.Hop.stub = stub;
   return scope.Hop;
 }
 const random = seed => () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
@@ -62,33 +70,82 @@ function fingerprint(H) {
   }
   return crypto.createHash('sha256').update(lines.join('\n')).digest('hex');
 }
-const now = load(), old = load(0), c = now.CONFIG;
-assert.equal(c.guardSpecialChance, 0.13); assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.merchantChance, 0.20, 'merchant draw stays 20%');
+const now = load(), old = load('none'), c = now.CONFIG;
+assert.equal(c.sageCondition, 'foresight'); assert.equal(c.sageForesightRange, 460);
+assert(!('guardSpecialChance' in c), 'flat sage draw removed');
+for (const k of ['sageCalmMaxSpeed', 'sageQuietTime']) assert(!(k in c), `unused candidate ${k} removed`);
+assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.merchantChance, 0.20, 'merchant draw stays 20%');
 assert.equal(JSON.stringify(c.specials.GUARD), JSON.stringify({ trigger: 'guard', name: '聖護結界' }));
 assert.equal(c.guardSpecialDuration, 10.0, 'same effect per activation'); assert.equal(c.angleSpecialChance, 0.10);
-// Old (warrior-fix) behaviour reproduced exactly with the chance at 0.
+// Warrior-fix behaviour reproduced exactly with the sage condition off.
 assert.deepEqual(animSim(old), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-warrior.json'), 'utf8')));
 assert.equal(fingerprint(old), 'bd3ce7876ece75a432333172e6940557398cff0bc32ab6428f852ca1fd86dcdd');
+// New baseline (2026-10-13d foresight; was the 3d13336 guardSpecialChance run).
 assert.deepEqual(animSim(now), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8')));
-// Unit: draw only when not eligible, no 聖護結界 active, no merchant; held GUARD = no draw.
+// Unit: condition true / false.
 {
-  const mk = r => { const g = new now.Game(r); g.objects = []; g.nextObjectX = Infinity; g.nextBoundaryX = Infinity; g.act(); g.angle = 30; g.act(); g.power = 0.8; g.act(); return g; };
-  const hit = g => { g.objects = [{ x: g.body.x + 5, type: 'GUARD', used: false }]; g.contactObjects({ x: g.body.x, y: g.body.y }); };
-  let draws = 0;
-  const win = mk(() => { draws++; return c.guardSpecialChance - 1e-9; }); draws = 0; hit(win); assert.equal(draws, 1); assert.equal(win.special?.type, 'GUARD');
-  const lose = mk(() => { draws++; return c.guardSpecialChance; }); draws = 0; hit(lose); assert.equal(draws, 1); assert.equal(lose.special, null);
-  assert.equal(lose.normalGuard, 1, 'normal GUARD contact unchanged');
-  const held = mk(() => { draws++; return 0.99; }); held.normalGuard = 1; draws = 0; hit(held); assert.equal(draws, 0); assert.equal(held.special?.type, 'GUARD');
-  const active = mk(() => { draws++; return 0; }); active.guardSpecial = { active: true, remaining: 5 }; draws = 0; hit(active); assert.equal(draws, 0); assert.equal(active.special, null);
-  const zero = new old.Game(() => { draws++; return 0; }); zero.objects = []; zero.nextObjectX = Infinity; zero.nextBoundaryX = Infinity; zero.act(); zero.act(); zero.act();
-  draws = 0; zero.objects = [{ x: zero.body.x + 5, type: 'GUARD', used: false }]; zero.contactObjects({ x: zero.body.x, y: zero.body.y }); assert.equal(draws, 0); assert.equal(zero.special, null);
+  const R = c.sageForesightRange;
+  const mk = () => { let draws = 0; const g = new now.Game(() => { draws++; return 0.99; }); g.objects = []; g.nextObjectX = Infinity; g.nextBoundaryX = Infinity; g.act(); g.angle = 30; g.act(); g.power = 0.8; g.act(); g.draws = () => draws; return g; };
+  const setup = (g, others) => { const sage = { x: g.body.x + 5, type: 'GUARD', used: false }; g.objects = [sage, ...others.map(([dx, type, used]) => ({ x: sage.x + dx, type, used: !!used }))]; return sage; };
+  const hit = g => { const before = g.draws(); g.contactObjects({ x: g.body.x, y: g.body.y }); assert.equal(g.draws(), before, 'no random() for the sage condition'); return g.special; };
+  const cases = [
+    ['cleric in range', [[300, 'STOPPER']], true], ['thief in range', [[300, 'BRAKE']], true],
+    ['cleric at range edge', [[R, 'STOPPER']], true], ['thief just past range', [[R + 0.5, 'BRAKE']], false],
+    ['touched cleric', [[200, 'STOPPER', true]], false], ['touched thief', [[200, 'BRAKE', true]], false],
+    ['other character (witch)', [[200, 'BOOST']], false], ['other character (jester)', [[200, 'ANGLE']], false],
+    ['cleric behind the sage', [[-200, 'STOPPER']], false], ['nobody', [], false],
+    ['touched cleric + untouched thief', [[100, 'STOPPER', true], [400, 'BRAKE']], true],
+  ];
+  for (const [name, others, want] of cases) {
+    const g = mk(), sage = setup(g, others);
+    assert.equal(g.sageConditionMet(sage), want, name);
+    const sp = hit(g); assert.equal(sp?.type === 'GUARD', want, `${name}: SPECIAL`);
+    if (!want) assert.equal(g.normalGuard, 1, `${name}: normal GUARD contact unchanged`);
+  }
+  // Barrier active: no trigger.
+  { const g = mk(); setup(g, [[200, 'STOPPER']]); g.guardSpecial = { active: true, remaining: 5 }; assert.equal(hit(g), null); }
+  // Held GUARD still works without any cleric / thief.
+  { const g = mk(); setup(g, []); g.normalGuard = 1; assert.equal(hit(g)?.type, 'GUARD'); }
+  // Merchant takes the contact: merchant SPECIAL, not 聖護結界. The game has no sage merchant (merchantTypes has no
+  // GUARD), so a config variant maps GUARD to merchant "A" to prove the sage condition yields to the merchant.
+  assert(!('GUARD' in c.merchantTypes));
+  { const M = load(undefined, src => src.replace('merchantTypes: Object.freeze({ STOPPER: "A",', 'merchantTypes: Object.freeze({ GUARD: "A", STOPPER: "A",'));
+    const g = new M.Game(() => 0); g.objects = []; g.nextObjectX = Infinity; g.nextBoundaryX = Infinity; g.act(); g.act(); g.act();
+    const sage = { x: g.body.x + 5, type: 'GUARD', used: false, debugBoundary: true }; g.objects = [sage, { x: sage.x + 200, type: 'STOPPER', used: false }];
+    assert.equal(g.sageConditionMet(sage), true); g.guardSpecial = { active: true, remaining: 5 };
+    g.contactObjects({ x: g.body.x, y: g.body.y }); assert.equal(g.special?.merchantType, 'A', 'merchant took the contact'); assert.equal(g.specialCount, 0, 'no 聖護結界'); }
+  { const M = load(undefined, src => src.replace('merchantTypes: Object.freeze({ STOPPER: "A",', 'merchantTypes: Object.freeze({ GUARD: "A", STOPPER: "A",'));
+    const g = new M.Game(() => 0.99); g.objects = []; g.nextObjectX = Infinity; g.nextBoundaryX = Infinity; g.act(); g.act(); g.act();
+    const sage = { x: g.body.x + 5, type: 'GUARD', used: false, debugBoundary: true }; g.objects = [sage, { x: sage.x + 200, type: 'STOPPER', used: false }]; g.normalGuard = 1;
+    g.contactObjects({ x: g.body.x, y: g.body.y }); assert.equal(g.special?.merchantType, null, 'merchant draw lost -> held GUARD SPECIAL'); assert.equal(g.special?.type, 'GUARD'); }
+  // "none": condition never met.
+  { const g = new old.Game(() => 0.99); g.objects = [{ x: 0, type: 'GUARD', used: false }, { x: 100, type: 'STOPPER', used: false }]; assert.equal(g.sageConditionMet(g.objects[0]), false); }
 }
-const PLAYS = 1000, before = rates(old, PLAYS), after = rates(now, PLAYS);
+// Hint draw (graphics.js): only for an untouched on-screen sage whose condition is met; static under reduced motion.
+{
+  const G = now.Graphics, ground = 600, sx = x => x;
+  const scene = others => { const g = new now.Game(() => 0.5); const sage = { x: 300, type: 'GUARD', used: false }; g.objects = [sage, ...others.map(([dx, type, used]) => ({ x: 300 + dx, type, used: !!used }))]; return { g, sage }; };
+  const draw = (g, rm, t = 0.4) => { const ctx = now.stub(); return { n: G.sageForesightHints(ctx, g, sx, ground, t, rm), ctx }; };
+  assert.equal(draw(scene([[300, 'STOPPER']]).g, false).n, 1);
+  assert.equal(draw(scene([[300, 'BRAKE']]).g, true).n, 1);
+  assert.equal(draw(scene([[600, 'STOPPER']]).g, false).n, 0, 'out of range');
+  assert.equal(draw(scene([[300, 'BOOST']]).g, false).n, 0, 'other character');
+  assert.equal(draw(scene([[300, 'STOPPER', true]]).g, false).n, 0, 'touched cleric');
+  { const { g, sage } = scene([[300, 'STOPPER']]); sage.used = true; assert.equal(draw(g, false).n, 0, 'used sage'); }
+  { const { g, sage } = scene([[300, 'STOPPER']]); sage.x = 5000; g.objects[1].x = 5200; assert.equal(draw(g, false).n, 0, 'off-screen sage'); }
+  assert.equal(draw(scene([[300, 'STOPPER']]).g, false).ctx.calls.includes('quadraticCurveTo'), true);
+  assert.equal(draw(scene([]).g, false).ctx.calls.length, 0, 'nothing drawn without the condition');
+  // Reduced motion: same alpha at any time (no pulse).
+  const alphas = (rm, t) => { const ctx = now.stub(); G.sageForesightHints(ctx, scene([[300, 'BRAKE']]).g, sx, ground, t, rm); return ctx.globalAlpha; };
+  assert.equal(alphas(true, 0.1), alphas(true, 1.3)); assert.notEqual(alphas(false, 0.1), alphas(false, 0.6));
+}
+const main = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'sage-main-rates-1000.json'), 'utf8'));
+const PLAYS = 1000, before = { rate: Object.fromEntries(TYPES.map(k => [k, 100 * main.sp[k] / main.enc[k]])), enc: main.enc, dist: main.avgDistanceM }, after = rates(now, PLAYS);
+assert.equal(main.plays, PLAYS);
 assert(after.rate.GUARD >= 10 && after.rate.GUARD <= 17, `sage ${after.rate.GUARD.toFixed(2)}`);
-assert(before.rate.GUARD < 5, 'was low before');
 for (const t of TYPES.filter(t => t !== 'GUARD')) {
   const p = (before.rate[t] + after.rate[t]) / 200, se = 100 * Math.sqrt(p * (1 - p) * (1 / before.enc[t] + 1 / after.enc[t]));
-  assert(Math.abs(after.rate[t] - before.rate[t]) <= 3 * se, `${t} unchanged ${before.rate[t].toFixed(2)} -> ${after.rate[t].toFixed(2)} (3se ${(3 * se).toFixed(2)})`);
+  assert(Math.abs(after.rate[t] - before.rate[t]) <= 3 * se, `${t} vs main ${before.rate[t].toFixed(2)} -> ${after.rate[t].toFixed(2)} (3se ${(3 * se).toFixed(2)})`);
 }
 const fmt = r => Object.fromEntries(TYPES.map(t => [t, +r.rate[t].toFixed(2)]));
-console.log(JSON.stringify({ sageSpecial: 'PASS', plays: PLAYS, before: fmt(before), after: fmt(after), avgDistanceM: [+before.dist.toFixed(1), +after.dist.toFixed(1)], newFingerprint: fingerprint(now) }));
+console.log(JSON.stringify({ sageSpecial: 'PASS', plays: PLAYS, main: fmt(before), foresight: fmt(after), avgDistanceM: [+before.dist.toFixed(1), +after.dist.toFixed(1)], newFingerprint: fingerprint(now) }));

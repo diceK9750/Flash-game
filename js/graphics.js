@@ -329,6 +329,7 @@ Hop.Graphics = {
       this.truck(ctx, tx, ground); ctx.restore();
       if (!rm && truckAge >= 0 && truckAge < 0.45) this.dustPuffs(ctx, anim, tx + 40, ground, truckAge, 1.2);
     }
+    if (cam.w === 0) this.sageForesightHints(ctx, g, sx, ground, g.phaseTime, rm);
     for (const object of g.objects) {
       const ox = sx(object.x); if (ox < -120 || ox > c.width + 120) continue;
       // Combo actors are drawn by comboBack; they fade back in place during the afterglow.
@@ -718,6 +719,32 @@ Hop.Graphics = {
     if (!st.short && t >= F.growEnd && t < F.upper) out.fighter.charge = (t - F.growEnd) / (F.upper - F.growEnd);
     if (st.after !== null && !st.short) out.fighter.scale = 1 + (out.fighter.scale - 1) * (1 - this.ease(st.after / 0.35)); // back to normal size
     return out;
+  },
+  // 先見の結界 hint (display only, 2026-10-13d): for each untouched on-screen sage whose game.sageConditionMet is
+  // true, a faint pale-gold arc from the sage to the qualifying 僧侶 / 盗賊 plus a soft glow and a 先見 mark on the
+  // sage. Gentle pulse; static under reduced motion. Returns the number of hints drawn (tests).
+  sageForesightHints(ctx, g, sx, ground, t, rm) {
+    const c = Hop.CONFIG; let drawn = 0;
+    if (!g.sageForesightTarget) return 0;
+    for (const sage of g.objects) {
+      if (sage.used || sage.type !== "GUARD") continue;
+      const ax = sx(sage.x); if (ax < -120 || ax > c.width + 120) continue;
+      const target = g.sageForesightTarget(sage); if (!target) continue;
+      const bx = sx(target.x), a = rm ? 0.55 : 0.45 + 0.2 * Math.sin(t * 3.2), y = ground - 70, lift = Math.min(90, 30 + (bx - ax) * 0.18);
+      ctx.save();
+      ctx.globalAlpha = a; ctx.strokeStyle = "#ffe7a3"; ctx.lineWidth = 4; ctx.setLineDash([10, 8]); ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(ax, y); ctx.quadraticCurveTo((ax + bx) / 2, y - lift, bx, y); ctx.stroke(); ctx.setLineDash([]);
+      const glow = ctx.createRadialGradient(ax, y, 6, ax, y, 70);
+      if (glow) { // (null from stub contexts in node tests)
+        glow.addColorStop(0, "rgba(255,236,170,0.55)"); glow.addColorStop(1, "rgba(255,236,170,0)");
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(ax, y, 70, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = Math.min(1, a + 0.35); ctx.font = "bold 22px system-ui"; ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(120,86,20,0.75)"; ctx.fillRect(ax - 30, ground - 250, 60, 30);
+      ctx.fillStyle = "#fff3c4"; ctx.fillText("先見", ax, ground - 227);
+      ctx.restore(); drawn++;
+    }
+    return drawn;
   },
   // Combo camera (pure, display only). Returns the zoom weight w (0 = normal camera), the full zoom z and the
   // focus (fx, fy) in normal screen coordinates; draw maps p -> (ax, ay) + z * (p - (fx, fy)).

@@ -246,8 +246,9 @@ Hop.Game = class {
       const merchantType = merchantCandidate && (this.debug || this.random() < c.merchantChance) ? merchantCandidate : null;
       // Warrior (DASH) not armed: dashSpecialChance draw, only when no merchant SPECIAL takes this contact.
       if (rule?.trigger === "dash" && !eligible && !merchantType && c.dashSpecialChance > 0) eligible = this.random() < c.dashSpecialChance;
-      // Sage (GUARD) not eligible: guardSpecialChance draw, only when no 聖護結界 is active and no merchant SPECIAL takes this contact.
-      if (rule?.trigger === "guard" && !eligible && !merchantType && !this.guardSpecial.active && c.guardSpecialChance > 0) eligible = this.random() < c.guardSpecialChance;
+      // Sage (GUARD) not eligible: 先見の結界 (sageConditionMet, deterministic, no random()), only when no 聖護結界 is
+      // active and no merchant SPECIAL takes this contact.
+      if (rule?.trigger === "guard" && !eligible && !merchantType && !this.guardSpecial.active) eligible = this.sageConditionMet(object);
       this.normalGuard = 0; // One contact lifetime; snapshot belongs only to this event.
       this.updateSpecialArming(object.type);
       if (merchantType || eligible) {
@@ -264,6 +265,16 @@ Hop.Game = class {
       if (b.stopped) break;
     }
   }
+  // 先見の結界 (config.sageCondition "foresight"): the nearest untouched 僧侶 (STOPPER) or 盗賊 (BRAKE) beyond the sage
+  // within sageForesightRange px, or null. Deterministic; graphics.js uses it for the hint line. "none" disables it.
+  sageForesightTarget(object) {
+    const c = Hop.CONFIG;
+    if (c.sageCondition !== "foresight" || !object || object.type !== "GUARD") return null;
+    let best = null;
+    for (const o of this.objects) if (!o.used && (o.type === "STOPPER" || o.type === "BRAKE") && o.x > object.x && o.x - object.x <= c.sageForesightRange && (!best || o.x < best.x)) best = o;
+    return best;
+  }
+  sageConditionMet(object) { return this.sageForesightTarget(object) !== null; }
   updateSpecialArming(type) {
     const armed = this.specialArmed;
     if (type !== "BRAKE") armed.brake = false;

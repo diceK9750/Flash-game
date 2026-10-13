@@ -45,7 +45,8 @@ for (let i = 0; i < 6; i++) { const d = A.dust({}, i, 6, 0.2, 1); assert.deepEqu
 // Uniform-or-bounded: squash keeps sx * sy close to 1 (volume-ish) and never scales a part separately (one transform).
 assert.equal(A.clampScale(0.5), 0.92); assert.equal(A.clampScale(2), 1.08);
 // Physics unchanged by drawing: same seeds, Graphics.draw every frame (normal + reduced motion), vs the baseline.
-// Baseline: anim-physics-baseline-sage.json (sage guardSpecialChance, 2026-10-13c); -warrior.json is reproduced with guardSpecialChance 0
+// Baseline: anim-physics-baseline-sage.json (re-recorded 2026-10-13d for the sage 先見の結界 condition; was the 2026-10-13c
+// guardSpecialChance run); -warrior.json is reproduced with sageCondition "none" (tests/sage-special.cjs).
 // anim-physics-baseline.json is still reproduced exactly with dashSpecialChance 0 (tests/warrior-special.cjs).
 function sim(draw) {
   const out = [];
