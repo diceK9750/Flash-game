@@ -18,7 +18,7 @@ test('draw happens once, only for a merchant candidate; win -> merchant', () => 
   const g = isolated(); g.normalGuard = 1; let draws = 0; g.random = () => { draws++; return c.merchantChance - 1e-9; };
   hit(g, 'DASH', { x: 800 }); assert.equal(g.special.merchantType, 'B'); assert.equal(draws, 1); assert.equal(g.merchantStats.attempts, 1);
   const n = isolated(); n.normalGuard = 1; draws = 0; n.random = () => { draws++; return 0; };
-  hit(n, 'DASH', { x: 760 }); assert.equal(draws, 0, 'not at the boundary: no draw'); assert.equal(n.special, null);
+  n.specialArmed.dash = true; hit(n, 'DASH', { x: 760 }); assert.equal(draws, 0, 'not at the boundary: no draw (armed: no warrior draw either)'); assert.equal(n.special?.merchantType, null);
   const b = isolated(); b.normalGuard = 1; draws = 0; b.random = () => { draws++; return 0; };
   hit(b, 'BRAKE', { x: 800 }); assert.equal(draws, 0, 'non-merchant type: no draw');
 });

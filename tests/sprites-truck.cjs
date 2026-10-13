@@ -1,6 +1,6 @@
 // Launch truck HD comic still (display only). The truck has no hit box (no truck in game.js / physics.js);
 // Graphics.truck draws the still at the Canvas truck origin when it is loaded and the Canvas truck otherwise.
-// Positions per state (READY -55, AIM_ANGLE -44 -> -38, AIM_POWER -32, 0.5 s after launch -20) stay in Graphics.draw.
+// Graphics.draw: hidden before launch and during the launch cut-in; then rush-in from the left to -20, gone 0.5 s later.
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), zlib = require('node:zlib');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
@@ -100,25 +100,46 @@ const canvasTruck = (x, ground) => { const saved = s.drawTruck; delete s.drawTru
   { const r = recorder({ throws: true }); assert.equal(s.drawTruck(r.ctx, 200, 594), false); G.truck(r.ctx, 200, 594);
     assert.deepEqual(r.calls.filter(c => c[0] !== 'save' && c[0] !== 'restore'), base.filter(c => c[0] !== 'save' && c[0] !== 'restore'), 'drawImage throws -> Canvas'); }
   const saved = s.definitions.TRUCK; delete s.definitions.TRUCK; fallback('no definition'); s.definitions.TRUCK = saved;
-  // In the game: same x per state as before, the sprite in every state, gone 0.5 s after launch, game state untouched.
+  // In the game (2026-10-13): no truck in READY / AIM_ANGLE / AIM_POWER or during the launch cut-in. It appears at the
+  // launch clock (cut-in end / skip; right at launch when no cut-in runs), rushes in from the left for
+  // Graphics.truckRushIn s, stands at -20 with the recoil / dust for 0.5 s, then is gone. Reduced motion: no rush.
   const { scope: gs, element, random } = require('./phase2.cjs');
   const GH = gs.Hop, c = GH.CONFIG, game = new GH.Game(random(1)), ui = new GH.UI(game, element('canvas'));
   GH.Sprites.truckIdle = { ready: true, image: { complete: true, naturalWidth: 576 }, data: GH.Sprites.normalizeCell({ ...m }) };
-  const log = [], origTruck = GH.Graphics.truck, origDraw = GH.Sprites.drawTruck;
+  const log = [], origTruck = GH.Graphics.truck, origDraw = GH.Sprites.drawTruck, rush = GH.Graphics.truckRushIn;
+  assert(rush > 0 && rush <= 0.4 && GH.Graphics.truckRushInPx > 200);
   let sprite = 0; GH.Sprites.drawTruck = function (...a) { const ok = origDraw.apply(this, a); sprite += ok ? 1 : 0; return ok; };
   GH.Graphics.truck = function (ctx, x, ground) { log.push([game.state, x - (c.launchX - game.cameraX), ground - (c.groundY + game.cameraY)]); return origTruck.call(this, ctx, x, ground); };
   const frame = () => { log.length = 0; ui.update(); const before = JSON.stringify(game); ui.draw(); assert.equal(JSON.stringify(game), before, 'draw purity'); return log.slice(); };
-  assert.deepEqual(frame(), [['READY', -55, 0]]);
-  game.act(); assert.deepEqual(frame(), [['AIM_ANGLE', -44, 0]]);
-  game.phaseTime = 0.25; assert.deepEqual(frame(), [['AIM_ANGLE', -41, 0]]);
-  game.phaseTime = 1; assert.deepEqual(frame(), [['AIM_ANGLE', -38, 0]]);
-  game.act(); assert.deepEqual(frame(), [['AIM_POWER', -32, 0]]);
-  game.act(); assert.equal(game.state, 'FLYING'); const at = game.phaseTime; const after = frame();
-  assert.equal(after.length, 1); assert.equal(after[0][0], 'FLYING'); assert(Math.abs(after[0][1] + 20) < 1e-9 && after[0][2] === 0, 'launch: -20');
-  game.phaseTime = at + 0.49; assert.equal(frame().length, 1); game.phaseTime = at + 0.5; assert.deepEqual(frame(), [], 'gone 0.5 s after launch');
-  assert.equal(sprite, 7, 'the HD still drew in every state');
+  assert.deepEqual(frame(), [], 'READY: hidden');
+  game.act(); assert.deepEqual(frame(), [], 'AIM_ANGLE: hidden'); game.phaseTime = 1; assert.deepEqual(frame(), []);
+  game.act(); assert.deepEqual(frame(), [], 'AIM_POWER: hidden');
+  game.act(); assert.equal(game.state, 'FLYING'); assert.equal(game.launchCutin, null, 'no cut-in in this headless game');
+  const at = game.phaseTime; const after = frame();
+  assert.equal(after.length, 1, 'no cut-in: visible right after launch'); assert(Math.abs(after[0][1] + 20) < 1e-9 && after[0][2] === 0, 'spot: -20');
+  const r1 = ui.visual.reducedMotion || !GH.Anim.enabled ? 0 : rush; // no rush-in with reduced motion
+  game.phaseTime = at + r1 + 0.49; assert.equal(frame().length, 1); game.phaseTime = at + r1 + 0.5; assert.deepEqual(frame(), [], 'gone 0.5 s after the rush-in');
+  // With the cut-in: hidden while it plays, appears when it ends (and on skip).
+  for (const skip of [false, true]) for (const reduced of [false, true]) {
+    const g2 = new GH.Game(random(3)); g2.launchCutinEnabled = true; const u2 = new GH.UI(g2, element('canvas')); u2.visual.reducedMotion = reduced;
+    // The cut-in draws its own truck at (0, 0) inside its panels; only the road truck stands on the ground line (dy 0).
+    const road = () => log.filter(e => e[2] === 0 && Math.abs(e[1] + 20) < 1e-9);
+    const f2 = () => { log.length = 0; u2.update(); u2.draw(); return road().length; };
+    const pre = () => { log.length = 0; u2.update(); u2.draw(); return log.filter(e => e[2] === 0).length; };
+    assert.equal(pre(), 0); g2.act(); assert.equal(pre(), 0); g2.act(); assert.equal(pre(), 0); g2.act();
+    assert(g2.launchCutin, 'cut-in started'); assert.equal(f2(), 0, 'hidden at the cut-in start');
+    g2.update(0.05); assert.equal(f2(), 0, 'hidden during the cut-in');
+    if (skip) g2.act(); else while (g2.launchCutin) g2.update(1 / 60);
+    assert.equal(g2.launchCutin, null); assert.equal(f2(), 1, `visible after the cut-in (${skip ? 'skip' : 'played'}, reduced ${reduced})`);
+    const t0 = u2.visual.launchAt, r2 = u2.visual.reducedMotion || !GH.Anim.enabled ? 0 : rush; g2.phaseTime = t0 + r2 + 0.49; assert.equal(f2(), 1);
+    g2.phaseTime = t0 + r2 + 0.5; assert.equal(f2(), 0, 'gone afterwards');
+  }
+  // DEBUG start states: hidden before launch too.
+  { const g3 = new GH.Game(random(5)); g3.setDebugKind('dash'); const u3 = new GH.UI(g3, element('canvas'));
+    for (let i = 0; i < 3; i++) { log.length = 0; u3.update(); u3.draw(); assert.equal(log.length, 0, 'DEBUG prelaunch hidden'); g3.act(); } }
+  assert(sprite >= 3, 'the HD still drew once visible');
   GH.Graphics.truck = origTruck; GH.Sprites.drawTruck = origDraw; GH.Sprites.truckIdle = undefined;
   // No truck in the simulation: game.js / physics.js / config.js never mention it.
   for (const f of ['game', 'physics', 'config']) assert(!/truck/i.test(fs.readFileSync(path.join(root, 'js', f + '.js'), 'utf8')), f + '.js has no truck');
-  console.log('Truck sprite PASS: 576x288 HD still, pivot = Canvas origin, 167 x 102 px like the Canvas truck, loader / disabled / errors, drawTruck geometry, Canvas fallback identical, same x per state, gone after 0.5 s, display only.');
+  console.log('Truck sprite PASS: 576x288 HD still, pivot = Canvas origin, 167 x 102 px like the Canvas truck, loader / disabled / errors, drawTruck geometry, Canvas fallback identical, hidden before launch / during the cut-in, rush-in then -20, gone after 0.5 s, display only.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

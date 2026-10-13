@@ -234,15 +234,18 @@ Hop.Game = class {
       const rule = c.specials[object.type];
       const partner = this.objects.filter(o => !o.used && o.x > object.x).sort((a, z) => a.x - z.x)[0];
       const guardAtContact = this.normalGuard;
-      const eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner :
+      let eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner :
         rule.trigger === "chance" ? object.debugForce === true || this.random() < c.angleSpecialChance :
-        rule.trigger === "guard" ? guardAtContact && !this.guardSpecial.active : this.specialArmed[rule.trigger]);
+        rule.trigger === "guard" ? guardAtContact && !this.guardSpecial.active :
+        this.specialArmed[rule.trigger]);
       const spacing = c.boundaryMeters * c.pixelsPerMeter;
       const atBoundary = object.debugBoundary === true || object.x > 0 && Math.abs(object.x / spacing - Math.round(object.x / spacing)) < 1e-9;
       const inZone = b.x >= object.x - c.merchantZoneMeters * c.pixelsPerMeter && previous.x <= object.x;
       const merchantCandidate = (guardAtContact || this.guardSpecial.active) && atBoundary && inZone ? c.merchantTypes[object.type] : null;
       // Rare draw (merchantChance); a miss is an ordinary contact judged by the normal SPECIAL rules above.
       const merchantType = merchantCandidate && (this.debug || this.random() < c.merchantChance) ? merchantCandidate : null;
+      // Warrior (DASH) not armed: dashSpecialChance draw, only when no merchant SPECIAL takes this contact.
+      if (rule?.trigger === "dash" && !eligible && !merchantType && c.dashSpecialChance > 0) eligible = this.random() < c.dashSpecialChance;
       this.normalGuard = 0; // One contact lifetime; snapshot belongs only to this event.
       this.updateSpecialArming(object.type);
       if (merchantType || eligible) {

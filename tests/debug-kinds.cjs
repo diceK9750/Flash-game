@@ -242,9 +242,11 @@ test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEB
     return [g.state, g.finalDistance.toFixed(3), g.maxHeight.toFixed(3), g.maxSpeed.toFixed(3), g.body.bounces, g.history.map(e => e.label).join(','), g.specialCount, g.specialSuccesses, JSON.stringify(g.merchantStats), draws, f].join('|');
   }
   const lines = []; for (let seed = 1; seed <= 160; seed++) lines.push(play(seed));
-  assert.equal(lines.filter(l => /MERCHANT/.test(l)).length, 3); assert.equal(lines.filter(l => /SPECIAL/.test(l)).length, 56);
-  assert.equal(lines[0], 'RESULT|1344.914|1268.683|2074.332|9|ANGLE,DASH,ANGLE,ANGLE,BOUNCE SPECIAL,BRAKE,GUARD,STOPPER (GUARDED)|1|1|{"attempts":0,"successes":0,"lastType":null,"revives":0}|51|2153');
-  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), '8cfecc1beadfd41906ebe1bf22f525fcf4911817a97b7a78ef8a1b00e212d12a');
+  // Updated 2026-10-13 for the warrior dashSpecialChance draw (only change); the 4c3aec7 fingerprint
+  // (3 / 56 / 8cfecc1b...) is still reproduced exactly with dashSpecialChance 0 in tests/warrior-special.cjs.
+  assert.equal(lines.filter(l => /MERCHANT/.test(l)).length, 5); assert.equal(lines.filter(l => /SPECIAL/.test(l)).length, 60);
+  assert.equal(lines[0], 'RESULT|5600.456|1238.924|2175.900|32|ANGLE,DASH,ANGLE SPECIAL,BOUNCE,ANGLE,BOOST SPECIAL,BOOST SPECIAL,BOUNCE SPECIAL,BOUNCE,BOOST,ANGLE,BRAKE SPECIAL,BOOST SPECIAL,ANGLE,BOUNCE,ANGLE,BRAKE,BOUNCE SPECIAL,GUARD,BOUNCE / MERCHANT TYPE D,STOPPER|7|7|{"attempts":1,"successes":1,"lastType":"D","revives":0}|184|6339');
+  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), 'bd3ce7876ece75a432333172e6940557398cff0bc32ab6428f852ca1fd86dcdd');
 });
 
 test('reducedMotion still respected in DEBUG kinds (combo short version)', () => {

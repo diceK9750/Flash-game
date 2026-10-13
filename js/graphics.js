@@ -88,6 +88,8 @@ Hop.Graphics = {
     }
     ctx.restore();
   },
+  // Truck entrance after the launch cut-in (display only): rush-in time (s) and start offset (px, left of its spot).
+  truckRushIn: 0.22, truckRushInPx: 420,
   truck(ctx, x, ground) {
     if (Hop.Sprites?.drawTruck?.(ctx, x, ground)) return; // HD truck still when loaded (display only), else the Canvas truck
     ctx.save(); ctx.translate(x, ground); ctx.scale(1.12, 1.12);
@@ -315,13 +317,17 @@ Hop.Graphics = {
     const launchAge = g.phaseTime - visual.launchAt;
     // Character motion (display only): event clocks in visual.anim; poses from the pure Hop.Anim functions.
     const A = Hop.Anim, anim = A.track(g, visual), rm = !!visual.reducedMotion || !A.enabled, pose = anim.pose;
-    if (prelaunch || launchAge < 0.5) {
-      const offset = g.state === "READY" ? -55 : g.state === "AIM_ANGLE" ? -44 + Math.min(6, g.phaseTime * 12) : -32;
-      const tx = sx(0) + (prelaunch ? offset : -20);
-      A.truck(pose, g.state, g.phaseTime, prelaunch ? -1 : launchAge, rm);
+    // Truck (display only): hidden in READY / AIM_ANGLE / AIM_POWER and while the launch cut-in plays. From the
+    // launch clock (cut-in end / skip, or the launch itself when no cut-in runs) it rushes in from the left
+    // (truckRushIn s; reduced motion: appears in place), then recoils with the suspension bounce + dust as before.
+    const rush = rm ? 0 : this.truckRushIn, truckAge = launchAge - rush;
+    if (!prelaunch && !g.launchCutin && launchAge >= 0 && truckAge < 0.5) {
+      const tx = sx(0) - 20;
+      A.truck(pose, g.state, g.phaseTime, Math.max(0, truckAge), rm);
+      if (truckAge < 0) { const u = 1 - launchAge / rush; pose.dx -= this.truckRushInPx * u * u; pose.dy = 0; pose.rot = 0; }
       ctx.save(); ctx.translate(tx + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.translate(-tx, -ground);
       this.truck(ctx, tx, ground); ctx.restore();
-      if (!rm && !prelaunch && launchAge < 0.45) this.dustPuffs(ctx, anim, tx + 40, ground, launchAge, 1.2);
+      if (!rm && truckAge >= 0 && truckAge < 0.45) this.dustPuffs(ctx, anim, tx + 40, ground, truckAge, 1.2);
     }
     for (const object of g.objects) {
       const ox = sx(object.x); if (ox < -120 || ox > c.width + 120) continue;
