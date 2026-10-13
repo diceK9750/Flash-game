@@ -47,15 +47,16 @@ function context({ offline = false } = {}) {
 // Canvas stub that tracks the rotation stack and reports HERO draws to `rec`.
 let rec = null;
 function recorder() {
-  let rot = 0; const stack = [];
+  // globalAlpha is saved / restored too, so afterimage ghosts (Hop.Anim, alpha < 1) can be told apart.
+  let rot = 0; const stack = [], target = { globalAlpha: 1 };
   const dummy = new Proxy(function () {}, { get: (o, k) => k === 'width' ? 0 : dummy, apply: () => dummy });
   const impl = {
-    save() { stack.push(rot); }, restore() { rot = stack.length ? stack.pop() : 0; },
+    save() { stack.push([rot, target.globalAlpha]); }, restore() { [rot, target.globalAlpha] = stack.length ? stack.pop() : [0, 1]; },
     rotate(a) { rot += a; }, measureText: () => ({ width: 0 }),
-    drawImage(image, sx) { if (rec) rec.draws.push({ src: image._src || image.src, sx, rot }); },
+    drawImage(image, sx) { if (rec) rec.draws.push({ src: image._src || image.src, sx, rot, alpha: target.globalAlpha }); },
     get rotation() { return rot; }
   };
-  return new Proxy({}, { get: (o, k) => k in impl ? impl[k] : k in o ? o[k] : () => dummy, set: (o, k, v) => (o[k] = v, true) });
+  return new Proxy(target, { get: (o, k) => k in impl ? impl[k] : k in o ? o[k] : () => dummy, set: (o, k, v) => (o[k] = v, true) });
 }
 
 function rng(seed) { return () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296); }
@@ -68,7 +69,7 @@ async function simulate({ runs = 60, seed0 = 1, log = null } = {}) {
   const real = Object.fromEntries(Object.keys(KEYS).map(k => [k, S[k]]));
   const bySrc = Object.fromEntries(Object.keys(KEYS).map(k => [real[k].image._src, k]));
   const origChar = H.Graphics.character;
-  H.Graphics.character = function (ctx, id, ...rest) { if (id === 'HERO' && rec) rec.draws.push({ src: 'CANVAS', rot: ctx.rotation }); return origChar.call(this, ctx, id, ...rest); };
+  H.Graphics.character = function (ctx, id, ...rest) { if (id === 'HERO' && rec) rec.draws.push({ src: 'CANVAS', rot: ctx.rotation, alpha: ctx.globalAlpha }); return origChar.call(this, ctx, id, ...rest); };
   const stats = { runs: 0, flights: 0, frames: 0, byHz: {}, shown: {}, starts: {}, completed: {}, interrupted: {}, transitions: {}, blocked: {}, canvasEdges: {}, shortLoopGaps: {}, shortOneShots: {}, resultEntry: {}, specialSuccessEdges: 0, srStarts: 0, reducedFrames: 0, missingRuns: 0, issues: [] };
   const issue = (kind, info) => { stats.issues.push({ kind, ...info }); };
   const inc = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
@@ -116,7 +117,10 @@ async function simulate({ runs = 60, seed0 = 1, log = null } = {}) {
       const g = game, v = ui.visual, st = g.state;
       if (st === ST.RESULT && s0 !== ST.RESULT) { wait = 0.3 + R() * 1.8; inc(stats.resultEntry, !g.body.stopped ? 'not stopped (test time cap)' : g.body.y <= S.definitions.HERO.STOP_RESULT.maxGroundY ? 'stopped on ground' : 'stopped mid-air (STOPPER)'); }
       // --- per-frame record ---
-      const heroDraws = draws.filter(d => d.src === 'CANVAS' || bySrc[d.src]);
+      const heroAll = draws.filter(d => d.src === 'CANVAS' || bySrc[d.src]);
+      // Afterimages (Hop.Anim): at most two translucent ghosts, never in reduced motion; one solid hero draw.
+      const heroDraws = heroAll.filter(d => !(d.alpha < 0.5));
+      if (heroAll.length - heroDraws.length > (v.reducedMotion ? 0 : 2)) issue('ghost-count', { seed, t, st, n: heroAll.length });
       if (heroDraws.length !== 1) issue('hero-count', { seed, t, st, n: heroDraws.length });
       const d = heroDraws[0] || {};
       const key = d.src === 'CANVAS' ? null : bySrc[d.src];

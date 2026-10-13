@@ -313,9 +313,15 @@ Hop.Graphics = {
     }
     const prelaunch = ["READY", "AIM_ANGLE", "AIM_POWER"].includes(g.state);
     const launchAge = g.phaseTime - visual.launchAt;
+    // Character motion (display only): event clocks in visual.anim; poses from the pure Hop.Anim functions.
+    const A = Hop.Anim, anim = A.track(g, visual), rm = !!visual.reducedMotion || !A.enabled, pose = anim.pose;
     if (prelaunch || launchAge < 0.5) {
       const offset = g.state === "READY" ? -55 : g.state === "AIM_ANGLE" ? -44 + Math.min(6, g.phaseTime * 12) : -32;
-      this.truck(ctx, sx(0) + (prelaunch ? offset : -20), ground);
+      const tx = sx(0) + (prelaunch ? offset : -20);
+      A.truck(pose, g.state, g.phaseTime, prelaunch ? -1 : launchAge, rm);
+      ctx.save(); ctx.translate(tx + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.translate(-tx, -ground);
+      this.truck(ctx, tx, ground); ctx.restore();
+      if (!rm && !prelaunch && launchAge < 0.45) this.dustPuffs(ctx, anim, tx + 40, ground, launchAge, 1.2);
     }
     for (const object of g.objects) {
       const ox = sx(object.x); if (ox < -120 || ox > c.width + 120) continue;
@@ -324,13 +330,16 @@ Hop.Graphics = {
       if (actor && combo.after === null) continue;
       ctx.save(); ctx.globalAlpha = (object.used ? 0.35 : 1) * (actor ? Math.min(1, combo.after / combo.afterTotal) : 1);
       // Phase C: CAST sprite when loaded, else the Canvas figure (same feet point; alpha above applies).
+      const ready = visual.readyTargets?.find(target => target.object === object);
+      A.cast(pose, object.type, g.phaseTime, !!ready && !object.used, A.usedAge(anim, object, g.phaseTime), rm);
+      ctx.save(); ctx.translate(ox + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.scale(pose.sx, pose.sy); ctx.translate(-ox, -ground);
       if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
+      ctx.restore();
       // Name / READY labels step aside while the combo camera is zoomed (they would be huge).
       if (cam.w > 0) ctx.globalAlpha *= 1 - cam.w;
       ctx.textAlign = "center"; ctx.font = "bold 25px system-ui";
       ctx.fillStyle = "#fff9e9"; ctx.fillRect(ox - 59, ground - 173, 118, 32);
       ctx.fillStyle = this.objectColor(object.type); ctx.fillText(Hop.CAST[object.type].name, ox, ground - 148);
-      const ready = visual.readyTargets?.find(target => target.object === object);
       if (ready) {
         ctx.font = "bold 27px system-ui";
         ctx.fillStyle = ready.label.startsWith("MERCHANT") ? "#754615" : "#674488";
@@ -351,10 +360,22 @@ Hop.Graphics = {
       ctx.save(); ctx.globalAlpha = g.effect.remaining / c.effectDuration;
       this.line(ctx, [[x - 28, y + 20], [x - 12, y + (g.effect.label.endsWith("UP") ? -30 : 55)]], "#277ca5", 6); ctx.restore();
     }
-    ctx.save(); ctx.translate(x + (comboHero?.dx || 0), y + (comboHero?.dy || 0));
+    // Afterimages (display only): two fading ghosts along the trail while fast or spinning after a hit.
+    const ev = anim.ev, speed = Math.hypot(g.body.vx, g.body.vy);
+    const ghosts = g.state === "FLYING" && !rm && !comboHero && g.trail.length > 8 && (speed > 950 || ev.hitAge < 0.4);
+    if (!comboHero) A.hero(pose, g.state, g.phaseTime, ev, rm, Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1);
+    for (let k = ghosts ? 2 : 0; k >= 0; k--) {
+    const gp = k ? g.trail[g.trail.length - 1 - k * 4] : null;
+    if (k && !gp) continue;
+    ctx.save(); if (k) { ctx.globalAlpha = k === 1 ? 0.22 : 0.12; ctx.translate(sx(gp.x) - x, sy(gp.y) - y); }
+    ctx.translate(x + (comboHero?.dx || 0), y + (comboHero?.dy || 0));
     // GROUND_BOUNCE plays upright (tilt weight 0) and the tilt eases back afterwards.
     const tilt = Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1;
     if (g.state === "FLYING" && !visual.reducedMotion && tilt > 0 && !comboHero) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt);
+    if (!comboHero) { // spin about the body centre, squash / stretch about the feet (whole sprite, <= 8%)
+      const pr = c.playerRadius, mid = pr - 52;
+      ctx.translate(pose.dx, pose.dy + mid); if (pose.rot) ctx.rotate(pose.rot); ctx.translate(0, pr - mid); ctx.scale(pose.sx, pose.sy); ctx.translate(0, -pr);
+    }
     // Same foot anchor and rotation as the silhouette; physics stays untouched.
     // phaseTime shares the game's pause/hidden-tab handling (no wall-clock jump).
     // Stopped on the ground (FLYING or RESULT): STOP_RESULT. FLYING order: one-shot (priority
@@ -366,6 +387,8 @@ Hop.Graphics = {
       (prelaunch && !!Hop.Sprites?.idleLayers?.().some(drawLayer));
     if (!spriteDrawn) this.character(ctx, "HERO", 0, c.playerRadius, 0.936);
     ctx.restore();
+    }
+    if (!rm && ev.landAge < 0.45) this.dustPuffs(ctx, anim, sx(anim.landX), ground, ev.landAge, anim.landV);
     if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }
     if (g.successVisual?.strong && !visual.reducedMotion) {
       const age = c.stopperTrailDuration - g.successVisual.remaining;
@@ -376,7 +399,10 @@ Hop.Graphics = {
     if (g.merchantVisual) {
       // Merchant is an overlay participant, never a generated collision object.
       const mx = Math.max(90, Math.min(c.width - 100, x + 105));
+      A.cast(pose, "SPECIAL_ONLY", g.phaseTime, false, Infinity, rm);
+      ctx.save(); ctx.translate(mx + pose.dx, y + 20 + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.scale(pose.sx, pose.sy); ctx.translate(-mx, -(y + 20));
       if (!Hop.Sprites?.drawCast?.(ctx, "SPECIAL_ONLY", mx, y + 20)) this.character(ctx, "SPECIAL_ONLY", mx, y + 20, 1.25);
+      ctx.restore();
       const lift = visual.reducedMotion ? 25 : 25 + (1 - Math.min(1, g.merchantVisual.remaining / c.specialMessageDuration)) * 20;
       this.circle(ctx, mx + 35, y - lift, 12, "#ffd867");
       ctx.font = "bold 23px system-ui"; ctx.fillStyle = "#654417";
@@ -698,5 +724,156 @@ Hop.Graphics = {
       ctx.restore();
     }
   },
+  // Landing / launch dust (display only): six deterministic puffs, no allocation.
+  dustPuffs(ctx, anim, x, ground, age, strength) {
+    const p = anim.puff;
+    ctx.save(); ctx.fillStyle = "#e9dcb8";
+    for (let i = 0; i < 6; i++) {
+      Hop.Anim.dust(p, i, 6, age, strength);
+      if (p.alpha <= 0) continue;
+      ctx.globalAlpha = p.alpha; ctx.beginPath(); ctx.arc(x + p.x, ground + p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  },
   objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; }
+};
+// ---- Character motion (display only; never reads or writes physics) ----------------------------------------
+// Pure pose functions: (out, ..., time inputs, reducedMotion) -> { sx, sy, rot, dx, dy } written into `out`
+// (no per-frame allocation). Squash / stretch is whole-sprite and clamped to +-8% (Anim.SCALE_MIN / MAX), so
+// the 5-head proportions never change. reducedMotion keeps only a faint breath (amplitude x0.3), no shake /
+// spin / wobble / dust / afterimages.
+Hop.Anim = {
+  SCALE_MIN: 0.92, SCALE_MAX: 1.08, RM: 0.3,
+  enabled: true, // false = every pose is the identity (static-geometry tests; a kill switch)
+  CAST_ORDER: ["BOOST", "BOUNCE", "BRAKE", "ANGLE", "DASH", "GUARD", "STOPPER", "SPECIAL_ONLY"],
+  // Per-character idle flavour: breath period (s), bob px, sway rad, hop (1 = little hops), float (1 = hover).
+  CAST_STYLE: {
+    BOOST: { period: 2.2, bob: 3, sway: 0.03, hop: 0, float: 1 },        // witch: floaty hover
+    BOUNCE: { period: 0.9, bob: 2, sway: 0, hop: 1, float: 0 },          // fighter: light footwork hops
+    BRAKE: { period: 1.6, bob: 1, sway: 0.05, hop: 0, float: 0 },        // thief: sly sway
+    ANGLE: { period: 1.2, bob: 2, sway: 0.08, hop: 0, float: 0 },        // jester: rocking
+    DASH: { period: 2.0, bob: 1, sway: 0.015, hop: 0, float: 0 },        // warrior: heavy, steady breath
+    GUARD: { period: 2.6, bob: 2.5, sway: 0.02, hop: 0, float: 1 },      // sage: calm hover
+    STOPPER: { period: 2.4, bob: 1.5, sway: 0.025, hop: 0, float: 0 },   // priest: gentle prayer sway
+    SPECIAL_ONLY: { period: 1.4, bob: 2, sway: 0.04, hop: 0, float: 0 }  // merchant: cheerful swing
+  },
+  clampScale(v) { return v < this.SCALE_MIN ? this.SCALE_MIN : v > this.SCALE_MAX ? this.SCALE_MAX : v; },
+  reset(out) { out.sx = 1; out.sy = 1; out.rot = 0; out.dx = 0; out.dy = 0; return out; },
+  finish(out) { out.sx = this.clampScale(out.sx); out.sy = this.clampScale(out.sy); return out; },
+  easeOutCubic(p) { p = p < 0 ? 0 : p > 1 ? 1 : p; return 1 - (1 - p) * (1 - p) * (1 - p); },
+  // Hero. ev: { launchAge, hitAge, hitDir, landAge, specialAge } (seconds since the event, Infinity = none).
+  // wobble (0..1) scales the flight flutter (Sprites.tiltWeight: 0 while GROUND_BOUNCE plays upright).
+  hero(out, state, t, ev, rm, wobble = 1) {
+    this.reset(out); if (!this.enabled) return out;
+    const amp = rm ? this.RM : 1, TAU = Math.PI * 2;
+    if (state === "READY" || state === "AIM_ANGLE") {
+      const b = Math.sin(TAU * t / 1.8) * amp;
+      out.sy = 1 + 0.025 * b; out.sx = 1 - 0.015 * b;
+      const blink = (t % 3.2) / 0.14; // quick blink-style nod every 3.2 s
+      if (!rm && blink < 1) out.dy = 2.5 * Math.sin(Math.PI * blink);
+    } else if (state === "AIM_POWER") {
+      // Anticipation: crouch (ease in) and a nervous tremble.
+      const k = this.easeOutCubic(t / 0.25) * amp;
+      out.sy = 1 - 0.05 * k; out.sx = 1 + 0.04 * k;
+      if (!rm) out.dx = 1.2 * Math.sin(t * 55);
+    } else if (state === "FLYING") {
+      if (!rm) { out.rot = 0.07 * wobble * Math.sin(t * 9); out.sy = 1 + 0.02 * Math.sin(t * 14); out.sx = 1 - 0.012 * Math.sin(t * 14); } // cape-flutter wobble
+      if (ev.launchAge < 0.3) { const k = (1 - ev.launchAge / 0.3) * amp; out.sy += 0.08 * k; out.sx -= 0.06 * k; } // launch stretch
+      if (ev.hitAge < 0.55) {
+        const a = ev.hitAge;
+        if (a < 0.07) { // hit-stop: squash + shake
+          out.sy = 1 - 0.07 * amp; out.sx = 1 + 0.07 * amp;
+          if (!rm) out.dx = 3.5 * Math.sin(a * 320);
+        } else { // comic spin and follow-through stretch
+          const p = (a - 0.07) / 0.48;
+          if (!rm) out.rot += TAU * this.easeOutCubic(p) * (ev.hitDir < 0 ? -1 : 1);
+          out.sy = 1 + 0.06 * (1 - p) * amp; out.sx = 1 - 0.05 * (1 - p) * amp;
+        }
+      }
+      if (ev.landAge < 0.28) { const k = (1 - ev.landAge / 0.28); const q = k * k * amp; out.sy = 1 - 0.08 * q; out.sx = 1 + 0.07 * q; }
+      if (ev.specialAge < 0.6) { const s = 1 + 0.08 * Math.sin(Math.PI * ev.specialAge / 0.6) * amp; out.sx *= s; out.sy *= s; }
+    } else if (state === "RESULT") {
+      const b = Math.sin(TAU * t / 2.4) * amp;
+      out.sy = 1 + 0.015 * b; out.sx = 1 - 0.01 * b;
+      if (ev.landAge < 0.28) { const k = 1 - ev.landAge / 0.28; out.sy -= 0.07 * k * k * amp; out.sx += 0.06 * k * k * amp; }
+    }
+    return this.finish(out);
+  },
+  // Roadside character. ready = a READY target (anticipation pose), recoilAge = s since it was used.
+  cast(out, type, t, ready, recoilAge, rm) {
+    this.reset(out); if (!this.enabled) return out;
+    const st = this.CAST_STYLE[type] || this.CAST_STYLE.DASH, amp = rm ? this.RM : 1, TAU = Math.PI * 2;
+    const idx = this.CAST_ORDER.indexOf(type), ph = (idx < 0 ? 0 : idx) * 0.7;
+    const b = Math.sin(TAU * t / st.period + ph);
+    out.sy = 1 + 0.02 * b * amp; out.sx = 1 - 0.012 * b * amp;
+    if (!rm) {
+      out.rot = st.sway * Math.sin(TAU * t / (st.period * 1.7) + ph);
+      if (st.float) out.dy = -st.bob * (1 + Math.sin(TAU * t / st.period + ph));
+      else if (st.hop) out.dy = -st.bob * 2 * Math.abs(Math.sin(Math.PI * t / st.period + ph));
+      else out.dy = -st.bob * 0.5 * (1 + b);
+    }
+    if (ready) { // ready pose: crouch, lean toward the incoming hero (left) and bounce on the toes
+      out.sy = 1 - 0.04 * amp; out.sx = 1 + 0.03 * amp;
+      if (!rm) { out.rot = -0.06 + 0.02 * Math.sin(t * 8); out.dy = -3 * Math.abs(Math.sin(t * 7)); }
+    }
+    if (recoilAge < 0.5) { // follow-through recoil after the hit: knocked back, squash, settle
+      const k = 1 - recoilAge / 0.5, d = k * k;
+      out.sy = 1 - 0.06 * d * amp; out.sx = 1 + 0.05 * d * amp;
+      if (!rm) { out.dx = 12 * d; out.rot = 0.14 * d * Math.sin(recoilAge * 26); }
+    }
+    return this.finish(out);
+  },
+  // Truck: engine idle shimmy, revving on AIM_POWER, launch recoil + damped suspension bounce. No scaling.
+  truck(out, state, t, launchAge, rm) {
+    this.reset(out); if (!this.enabled) return out;
+    if (rm) return out;
+    if (state === "READY" || state === "AIM_ANGLE") out.dy = 0.8 * Math.sin(t * 34);
+    else if (state === "AIM_POWER") { out.dy = 1.6 * Math.sin(t * 52); out.dx = -1.5 + Math.sin(t * 23); }
+    if (launchAge >= 0 && launchAge < 0.5) {
+      const e = Math.exp(-7 * launchAge);
+      out.dx = -14 * e; out.dy = -6 * e * Math.cos(launchAge * 24); out.rot = -0.035 * e * Math.sin(launchAge * 24);
+    }
+    return out;
+  },
+  // Dust puff i (0..count-1) at age a: writes { x, y, r, alpha } relative to the impact point. Deterministic.
+  dust(out, i, count, a, strength) {
+    const p = a / 0.45, side = i % 2 ? 1 : -1, lane = (i >> 1) + 1;
+    const ease = this.easeOutCubic(p);
+    out.x = side * (8 + lane * 13 * strength) * (0.3 + ease);
+    out.y = -3 - lane * 4 * ease * strength;
+    out.r = (5 + lane * 2) * (0.6 + ease) * strength;
+    out.alpha = p >= 1 ? 0 : 0.55 * (1 - p);
+    return out;
+  },
+  // Per-frame event tracker (display cache only). Returns the ev object (reused).
+  // The cache lives in a WeakMap keyed by visual, so draw never mutates game or visual.
+  cache: new WeakMap(),
+  track(g, visual) {
+    let a = this.cache.get(visual);
+    if (!a) this.cache.set(visual, a = { ev: { launchAge: Infinity, hitAge: Infinity, hitDir: 1, landAge: Infinity, specialAge: Infinity },
+      bounces: 0, landAt: -Infinity, landX: 0, landV: 0, contact: null, hitAt: -Infinity, hitDir: 1, specials: 0, specialAt: -Infinity, state: null, used: new WeakMap(), pose: {}, puff: {} });
+    const t = g.phaseTime, b = g.body;
+    if (a.state !== g.state) {
+      if (a.state === "FLYING" && g.state === "RESULT") { a.landAt = t; a.landX = b.x; a.landV = 0.6; }
+      else if (g.state !== "FLYING") { a.landAt = -Infinity; a.hitAt = -Infinity; a.specialAt = -Infinity; }
+      a.state = g.state; a.bounces = b.bounces; a.specials = g.specialSuccesses;
+    }
+    if (b.bounces > a.bounces) { a.landAt = t; a.landX = b.x; a.landV = Math.min(1.4, 0.6 + Math.abs(b.vy) / 900); }
+    a.bounces = b.bounces;
+    if (g.contact && g.contact !== a.contact) { a.hitAt = t; a.hitDir = b.vy > 0 ? -1 : 1; }
+    a.contact = g.contact;
+    if (g.specialSuccesses > a.specials) a.specialAt = t;
+    a.specials = g.specialSuccesses;
+    const ev = a.ev;
+    ev.launchAge = Math.max(0, t - visual.launchAt); ev.hitAge = Math.max(0, t - a.hitAt); ev.hitDir = a.hitDir;
+    ev.landAge = Math.max(0, t - a.landAt); ev.specialAge = Math.max(0, t - a.specialAt);
+    if (!Number.isFinite(ev.launchAge)) ev.launchAge = Infinity;
+    return a;
+  },
+  usedAge(a, object, t) {
+    if (!object.used) { a.used.delete(object); return Infinity; }
+    let at = a.used.get(object);
+    if (at === undefined || at > t) { at = t; a.used.set(object, at); }
+    return t - at;
+  }
 };
