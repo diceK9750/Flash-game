@@ -430,6 +430,215 @@ Hop.Graphics = {
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
     // SPECIAL success cut-in above the world / flash; DOM special-panel stays separate.
     this.specialCutin(ctx, g, visual);
+    // Launch cut-in (truck x hero) above everything while it plays.
+    this.launchCutin(ctx, g, visual);
+  },
+  // ---- Launch cut-in (truck x hero at AIM_POWER -> FLYING; display only, never mutates game) -------------
+  // Beat times in seconds for a cut-in record (pure): impact = IMPACT start, launch = flight start, fade = fade start.
+  launchCutinTimes(cut) {
+    const c = Hop.CONFIG, total = cut?.total || c.launchCutinDuration;
+    if (cut?.mode === "reduced") return { total, impact: 0, launch: total * 0.5, fade: total * 0.6 };
+    const b = c.launchCutinBeats[cut?.mode === "repeat" ? "repeat" : "full"];
+    return { total, impact: total * b[0], launch: total * b[1], fade: total * b[2] };
+  },
+  // Frame state (pure, deterministic in cut.elapsed). beat: approach / impact / launch / fade (reduced: still).
+  launchCutinStyle(cut, reducedMotion = false) {
+    const idle = { visible: false, beat: null, u: 0, alpha: 0, flash: 0, shakeX: 0, shakeY: 0, hitStop: false, burst: 0, sfx: 0, flight: 0 };
+    if (!cut) return idle;
+    const T = this.launchCutinTimes(cut), t = cut.elapsed, k = cut.intensity ?? 1;
+    if (!(t >= 0) || t >= T.total) return idle;
+    const clamp = u => Math.max(0, Math.min(1, u));
+    if (reducedMotion || cut.mode === "reduced") {
+      // Calm still: fade in, hold, fade out. No shake, no flash.
+      const a = Math.min(clamp(t / 0.08), clamp((T.total - t) / 0.12));
+      return { ...idle, visible: true, beat: "still", u: t / T.total, alpha: a, burst: 1, sfx: 1, flight: 0 };
+    }
+    const st = { ...idle, visible: true, alpha: 1 };
+    if (t < T.impact) {
+      st.beat = "approach"; st.u = t / T.impact;
+    } else if (t < T.launch) {
+      const dt = t - T.impact, span = T.launch - T.impact, hs = Math.min(Hop.CONFIG.launchCutinHitStop, span * 0.3);
+      st.beat = "impact"; st.u = dt / span; st.hitStop = dt < hs;
+      st.flash = dt < hs ? 0.85 : Math.max(0, 1 - (dt - hs) / (span * 0.35)) * 0.55;
+      st.burst = clamp((dt - hs * 0.5) / (span * 0.45));
+      st.sfx = clamp((dt - hs * 0.3) / (span * 0.25));
+      const shakeDur = span * (0.6 + 0.4 * k) + (T.fade - T.launch) * 0.5 * k;
+      const amp = (Hop.CONFIG.launchCutinShakePx + Hop.CONFIG.launchCutinShakeBonusPx * k) * Math.max(0, 1 - dt / shakeDur);
+      st.shakeX = Math.sin(t * 97) * amp; st.shakeY = Math.cos(t * 83) * amp * 0.7;
+    } else {
+      const dt = t - T.impact, span = T.launch - T.impact;
+      const shakeDur = span * (0.6 + 0.4 * k) + (T.fade - T.launch) * 0.5 * k;
+      const amp = (Hop.CONFIG.launchCutinShakePx + Hop.CONFIG.launchCutinShakeBonusPx * k) * Math.max(0, 1 - dt / shakeDur);
+      st.shakeX = Math.sin(t * 97) * amp; st.shakeY = Math.cos(t * 83) * amp * 0.7;
+      st.beat = t < T.fade ? "launch" : "fade"; st.burst = 1; st.sfx = 1;
+      st.flight = clamp((t - T.launch) / (T.total - T.launch));
+      st.u = t < T.fade ? (t - T.launch) / (T.fade - T.launch) : (t - T.fade) / (T.total - T.fade);
+      if (t >= T.fade) st.alpha = 1 - st.u;
+    }
+    return st;
+  },
+  // Deterministic pseudo-random in [0,1) (sparks / debris; same picture every play).
+  lcRand(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); },
+  // Uniformly scaled hero / truck stills (5-heads-tall kept); false when the asset is missing.
+  lcHero(ctx, x, feet, mul, idle = false) {
+    const S = Hop.Sprites, def = S?.definitions?.HERO?.[idle ? "IDLE" : "HIT"], asset = idle ? S?.heroIdle : S?.heroHit;
+    if (asset?.ready && def && S.draw(ctx, asset, 0, x, feet, def.scale * mul)) return true;
+    ctx.save(); ctx.translate(x, feet); ctx.scale(mul, mul); this.character(ctx, "HERO", 0, 0, 0.936); ctx.restore();
+    return false;
+  },
+  // Screen px per sprite-cell px at mul 1 (HD cells: def.scale / unit); Canvas fallback ≈ the same size.
+  lcCellPx(kind) {
+    const S = Hop.Sprites, def = kind === "truck" ? S?.definitions?.TRUCK?.IDLE : S?.definitions?.HERO?.HIT;
+    const asset = kind === "truck" ? S?.truckIdle : S?.heroHit, unit = asset?.data?.unit;
+    return def && unit > 0 ? def.scale / unit : kind === "truck" ? 0.29 : 0.4167;
+  },
+  lcTruck(ctx, x, ground, mul) {
+    ctx.save(); ctx.translate(x, ground); ctx.scale(mul, mul); this.truck(ctx, 0, 0); ctx.restore();
+  },
+  lcSpeedLines(ctx, w, h, t, color, n = 26, dir = -1) {
+    ctx.save(); ctx.strokeStyle = color; ctx.lineCap = "round";
+    for (let i = 0; i < n; i++) {
+      const y = (this.lcRand(i) - 0.5) * h, len = 120 + this.lcRand(i + 50) * 260, sp = 900 + this.lcRand(i + 90) * 900;
+      const x = ((this.lcRand(i + 7) * (w + len) + dir * t * sp) % (w + len) + (w + len)) % (w + len) - w / 2 - len / 2;
+      ctx.lineWidth = 2 + this.lcRand(i + 30) * 5; ctx.globalAlpha = 0.35 + this.lcRand(i + 13) * 0.5;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke();
+    }
+    ctx.restore();
+  },
+  lcFocusLines(ctx, cx, cy, inner, outer, n, color, spin = 0) {
+    ctx.save(); ctx.fillStyle = color;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + spin + this.lcRand(i) * 0.08, w = 0.012 + this.lcRand(i + 40) * 0.02;
+      const r0 = inner * (0.85 + this.lcRand(i + 80) * 0.4);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a - w) * outer, cy + Math.sin(a - w) * outer);
+      ctx.lineTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+      ctx.lineTo(cx + Math.cos(a + w) * outer, cy + Math.sin(a + w) * outer);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  },
+  lcBand(ctx, cy, h, tilt, fill, draw) {
+    const c = Hop.CONFIG, w = c.width * 1.3;
+    ctx.save(); ctx.translate(c.width / 2, cy); ctx.rotate(tilt);
+    ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.save(); ctx.clip();
+    ctx.fillStyle = fill; ctx.fillRect(-w / 2, -h / 2, w, h);
+    draw(w, h);
+    ctx.restore();
+    ctx.lineWidth = 8; ctx.strokeStyle = "#111"; ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.lineWidth = 3; ctx.strokeStyle = "#fff"; ctx.strokeRect(-w / 2, -h / 2 + 6, w, h - 12);
+    ctx.restore();
+  },
+  lcText(ctx, text, x, y, size, rot, fill, stroke = "#1a0f08", scale = 1) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(scale, scale);
+    ctx.font = `900 ${size}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+    ctx.lineWidth = size * 0.26; ctx.strokeStyle = stroke; ctx.strokeText(text, 0, 0);
+    ctx.lineWidth = size * 0.1; ctx.strokeStyle = "#ffffff"; ctx.strokeText(text, 0, 0);
+    ctx.fillStyle = fill; ctx.fillText(text, 0, 0);
+    ctx.restore();
+  },
+  launchCutin(ctx, g, visual) {
+    const cut = g.launchCutin; if (!cut) return;
+    const rm = !!visual?.reducedMotion, st = this.launchCutinStyle(cut, rm);
+    if (!st.visible) return;
+    const c = Hop.CONFIG, W = c.width, H = c.height, k = cut.intensity ?? 1, t = cut.elapsed;
+    const label = cut.tier === "MAX" ? "MAX!!" : cut.tier === "STRONG" ? "STRONG!" : "";
+    ctx.save(); ctx.globalAlpha = st.alpha;
+    if (st.beat === "still") {
+      // Calm version: dim + one band with the frozen collision and a small SFX label.
+      ctx.fillStyle = "rgba(12,14,30,0.55)"; ctx.fillRect(0, 0, W, H);
+      this.lcBand(ctx, H * 0.5, 300, -0.05, "#f7c948", () => {
+        this.lcTruck(ctx, -60, 120, 1.9); this.lcHero(ctx, 210, 110, 1.9);
+      });
+      this.lcText(ctx, "ドカン！", W * 0.72, H * 0.28, 64, -0.08, "#ff5a2a");
+      if (label) this.lcText(ctx, label, W * 0.72, H * 0.74, 40, -0.05, "#ffe14d");
+      ctx.restore(); return;
+    }
+    ctx.translate(st.shakeX, st.shakeY);
+    ctx.fillStyle = "#14111f"; ctx.fillRect(-40, -40, W + 80, H + 80);
+    if (st.beat === "approach") {
+      // (1) slow-mo close-ups: truck grille / headlight band + the hero's shocked face band.
+      const u = st.u, slow = t * 0.25;
+      this.lcFocusLines(ctx, W / 2, H / 2, 260, 900, 48, "rgba(255,255,255,0.10)", slow);
+      this.lcBand(ctx, H * 0.27, 300, -0.07, "#ffb22e", (w, h) => {
+        this.lcSpeedLines(ctx, w, h, slow, "#fff4c8");
+        // headlight = cell (+88,-73) from the pivot: put it at band (x0, 0)
+        const mul = 8.5 + 1.2 * u, px = this.lcCellPx("truck") * mul, hx = 60 + u * 140, hy = 10;
+        this.lcTruck(ctx, hx - 88 * px, hy + 73 * px, mul);
+        const glow = ctx.createRadialGradient?.(hx, hy, 4, hx, hy, 150 + 40 * Math.sin(t * 30));
+        if (glow?.addColorStop) { glow.addColorStop(0, "rgba(255,255,230,0.95)"); glow.addColorStop(0.3, "rgba(255,240,150,0.55)"); glow.addColorStop(1, "rgba(255,240,150,0)"); ctx.fillStyle = glow; ctx.fillRect(-w / 2, -h / 2, w, h); }
+      });
+      this.lcBand(ctx, H * 0.73, 300, -0.07, "#3d6fd6", (w, h) => {
+        this.lcFocusLines(ctx, 130, 0, 150, 800, 40, "rgba(255,255,255,0.45)", 0);
+        // shocked face = HIT cell (+46,-140) from the pivot, centred in the band (uniform zoom)
+        const mul = 10 + 1 * u, px = this.lcCellPx("hero") * mul;
+        this.lcHero(ctx, 130 - 46 * px, 30 + 140 * px, mul);
+        this.lcText(ctx, "!?", 330, -60, 96, 0.12, "#ffe14d");
+      });
+      this.lcText(ctx, "ブォォォン…", W * 0.2, H * 0.52, 44, -0.07, "#ffffff", "#2a1a08", 1 + 0.05 * Math.sin(t * 20));
+    } else {
+      const cx = W * 0.5, cy = H * 0.52, burstR = (520 + 420 * k) * (0.35 + 0.65 * st.burst);
+      // (2) IMPACT: burst rays, shattering rings, sparks; (3) launch: comic flight with afterimages.
+      ctx.fillStyle = cut.tier === "MAX" ? "#ff3d1f" : "#ff7a1a"; ctx.fillRect(-40, -40, W + 80, H + 80);
+      const rays = 18 + Math.round(18 * k);
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(st.hitStop ? 0 : t * 0.6);
+      for (let i = 0; i < rays; i++) {
+        const a0 = (i / rays) * Math.PI * 2, a1 = a0 + Math.PI / rays;
+        ctx.fillStyle = i % 2 ? "#ffe14d" : "#fff8e0";
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a0) * burstR * 2, Math.sin(a0) * burstR * 2); ctx.lineTo(Math.cos(a1) * burstR * 2, Math.sin(a1) * burstR * 2); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+      this.lcFocusLines(ctx, cx, cy, 300 + 80 * k, 1100, 64, "rgba(30,10,0,0.55)", t * 2);
+      // shattering rings
+      for (let r = 0; r < 2 + (k > 0.5 ? 1 : 0); r++) {
+        const rr = burstR * (0.35 + 0.3 * r) * (0.6 + st.burst), segs = 14;
+        ctx.save(); ctx.translate(cx, cy); ctx.strokeStyle = r % 2 ? "#ffffff" : "#ffd23a"; ctx.lineWidth = 14 - r * 4; ctx.globalAlpha = st.alpha * Math.max(0, 1 - st.burst * 0.6);
+        for (let s = 0; s < segs; s++) {
+          const a = (s / segs) * Math.PI * 2 + r, off = st.burst * 60 * this.lcRand(s + r * 20);
+          ctx.beginPath(); ctx.arc(Math.cos(a) * off, Math.sin(a) * off, rr, a, a + Math.PI * 2 / segs * 0.7); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // sparks
+      ctx.save(); ctx.strokeStyle = "#fffbe6"; ctx.lineCap = "round";
+      const sparks = 24 + Math.round(24 * k);
+      for (let i = 0; i < sparks; i++) {
+        const a = this.lcRand(i) * Math.PI * 2, sp = 0.4 + this.lcRand(i + 9) * 0.9, d = burstR * sp * (0.2 + st.burst), len = 20 + 40 * this.lcRand(i + 3);
+        ctx.lineWidth = 3 + 3 * this.lcRand(i + 5); ctx.globalAlpha = st.alpha * Math.max(0, 1 - st.burst * 0.7 * sp);
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); ctx.lineTo(cx + Math.cos(a) * (d + len), cy + Math.sin(a) * (d + len)); ctx.stroke();
+      }
+      ctx.restore();
+      if (st.beat === "impact") {
+        // frozen collision tableau (hit-stop), slight push-in afterwards
+        const z = st.hitStop ? 1.12 : 1.12 - 0.08 * st.u, mul = 2.6 * z;
+        this.lcTruck(ctx, cx - 120 * z, cy + 120 * z, mul);
+        this.lcHero(ctx, cx + 120 * z, cy + 90 * z, mul * 1.05);
+      } else {
+        // Rumiko flight: arcs up-right, spins, shrinks; afterimages trail; a twinkle where it vanishes.
+        const f = st.flight, path = q => ({ x: cx + 80 + q * 620, y: cy + 100 - q * 560 + q * q * 120, s: 2.9 * (1 - 0.75 * q), r: -q * 7 });
+        this.lcTruck(ctx, cx - 160 - f * 80, cy + 200 + f * 40, 2.6);
+        for (let i = 5; i >= 0; i--) {
+          const q = Math.max(0, f - i * 0.045), p = path(q);
+          ctx.save(); ctx.globalAlpha = st.alpha * (i ? 0.12 + 0.1 * (5 - i) / 5 : 1);
+          ctx.translate(p.x, p.y); ctx.rotate(p.r); this.lcHero(ctx, 0, 60 * p.s, p.s); ctx.restore();
+        }
+        if (f > 0.7) {
+          const p = path(f), tw = (f - 0.7) / 0.3, r = 40 * Math.sin(tw * Math.PI);
+          ctx.save(); ctx.translate(p.x + 30, p.y - 20); ctx.rotate(tw * 2); ctx.fillStyle = "#fffbd0";
+          this.polygon(ctx, Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4, rr = i % 2 ? r * 0.25 : r; return [Math.cos(a) * rr, Math.sin(a) * rr]; }), "#fffbd0");
+          ctx.restore();
+          this.lcText(ctx, "キラーン☆", p.x - 40, p.y + 70, 36, -0.1, "#fff6a0", "#3a2000", Math.min(1, tw * 3));
+        }
+      }
+      // SFX + power label
+      const pop = st.sfx < 1 ? 2.2 - 1.2 * (1 - (1 - st.sfx) ** 3) : 1 + 0.03 * Math.sin(t * 40);
+      const sfxY = st.beat === "impact" ? H * 0.2 : H * 0.18 + st.flight * 20;
+      this.lcText(ctx, "ドカァァァン！！", W * 0.5, sfxY, 104 + 26 * k, -0.08, cut.tier === "MAX" ? "#ff2d55" : "#ff5a1f", "#1a0f08", pop);
+      if (label) this.lcText(ctx, label, W * 0.78, H * 0.84, 70 + 20 * k, -0.12, "#ffe14d", "#3a1200", st.sfx < 1 ? pop : 1 + 0.06 * Math.sin(t * 30));
+      this.lcText(ctx, `POWER ${Math.round((cut.power ?? 1) * 100)}%`, W * 0.18, H * 0.88, 34, -0.05, "#ffffff", "#2a1408");
+    }
+    ctx.restore();
+    if (st.flash > 0.01) { ctx.fillStyle = `rgba(255,255,255,${Math.min(1, st.flash) * st.alpha})`; ctx.fillRect(0, 0, W, H); }
   },
   // ---- Combo SPECIAL scenes (display only; never mutate game) -------------------------------------------
   // Scene clock (pure). live = g.combo (scene time t = elapsed - S, S = cut-in fade start; negative while the

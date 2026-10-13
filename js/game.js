@@ -5,6 +5,10 @@ Hop.Game = class {
     // Combo scene preferences (kept across RETRY): comboEnabled (config default) and comboShort (the UI mirrors
     // prefers-reduced-motion here so the short version is chosen when the scene starts).
     this.comboEnabled = Hop.CONFIG.comboEnabled !== false; this.comboShort = false;
+    // Launch cut-in (display only). launchCutinEnabled is switched on by main.js (the browser game); headless
+    // callers keep the original immediate flight. launchCutinReduced mirrors reduced motion (UI); views counts
+    // plays per session (kept across RETRY) so later launches use the shorter repeat version.
+    this.launchCutinEnabled = false; this.launchCutinReduced = false; this.launchCutinViews = 0;
     this.best = this.readBest(); this.reset();
   }
   reset() {
@@ -23,7 +27,7 @@ Hop.Game = class {
     this.specialArmed = { dash: false, stopper: false, brake: false };
     this.aerialMode = "DOWN"; this.aerialDownLock = null; this.successVisual = null; this.specialCutin = null; this.soundEvent = null;
     this.merchant = null; this.merchantVisual = null;
-    this.combo = null; this.comboAfter = null;
+    this.combo = null; this.comboAfter = null; this.launchCutin = null;
     this.merchantStats = { attempts: 0, successes: 0, lastType: null, revives: 0 };
     this.flash = 0; this.specialTrail = 0;
     this.history = []; this.counts = Object.fromEntries(Object.keys(Hop.CONFIG.objectWeights).map(type => [type, 0]));
@@ -431,6 +435,25 @@ Hop.Game = class {
     return true;
   }
   skipCombo() { return this.endCombo(true); }
+  // Launch cut-in (display only): intensity 0..1 from the launch power; tier NORMAL / STRONG / MAX.
+  static launchCutinIntensity(power) {
+    const c = Hop.CONFIG, k = (power - c.powerMin) / Math.max(1e-9, c.powerMax - c.powerMin);
+    const intensity = Math.max(0, Math.min(1, Number.isFinite(k) ? k : 1));
+    return { intensity, tier: intensity >= c.launchCutinMaxAt - 1e-9 ? "MAX" : intensity >= c.launchCutinStrongAt - 1e-9 ? "STRONG" : "NORMAL" };
+  }
+  startLaunchCutin() {
+    const c = Hop.CONFIG, mode = this.launchCutinReduced ? "reduced" : this.launchCutinViews > 0 ? "repeat" : "full";
+    const total = mode === "reduced" ? c.launchCutinReducedDuration : mode === "repeat" ? c.launchCutinRepeatDuration : c.launchCutinDuration;
+    this.launchCutinViews++;
+    this.launchCutin = { mode, total, elapsed: 0, skipped: false, power: this.power, ...Hop.Game.launchCutinIntensity(this.power) };
+    return this.launchCutin;
+  }
+  endLaunchCutin(skipped = false) {
+    const cut = this.launchCutin; if (!cut) return false;
+    cut.skipped = skipped; this.launchCutin = null;
+    return true;
+  }
+  skipLaunchCutin() { return this.endLaunchCutin(true); }
   act() {
     const s = Hop.STATES;
     switch (this.state) {
@@ -439,9 +462,11 @@ Hop.Game = class {
       case s.AIM_POWER:
         Hop.Physics.launch(this.body, this.angle, this.power);
         this.maxSpeed = Math.hypot(this.body.vx, this.body.vy);
-        this.state = s.FLYING; this.accumulator = 0; break;
+        this.state = s.FLYING; this.accumulator = 0;
+        if (this.launchCutinEnabled && Hop.CONFIG.launchCutinEnabled !== false) this.startLaunchCutin();
+        break;
       case s.RESULT: this.reset(); this.act(); break;
-      case s.FLYING: if (this.combo) this.skipCombo(); else if (this.special) this.resolveSpecial(true); else this.aerial(this.updateAerialMode()); break;
+      case s.FLYING: if (this.launchCutin) this.skipLaunchCutin(); else if (this.combo) this.skipCombo(); else if (this.special) this.resolveSpecial(true); else this.aerial(this.updateAerialMode()); break;
     }
   }
   update(deltaTime) {
@@ -457,6 +482,12 @@ Hop.Game = class {
     while (this.accumulator + 1e-10 >= c.physicsStep) {
       // Combo scene: only display timers (cut-in, success flash) run; physics, play timers, generation and
       // RNG are frozen until the scene ends or is skipped.
+      // Launch cut-in: same freeze; only its own clock runs.
+      if (this.launchCutin) {
+        this.launchCutin.elapsed += c.physicsStep; this.accumulator -= c.physicsStep;
+        if (this.launchCutin.elapsed >= this.launchCutin.total - 1e-9) this.endLaunchCutin(false);
+        continue;
+      }
       if (this.combo) {
         this.combo.elapsed += c.physicsStep; this.accumulator -= c.physicsStep;
         this.flash = Math.max(0, this.flash - c.physicsStep);

@@ -55,6 +55,14 @@ Hop.CONFIG = Object.freeze({
   specialCutinFaceFill: 1.2, specialCutinFaceCenterX: 0.37, specialCutinPortraitScale: 3.2,
   specialCutinNameSize: 62, specialCutinNameMargin: 0.03, specialCutinNameX: 0.64, specialCutinNameY: 0.30, specialCutinNameSlide: 0.4,
   specialCutinShakePx: 5, specialCutinFlashPeak: 0.70, specialCutinPortraitPop: 1.10,
+  // Launch cut-in (display only): the launch collision at AIM_POWER -> FLYING. The launch vector is applied at
+  // launch exactly as before; the game step is frozen while it plays (like the combo scenes), so physics, distance
+  // and RNG are identical. Tap skips. Beats (fractions of the total): approach (slow-mo close-ups) -> IMPACT
+  // (flash / hit-stop / burst / SFX) -> launch (comic flight) -> fade. 1st view per session = full, later = repeat,
+  // reducedMotion = calm still (no shake / flash). Intensity follows power: tiers NORMAL / STRONG / MAX.
+  launchCutinEnabled: true, launchCutinDuration: 1.5, launchCutinRepeatDuration: 0.8, launchCutinReducedDuration: 0.45,
+  launchCutinBeats: { full: [0.30, 0.58, 0.86], repeat: [0.18, 0.56, 0.84] }, launchCutinHitStop: 0.10,
+  launchCutinStrongAt: 0.45, launchCutinMaxAt: 0.85, launchCutinShakePx: 10, launchCutinShakeBonusPx: 20,
   // Combo SPECIAL scenes (display only) for BOOST (魔法使い × 武闘家) and BOUNCE (武闘家 × 魔法使い) successes with
   // their adjacent partner. The launch vector is applied at success exactly as before; the game step (physics,
   // distance, play timers, RNG) is frozen while the scene plays, so the flight is identical — only later in

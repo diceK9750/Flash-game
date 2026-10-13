@@ -87,6 +87,17 @@ Hop.Audio = {
       COMBO_FIGHTER_SHORT: [["tone", R, 0.25, 0.03, "triangle", 300, 900, 0.03], ["tone", R + 0.3, 0.4, 0.07, "sine", 105, 34, 0.003], ["noise", R + 0.3, 0.4, 0.06, "lowpass", 2200, 120, 0.8]]
     };
   })(),
+  // Launch cut-in impact (truck x hero): sub thump + crunch + debris crackle + whoosh; MAX adds a deeper boom and ring.
+  launchRecipes: (() => {
+    const base = [["tone", 0, 0.42, 0.11, "sine", 120, 32, 0.002], ["noise", 0, 0.5, 0.10, "lowpass", 3800, 180, 0.8],
+      ["noise", 0, 0.09, 0.06, "highpass", 2600, 2600, 0.7], ["tone", 0.005, 0.12, 0.04, "square", 260, 90, 0.002],
+      ["noise", 0.06, 0.32, 0.03, "bandpass", 4200, 1800, 1.6], ["noise", 0.14, 0.55, 0.05, "bandpass", 600, 3200, 1.0]];
+    return {
+      LAUNCH_IMPACT: base,
+      LAUNCH_IMPACT_MAX: base.concat([["tone", 0, 0.7, 0.09, "sine", 80, 24, 0.003], ["noise", 0.02, 0.8, 0.06, "lowpass", 1800, 90, 0.9],
+        ["tone", 0.1, 0.5, 0.02, "triangle", 1568, 1520, 0.004], ["tone", 0.1, 0.5, 0.015, "triangle", 2349, 2290, 0.004]])
+    };
+  })(),
   // Worst-case summed peak: the largest total of voice peaks that are sounding at the same moment.
   peakSum(voices) {
     return Math.max(...voices.map(([, t]) => voices.reduce((sum, v) => sum + (v[1] <= t && t < v[1] + v[2] ? v[3] : 0), 0)));
@@ -102,7 +113,7 @@ Hop.Audio = {
   },
   // Schedule a special recipe on ctx at time `at` (also used for offline WAV renders). Returns the master gain.
   render(ctx, kind, at = ctx.currentTime) {
-    const voices = this.specialRecipes[kind] || this.comboRecipes[kind];
+    const voices = this.specialRecipes[kind] || this.comboRecipes[kind] || this.launchRecipes[kind];
     if (!voices) return null;
     const master = ctx.createGain(), sources = [];
     master.sources = sources;
@@ -164,7 +175,7 @@ Hop.Audio = {
     try {
       const ctx = this.context;
       if (!ctx || ctx.state !== "running") return;
-      if (this.specialRecipes[kind]) { this.render(ctx, kind); return; }
+      if (this.specialRecipes[kind] || this.launchRecipes[kind]) { this.render(ctx, kind); return; }
       const notes = kind === "STOPPER" ? [[100, 0, 0.16], [520, 0.12, 0.16], [1100, 0.24, 0.28]] :
         kind === "GUARD" ? [[660, 0, 0.22], [990, 0.08, 0.25]] : [[520, 0, 0.10], [780, 0.08, 0.16]];
       for (const [frequency, delay, duration] of notes) {

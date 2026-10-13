@@ -81,12 +81,28 @@ Hop.UI = class {
     } else if (this.lastState === s.RESULT && g.state === s.AIM_ANGLE) {
       try { Hop.Voice?.stop?.(); } catch { /* RETRY cannot be blocked by audio. */ }
     }
-    const launched = g.state === s.FLYING && this.lastState === s.AIM_POWER;
-    if (launched) {
-      this.visual.launchAt = g.phaseTime;
+    const justLaunched = g.state === s.FLYING && this.lastState === s.AIM_POWER;
+    // Launch cut-in (display only): impact SE + hero_launch voice at the IMPACT beat (or on an earlier skip);
+    // the flight visuals (launchAt clock, HIT one-shot, truck recoil) start when the cut-in ends.
+    if (g.launchCutinReduced !== !!this.visual.reducedMotion) g.launchCutinReduced = !!this.visual.reducedMotion;
+    if (justLaunched && g.launchCutin) this.launchCut = { ref: g.launchCutin, impactDone: false };
+    let cutEnded = false;
+    const lc = this.launchCut;
+    if (lc) {
+      const ended = g.launchCutin !== lc.ref;
+      if (!lc.impactDone && (ended || lc.ref.elapsed >= (Hop.Graphics?.launchCutinTimes?.(lc.ref).impact ?? 0))) {
+        lc.impactDone = true;
+        try { Hop.Audio?.play?.(lc.ref.tier === "MAX" ? "LAUNCH_IMPACT_MAX" : "LAUNCH_IMPACT"); } catch { /* SE is optional. */ }
+        try { Hop.Voice?.play?.("hero_launch", g.debug, "AIM_POWER_TO_FLYING"); } catch { /* Optional voice must never affect gameplay. */ }
+      }
+      if (ended) { this.launchCut = null; cutEnded = g.state === s.FLYING; }
+    }
+    const launched = (justLaunched && !g.launchCutin && !lc) || cutEnded;
+    if (justLaunched && !g.launchCutin) {
       try { Hop.Voice?.play?.("hero_launch", g.debug, "AIM_POWER_TO_FLYING"); } catch { /* Optional voice must never affect gameplay. */ }
     }
-    if (g.state === s.READY || g.state === s.AIM_ANGLE) this.visual.launchAt = -Infinity;
+    if (launched) this.visual.launchAt = g.phaseTime;
+    if (g.state === s.READY || g.state === s.AIM_ANGLE) { this.visual.launchAt = -Infinity; this.launchCut = null; }
     // Display-only hero one-shots. A new AERIAL effect object or a new normal ground
     // bounce (body.bounces grew, still airborne, no new Type D "BOUND BOOST") starts the
     // sprite; Hop.Sprites.startOneShot applies the priority table (SPECIAL_REACTION is never cut
