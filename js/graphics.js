@@ -281,32 +281,39 @@ Hop.Graphics = {
     ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", c.width * 0.06, cy - bandH * 0.5 - 4);
     ctx.restore();
   },
+  // Smooth display (render interpolation, spring camera, smoothed tilt, pose / sprite cross-fades, extra
+  // ambient motion). Off by default so geometry tests keep the raw game camera; main.js turns it on.
+  smooth: false,
+  lastDisplay: null, // { heroX, heroY, camX, camY, rot } of the latest smooth frame (frame traces / tests)
   draw(ctx, g, visual) {
-    const c = Hop.CONFIG, ground = c.groundY + g.cameraY;
-    const sx = x => c.launchX + x - g.cameraX;
+    const D = this.smooth ? Hop.Smooth.frame(g, visual) : null;
+    const camX = D ? D.camX : g.cameraX, camY = D ? D.camY : g.cameraY, bodyX = D ? D.bx : g.body.x, bodyY = D ? D.by : g.body.y;
+    const c = Hop.CONFIG, ground = c.groundY + camY;
+    const sx = x => c.launchX + x - camX;
     const sy = y => ground - c.playerRadius - y;
     // Combo scene (display only): one state per frame; screen shake wraps the world, not the cut-in.
     const combo = this.comboState(g), impact = this.comboImpact(combo, !!visual?.reducedMotion);
     ctx.fillStyle = "#bce9f3"; ctx.fillRect(0, 0, c.width, c.height);
     ctx.save(); ctx.translate(impact.x, impact.y);
     // Combo camera (display only): zoom toward the scene actors; identity when cam.w = 0.
-    const cam = this.comboCamera(combo, !!visual?.reducedMotion, sx, sy, ground, sx(g.body.x), sy(g.body.y));
+    const cam = this.comboCamera(combo, !!visual?.reducedMotion, sx, sy, ground, sx(bodyX), sy(bodyY));
     ctx.save();
     if (cam.w > 0) { ctx.translate(cam.ax, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.fx, -cam.fy); }
     this.circle(ctx, 1080, 115, 49, "#fff1ad");
+    const drift = D && !D.rm ? D.time * 7 : 0; // gentle cloud drift (display clock; none in reduced motion)
     for (let i = -1; i < 5; i++) {
-      const x = i * 380 - (g.cameraX * 0.12 % 380), y = 115 + (i % 2) * 60;
+      const x = i * 380 - ((camX * 0.12 + drift) % 380), y = 115 + (i % 2) * 60;
       this.circle(ctx, x, y, 26, "#f5fcf6"); this.circle(ctx, x + 30, y - 12, 35, "#f5fcf6"); this.circle(ctx, x + 65, y, 25, "#f5fcf6");
     }
     for (let i = -1; i < 5; i++) {
-      const x = i * 440 - (g.cameraX * 0.25 % 440);
+      const x = i * 440 - (camX * 0.25 % 440);
       this.polygon(ctx, [[x - 150, ground], [x + 80, ground - 155], [x + 310, ground]], "#95c99c");
     }
     ctx.fillStyle = "#82b973"; ctx.fillRect(0, ground, c.width, Math.max(0, c.height - ground));
     ctx.fillStyle = "#dfc693"; ctx.fillRect(0, ground + 10, c.width, 67);
     this.line(ctx, [[0, ground], [c.width, ground]], "#4b8855", 5);
     const spacing = c.markerMeters * c.pixelsPerMeter;
-    const first = Math.max(0, Math.floor((g.cameraX - c.launchX) / spacing));
+    const first = Math.max(0, Math.floor((camX - c.launchX) / spacing));
     ctx.font = "bold 21px system-ui";
     for (let i = first; sx(i * spacing) < c.width; i++) {
       const x = sx(i * spacing);
@@ -326,7 +333,9 @@ Hop.Graphics = {
       A.truck(pose, g.state, g.phaseTime, Math.max(0, truckAge), rm);
       if (truckAge < 0) { const u = 1 - launchAge / rush; pose.dx -= this.truckRushInPx * u * u; pose.dy = 0; pose.rot = 0; }
       ctx.save(); ctx.translate(tx + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.translate(-tx, -ground);
-      this.truck(ctx, tx, ground); ctx.restore();
+      this.truck(ctx, tx, ground);
+      if (D && !rm) this.truckMotion(ctx, tx, ground, truckAge, D.time);
+      ctx.restore();
       if (!rm && truckAge >= 0 && truckAge < 0.45) this.dustPuffs(ctx, anim, tx + 40, ground, truckAge, 1.2);
     }
     if (cam.w === 0) this.sageForesightHints(ctx, g, sx, ground, g.phaseTime, rm);
@@ -338,7 +347,7 @@ Hop.Graphics = {
       ctx.save(); ctx.globalAlpha = (object.used ? 0.35 : 1) * (actor ? Math.min(1, combo.after / combo.afterTotal) : 1);
       // Phase C: CAST sprite when loaded, else the Canvas figure (same feet point; alpha above applies).
       const ready = visual.readyTargets?.find(target => target.object === object);
-      A.cast(pose, object.type, g.phaseTime, !!ready && !object.used, A.usedAge(anim, object, g.phaseTime), rm);
+      A.cast(pose, object.type, g.phaseTime, !!ready && !object.used, A.usedAge(anim, object, g.phaseTime), rm, D && !object.used ? Hop.Smooth.near(bodyX - object.x, bodyY) : 0);
       ctx.save(); ctx.translate(ox + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.scale(pose.sx, pose.sy); ctx.translate(-ox, -ground);
       if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
       ctx.restore();
@@ -359,7 +368,8 @@ Hop.Graphics = {
       ctx.globalAlpha = i / g.trail.length * (g.successVisual?.strong ? 0.95 : g.specialTrail > 0 ? 0.75 : 0.25);
       this.circle(ctx, sx(point.x), sy(point.y), 4 + i / 4, "#e99c40");
     }); ctx.globalAlpha = 1;
-    const x = sx(g.body.x), y = sy(g.body.y);
+    const x = sx(bodyX), y = sy(bodyY);
+    if (D && !D.rm && g.state === "FLYING" && !g.launchCutin && !combo) this.speedLines(ctx, x, y, g.body.vx, g.body.vy, D.time);
     if (combo) this.comboBack(ctx, combo, sx, sy, ground);
     const comboHero = combo && combo.after === null ? this.comboActors(combo).hero : null;
     if (g.contact && !visual.reducedMotion) this.contactEffect(ctx, g.contact.label.split(" ")[0], x, y, g.phaseTime - visual.contactAt);
@@ -371,6 +381,7 @@ Hop.Graphics = {
     const ev = anim.ev, speed = Math.hypot(g.body.vx, g.body.vy);
     const ghosts = g.state === "FLYING" && !rm && !comboHero && g.trail.length > 8 && (speed > 950 || ev.hitAge < 0.4);
     if (!comboHero) A.hero(pose, g.state, g.phaseTime, ev, rm, Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1);
+    if (!comboHero && D) Hop.Smooth.blendPose(D, pose, g.state);
     for (let k = ghosts ? 2 : 0; k >= 0; k--) {
     const gp = k ? g.trail[g.trail.length - 1 - k * 4] : null;
     if (k && !gp) continue;
@@ -378,7 +389,8 @@ Hop.Graphics = {
     ctx.translate(x + (comboHero?.dx || 0), y + (comboHero?.dy || 0));
     // GROUND_BOUNCE plays upright (tilt weight 0) and the tilt eases back afterwards.
     const tilt = Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1;
-    if (g.state === "FLYING" && !visual.reducedMotion && tilt > 0 && !comboHero) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt);
+    if (D) { if (!comboHero && D.rot) ctx.rotate(D.rot); } // smoothed tilt (Smooth.frame, already weighted)
+    else if (g.state === "FLYING" && !visual.reducedMotion && tilt > 0 && !comboHero) ctx.rotate(Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt);
     if (!comboHero) { // spin about the body centre, squash / stretch about the feet (whole sprite, <= 8%)
       const pr = c.playerRadius, mid = pr - 52;
       ctx.translate(pose.dx, pose.dy + mid); if (pose.rot) ctx.rotate(pose.rot); ctx.translate(0, pr - mid); ctx.scale(pose.sx, pose.sy); ctx.translate(0, -pr);
@@ -388,7 +400,14 @@ Hop.Graphics = {
     // Stopped on the ground (FLYING or RESULT): STOP_RESULT. FLYING order: one-shot (priority
     // table) -> FLIGHT_LOOP; RESULT without STOP_RESULT: frozen FLIGHT_LOOP. READY / AIM: HD IDLE
     // still when loaded. Else -> Canvas HERO. Feet at playerRadius; physics untouched.
-    const drawLayer = layer => Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
+    // Sprite cross-fade (display only): the previous clip's last frame fades out under the new one (~110 ms).
+    const drawLayer = layer => {
+      if (D && !k && layer.asset?.ready) {
+        Hop.Smooth.noteLayer(D, layer); const f = Hop.Smooth.layerFade(D);
+        if (f) { const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * f.alpha; Hop.Sprites.draw(ctx, f.asset, f.time, 0, c.playerRadius, f.scale); ctx.globalAlpha = a0; }
+      }
+      return Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
+    };
     const spriteDrawn = (comboHero?.hit && !!Hop.Sprites?.drawHeroHit?.(ctx, 0, c.playerRadius)) || !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
       ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer)) ||
       (prelaunch && !!Hop.Sprites?.idleLayers?.().some(drawLayer));
@@ -977,7 +996,38 @@ Hop.Graphics = {
     }
     ctx.restore();
   },
-  objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; }
+  objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; },
+  // Truck exhaust puffs + wheel spin (display only, deterministic in truckAge; called inside the truck transform).
+  truckMotion(ctx, tx, ground, truckAge, time) {
+    const k = 1.12, spin = (truckAge < 0 ? 40 : 18 * Math.exp(-4 * truckAge)) * (truckAge + 1) + time * 2;
+    ctx.save(); ctx.strokeStyle = "#e8e5d7"; ctx.lineWidth = 3;
+    for (const wx of this.WHEELS) {
+      const cx = tx + wx * k, cy = ground - 12 * k;
+      ctx.beginPath(); ctx.moveTo(cx - Math.cos(spin) * 13, cy - Math.sin(spin) * 13); ctx.lineTo(cx + Math.cos(spin) * 13, cy + Math.sin(spin) * 13);
+      ctx.moveTo(cx + Math.sin(spin) * 13, cy - Math.cos(spin) * 13); ctx.lineTo(cx - Math.sin(spin) * 13, cy + Math.cos(spin) * 13); ctx.stroke();
+    }
+    ctx.fillStyle = "#9aa2a8";
+    for (let i = 0; i < 3; i++) {
+      const a = ((truckAge + 0.4 + i * 0.13) % 0.4) / 0.4; // 0..1 per puff, staggered
+      ctx.globalAlpha = 0.45 * (1 - a); ctx.beginPath(); ctx.arc(tx - 126 - a * 34, ground - 22 - a * 16, 5 + a * 9, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  },
+  WHEELS: [-80, 12],
+  // Speed-line strip behind the hero at high speed (display only; fixed lanes, no allocation).
+  speedLines(ctx, x, y, vx, vy, time) {
+    const v = Math.hypot(vx, vy), k = Math.min(1, (v - 1050) / 650);
+    if (k <= 0) return;
+    const ux = vx / v, uy = -vy / v; // screen direction of travel
+    ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.lineCap = "round";
+    for (let i = 0; i < 7; i++) {
+      const lane = (i - 3) * 11, ph = ((time * 3.1 + i * 0.37) % 1), len = 50 + 70 * k * (1 - ph);
+      const bx = x - ux * (40 + ph * 120) - uy * lane, by = y - 12 - uy * (40 + ph * 120) + ux * lane;
+      ctx.globalAlpha = 0.5 * k * (1 - ph); ctx.lineWidth = 2 + (i % 2);
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - ux * len, by - uy * len); ctx.stroke();
+    }
+    ctx.restore();
+  }
 };
 // ---- Character motion (display only; never reads or writes physics) ----------------------------------------
 // Pure pose functions: (out, ..., time inputs, reducedMotion) -> { sx, sy, rot, dx, dy } written into `out`
@@ -1003,6 +1053,8 @@ Hop.Anim = {
   reset(out) { out.sx = 1; out.sy = 1; out.rot = 0; out.dx = 0; out.dy = 0; return out; },
   finish(out) { out.sx = this.clampScale(out.sx); out.sy = this.clampScale(out.sy); return out; },
   easeOutCubic(p) { p = p < 0 ? 0 : p > 1 ? 1 : p; return 1 - (1 - p) * (1 - p) * (1 - p); },
+  // Landing settle: 1 at impact (squash), a damped overshoot past 0 (stretch), continuous 0 at 0.5 s.
+  settle(a) { return a >= 0.5 ? 0 : Math.exp(-7 * a) * Math.cos(19 * a) * (1 - a / 0.5); },
   // Hero. ev: { launchAge, hitAge, hitDir, landAge, specialAge } (seconds since the event, Infinity = none).
   // wobble (0..1) scales the flight flutter (Sprites.tiltWeight: 0 while GROUND_BOUNCE plays upright).
   hero(out, state, t, ev, rm, wobble = 1) {
@@ -1020,7 +1072,9 @@ Hop.Anim = {
       if (!rm) out.dx = 1.2 * Math.sin(t * 55);
     } else if (state === "FLYING") {
       if (!rm) { out.rot = 0.07 * wobble * Math.sin(t * 9); out.sy = 1 + 0.02 * Math.sin(t * 14); out.sx = 1 - 0.012 * Math.sin(t * 14); } // cape-flutter wobble
-      if (ev.launchAge < 0.3) { const k = (1 - ev.launchAge / 0.3) * amp; out.sy += 0.08 * k; out.sx -= 0.06 * k; } // launch stretch
+      const la = ev.launchAge;
+      if (la < 0.07) { const k = Math.sin(Math.PI * 0.5 * (1 - la / 0.07)) * amp; out.sy -= 0.06 * k; out.sx += 0.05 * k; } // anticipation squash
+      else if (la < 0.37) { const k = Math.sin(Math.PI * Math.min(1, (la - 0.07) / 0.06) * 0.5) * (1 - (la - 0.07) / 0.3) * amp; out.sy += 0.08 * k; out.sx -= 0.06 * k; } // launch stretch
       if (ev.hitAge < 0.55) {
         const a = ev.hitAge;
         if (a < 0.07) { // hit-stop: squash + shake
@@ -1032,17 +1086,19 @@ Hop.Anim = {
           out.sy = 1 + 0.06 * (1 - p) * amp; out.sx = 1 - 0.05 * (1 - p) * amp;
         }
       }
-      if (ev.landAge < 0.28) { const k = (1 - ev.landAge / 0.28); const q = k * k * amp; out.sy = 1 - 0.08 * q; out.sx = 1 + 0.07 * q; }
+      if (ev.landAge < 0.5) { const q = this.settle(ev.landAge) * amp; out.sy = 1 - 0.08 * q; out.sx = 1 + 0.07 * q; } // squash, overshoot, settle
       if (ev.specialAge < 0.6) { const s = 1 + 0.08 * Math.sin(Math.PI * ev.specialAge / 0.6) * amp; out.sx *= s; out.sy *= s; }
     } else if (state === "RESULT") {
       const b = Math.sin(TAU * t / 2.4) * amp;
       out.sy = 1 + 0.015 * b; out.sx = 1 - 0.01 * b;
-      if (ev.landAge < 0.28) { const k = 1 - ev.landAge / 0.28; out.sy -= 0.07 * k * k * amp; out.sx += 0.06 * k * k * amp; }
+      if (!rm) out.dy = -1.5 * (1 + Math.sin(TAU * t / 1.2)); // relaxed bob on the result screen
+      if (ev.landAge < 0.5) { const q = this.settle(ev.landAge) * amp; out.sy -= 0.07 * q; out.sx += 0.06 * q; }
     }
     return this.finish(out);
   },
   // Roadside character. ready = a READY target (anticipation pose), recoilAge = s since it was used.
-  cast(out, type, t, ready, recoilAge, rm) {
+  // near (display only, -1..1): hero proximity from Smooth.near; > 0 approaching (lean away + flinch), < 0 just passed (look after it).
+  cast(out, type, t, ready, recoilAge, rm, near = 0) {
     this.reset(out); if (!this.enabled) return out;
     const st = this.CAST_STYLE[type] || this.CAST_STYLE.DASH, amp = rm ? this.RM : 1, TAU = Math.PI * 2;
     const idx = this.CAST_ORDER.indexOf(type), ph = (idx < 0 ? 0 : idx) * 0.7;
@@ -1063,6 +1119,7 @@ Hop.Anim = {
       out.sy = 1 - 0.06 * d * amp; out.sx = 1 + 0.05 * d * amp;
       if (!rm) { out.dx = 12 * d; out.rot = 0.14 * d * Math.sin(recoilAge * 26); }
     }
+    if (near && !rm) { out.rot += near > 0 ? 0.11 * near : 0.06 * near; out.dy -= 3 * Math.abs(near); out.dx += near > 0 ? 3 * near : 0; }
     return this.finish(out);
   },
   // Truck: engine idle shimmy, revving on AIM_POWER, launch recoil + damped suspension bounce. No scaling.
@@ -1117,5 +1174,92 @@ Hop.Anim = {
     let at = a.used.get(object);
     if (at === undefined || at > t) { at = t; a.used.set(object, at); }
     return t - at;
+  }
+};
+
+// Smooth display helpers (pure easing / spring math + a per-visual display cache). Display only: reads game state,
+// never writes it, so physics steps, RNG, distances and results are identical with or without smoothing.
+Hop.Smooth = {
+  BLEND: 0.12,  // s, pose cross-fade on a state change
+  FADE: 0.11,   // s, sprite clip cross-fade
+  CAM_W: 10, CAM_WY: 14, CAM_Y_LAG: 90, LOOK_K: 0.06, LOOK_MAX: 100, ROT_RATE: 12,
+  lerp(a, b, u) { return a + (b - a) * u; },
+  clamp01(u) { return u < 0 ? 0 : u > 1 ? 1 : u; },
+  smoothstep(u) { u = this.clamp01(u); return u * u * (3 - 2 * u); },
+  easeInOutCubic(u) { u = this.clamp01(u); return u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2; },
+  easeOutCubic(u) { u = this.clamp01(u); return 1 - (1 - u) ** 3; },
+  wrapAngle(a) { return Math.atan2(Math.sin(a), Math.cos(a)); },
+  // Critically damped spring, exact for any dt (stable for tab-return spikes; no overshoot from rest).
+  spring(st, key, target, w, dt) {
+    const y = st[key] - target, v = st[key + "V"], e = Math.exp(-w * dt), j = (v + w * y) * dt;
+    st[key] = target + (y + j) * e; st[key + "V"] = (v - w * j) * e;
+  },
+  // Interpolated body position (fixed step + alpha): between the previous and the current physics step.
+  interp(g, out) {
+    const a = g.state === "FLYING" && Number.isFinite(g.renderAlpha) ? g.renderAlpha : 1;
+    const px = Number.isFinite(g.renderPrevX) ? g.renderPrevX : g.body.x, py = Number.isFinite(g.renderPrevY) ? g.renderPrevY : g.body.y;
+    out.bx = px + (g.body.x - px) * a; out.by = py + (g.body.y - py) * a; return out;
+  },
+  // Roadside reaction weight from the hero's offset (dx = hero - character, world px) and height.
+  near(dx, heroY) {
+    if (heroY > 260 || dx < -420 || dx > 420) return 0;
+    const h = 1 - Math.max(0, heroY) / 260, q = dx / 160; // continuous: 0 when overhead, + approaching, - just passed
+    return -Math.tanh(dx / 55) * Math.exp(-q * q) * h;
+  },
+  cache: new WeakMap(),
+  frame(g, visual) {
+    let d = this.cache.get(visual);
+    const c = Hop.CONFIG, rm = !!visual.reducedMotion || !Hop.Anim.enabled;
+    if (!d) this.cache.set(visual, d = { camX: g.cameraX, camXV: 0, camY: g.cameraY, camYV: 0, look: 0, lookV: 0, rot: 0, bx: 0, by: 0, time: 0, lastTime: -1,
+      state: null, blendAt: -Infinity, from: { sx: 1, sy: 1, rot: 0, dx: 0, dy: 0 }, last: { sx: 1, sy: 1, rot: 0, dx: 0, dy: 0 },
+      layer: { asset: null, time: 0, scale: 1 }, prevLayer: { asset: null, time: 0, scale: 1 }, fadeAt: -Infinity, fade: { asset: null, time: 0, scale: 1, alpha: 0 }, rm });
+    const time = Number.isFinite(g.displayTime) ? g.displayTime : g.phaseTime;
+    const dt = d.lastTime < 0 ? 0 : Math.max(0, Math.min(0.1, time - d.lastTime));
+    d.lastTime = time; d.time = time; d.rm = rm;
+    this.interp(g, d); const px = d.bx, py = d.by;
+    const prelaunch = g.state === "READY" || g.state === "AIM_ANGLE" || g.state === "AIM_POWER";
+    const look = rm || g.state !== "FLYING" ? 0 : Math.min(this.LOOK_MAX, Math.max(0, g.body.vx * this.LOOK_K));
+    const tx = Math.max(0, c.launchX + px - c.cameraAnchorX), ty = Math.max(0, py - (c.groundY - 160));
+    if (prelaunch || dt === 0 && d.state === null) { d.camX = g.cameraX; d.camXV = 0; d.camY = g.cameraY; d.camYV = 0; d.look = 0; d.lookV = 0; }
+    else {
+      this.spring(d, "look", look, 4, dt);
+      this.spring(d, "camX", Math.max(0, tx + d.look), this.CAM_W, dt);
+      this.spring(d, "camY", ty, this.CAM_WY, dt);
+      if (d.camY < ty - this.CAM_Y_LAG) { d.camY = ty - this.CAM_Y_LAG; d.camYV = Math.max(0, d.camYV); } // keep a high shot on screen
+      if (d.camY < 0) { d.camY = 0; d.camYV = 0; }
+    }
+    // Tilt from velocity, eased toward its target (impulses / bounces no longer snap the sprite).
+    const tilt = Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1;
+    const target = g.state === "FLYING" && !rm && tilt > 0 ? Math.max(-0.7, Math.min(0.7, -g.body.vy / 1200)) * tilt : 0;
+    d.rot = prelaunch || dt === 0 && d.state === null ? target : d.rot + (target - d.rot) * (1 - Math.exp(-this.ROT_RATE * dt));
+    if (g.state !== d.state) { if (d.state !== null) { Object.assign(d.from, d.last); d.blendAt = time; } d.state = g.state; }
+    Hop.Graphics.lastDisplay = d.out || (d.out = {});
+    const o = d.out; o.heroX = c.launchX + px - d.camX; o.heroY = c.groundY + d.camY - c.playerRadius - py; o.camX = d.camX; o.camY = d.camY; o.rot = d.rot;
+    return d;
+  },
+  // Cross-fade the hero pose from the last drawn pose for BLEND s after a state change (writes into pose).
+  blendPose(d, pose, state) {
+    const u = this.easeInOutCubic((d.time - d.blendAt) / this.BLEND);
+    if (u < 1) {
+      const f = d.from;
+      pose.sx = this.lerp(f.sx, pose.sx, u); pose.sy = this.lerp(f.sy, pose.sy, u); pose.dx = this.lerp(f.dx, pose.dx, u); pose.dy = this.lerp(f.dy, pose.dy, u);
+      pose.rot = this.lerp(this.wrapAngle(f.rot), this.wrapAngle(pose.rot), u);
+    }
+    const l = d.last; l.sx = pose.sx; l.sy = pose.sy; l.rot = this.wrapAngle(pose.rot); l.dx = pose.dx; l.dy = pose.dy;
+    return pose;
+  },
+  // Sprite clip bookkeeping: remember the first layer drawn this frame; a different asset starts a fade.
+  noteLayer(d, layer) {
+    if (d.layerNoted === d.time) return; d.layerNoted = d.time;
+    const cur = d.layer;
+    if (cur.asset && cur.asset !== layer.asset) { Object.assign(d.prevLayer, cur); d.fadeAt = d.time; }
+    cur.asset = layer.asset; cur.time = layer.time; cur.scale = layer.scale;
+  },
+  layerFade(d) {
+    if (d.rm || !d.prevLayer.asset || d.state === "READY" || d.state === "AIM_ANGLE" || d.state === "AIM_POWER") return null;
+    const u = (d.time - d.fadeAt) / this.FADE;
+    if (u >= 1 || u < 0) return null;
+    const f = d.fade; f.asset = d.prevLayer.asset; f.time = d.prevLayer.time; f.scale = d.prevLayer.scale; f.alpha = 1 - this.smoothstep(u);
+    return f;
   }
 };

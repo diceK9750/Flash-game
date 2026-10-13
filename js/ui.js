@@ -213,7 +213,15 @@ Hop.UI = class {
     const overlayAlpha = Hop.Sprites?.resultOverlayAlpha ? Hop.Sprites.resultOverlayAlpha(this.visual, g.phaseTime, g.state) : 1;
     const opacity = overlayAlpha >= 1 ? "" : String(Math.round(overlayAlpha * 1000) / 1000);
     if (this.overlay.style.opacity !== opacity) this.overlay.style.opacity = opacity;
+    // RESULT entrance (smooth display only): the distance counts up with an ease-out once the overlay shows.
+    if (Hop.Graphics?.smooth && g.state === s.RESULT && g.state === this.lastState && Number.isFinite(g.finalDistance)) {
+      if (this.countFrom === null && overlayAlpha > 0) this.countFrom = g.phaseTime;
+      const u = this.visual.reducedMotion || this.countFrom === null ? 1 : Math.min(1, (g.phaseTime - this.countFrom) / 0.8);
+      const text = `${(g.finalDistance * (u >= 1 ? 1 : Hop.Smooth.easeOutCubic(u))).toFixed(1)} m`, el = document.getElementById("result-distance");
+      if (this.countFrom !== null && el.textContent !== text) el.textContent = text;
+    }
     if (g.state === this.lastState) return;
+    this.countFrom = null;
     this.lastState = g.state;
     document.getElementById("result-highlights").textContent = g.state === s.RESULT ? "今回のハイライト：" + Hop.UI.highlights(g).join(" · ") : "";
     this.overlay.hidden = g.state !== s.READY && g.state !== s.RESULT;
@@ -225,7 +233,7 @@ Hop.UI = class {
     document.getElementById("result-stats").hidden = g.state !== s.RESULT;
     if (g.state === s.RESULT) {
       document.getElementById("record-status").textContent = g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : "FLIGHT RECORD";
-      document.getElementById("result-distance").textContent = `${g.finalDistance.toFixed(1)} m`;
+      document.getElementById("result-distance").textContent = Hop.Graphics?.smooth && !this.visual.reducedMotion ? "0.0 m" : `${g.finalDistance.toFixed(1)} m`; // smooth: counted up in update()
       document.getElementById("result-best").textContent = `${g.best.distance.toFixed(1)} m`;
       document.getElementById("result-height").textContent = `${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m`;
       document.getElementById("result-speed").textContent = `${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s`;
