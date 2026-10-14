@@ -1,4 +1,5 @@
 // Run with: node tests/debug-kinds.cjs — DEBUG kinds (menu / URL / per-check setups). Test-only.
+const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { scope, element, document, random } = require('./phase2.cjs');
@@ -50,7 +51,7 @@ test('main.js applies ?debug= on load (badge, preconditions), and nothing withou
     const el = id => { if (!els.has(id)) els.set(id, { setAttribute(k, v) { this[k] = v; }, textContent: '', hidden: false, style: {}, listeners: {}, addEventListener(t, f) { this.listeners[t] = f; }, getContext() { return new Proxy({}, { get: (o, k) => o[k] || (() => {}), set: (o, k, v) => (o[k] = v, true) }); } }); return els.get(id); };
     const ctx = { document: { getElementById: el, listeners: {}, addEventListener(t, f) { this.listeners[t] = f; } }, requestAnimationFrame() {}, location: { search } }; ctx.window = ctx;
     vm.createContext(ctx);
-    for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'input', 'main']) vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), ctx, { filename: name });
+    for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'input', 'main']) vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name), ctx, { filename: name });
     return el;
   }
   let el = boot('?debug=boost');

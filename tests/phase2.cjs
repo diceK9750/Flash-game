@@ -1,4 +1,5 @@
 // Run with: node tests/phase2.cjs (test-only; the game needs no Node.js).
+const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
@@ -18,7 +19,7 @@ const document = { getElementById: element, listeners: {}, addEventListener(type
 const scope = { document, requestAnimationFrame() {} }; scope.window = scope;
 vm.createContext(scope);
 for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input', 'main']) {
-  vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), scope, { filename: name });
+  vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name), scope, { filename: name });
 }
 // main.js turns on the smooth display (spring camera, interpolation, eased tilt, cross-fades). The geometry / sprite
 // suites sharing this scope assert the exact raw display contract (g.cameraX, body position, vy tilt), so it is

@@ -43,8 +43,12 @@ Hop.CONFIG = Object.freeze({
   aerialDirectionThreshold: 40,
   // Warrior (DASH) SPECIAL: armed by an earlier warrior contact as before, or else this draw at the warrior contact
   // (one random() only when not armed). The 1-per-screen spacing made a 2nd warrior with no BOOST/BOUNCE/STOPPER
-  // between them rare (~5% of warrior contacts vs ~36% for 魔法使い/武闘家); tuned with the fixed-seed sim.
+  // between them rare (~5% of warrior contacts vs ~36% for 魔法使い/武闘家 at the time, ~18% since 2026-10-15); tuned with the fixed-seed sim.
   dashSpecialChance: 0.35,
+  // 魔法使い (BOOST 爆裂斜光) / 武闘家 (BOUNCE 巨神昇天拳) SPECIAL (2026-10-15): still armed by the adjacent partner
+  // rule (next untouched object is the partner), then gated by this draw (one random() only when the adjacency holds
+  // and no merchant SPECIAL takes the contact). ~36% -> ~18% of their contacts in the fixed-seed sim. 1 = no draw (old game).
+  boostSpecialChance: 0.5, bounceSpecialChance: 0.5,
   // Sage (GUARD 聖護結界) SPECIAL (2026-10-13d, 先見の結界): eligible when a GUARD is still held from the previous
   // contact (as before), or when an untouched 僧侶 (STOPPER) or 盗賊 (BRAKE) stands within sageForesightRange px
   // beyond the sage at the contact. Deterministic (no random()); never while 聖護結界 is active or when a merchant

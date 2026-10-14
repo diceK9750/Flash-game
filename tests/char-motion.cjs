@@ -1,6 +1,7 @@
 // Character motion (display only): per-character hit / SPECIAL reactions, overhead look-up, idle fidgets (display
 // RNG), hero effect poses / hit flavour / skid / RESULT tiers, truck after-impact hop. Physics, distances and the
 // game RNG call count must equal main 40feb39 (fixtures/anim-physics-baseline-sage.json, unchanged since 2f4d0af).
+const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 function load() {
@@ -8,7 +9,7 @@ function load() {
   const element = () => ({ setAttribute() {}, textContent: '', hidden: false, style: {}, addEventListener() {}, getContext: ctx });
   const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {} }; scope.window = scope;
   vm.createContext(scope);
-  for (const n of ['config', 'physics', 'game', 'sprites', 'graphics']) vm.runInContext(fs.readFileSync(path.join(root, 'js', n + '.js'), 'utf8'), scope, { filename: n });
+  for (const n of ['config', 'physics', 'game', 'sprites', 'graphics']) vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(root, 'js', n + '.js'), 'utf8'), n), scope, { filename: n });
   return { Hop: scope.Hop, ctx: ctx() };
 }
 const { Hop, ctx } = load(), A = Hop.Anim, G = Hop.Graphics;

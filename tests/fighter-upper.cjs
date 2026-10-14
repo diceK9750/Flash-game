@@ -2,6 +2,7 @@
 // hidden rumble (ゴゴゴ…) -> erupts from below as a uniformly scaled giant, fist first -> uppercut -> launch.
 // Display only: distances identical to the 0cb33fb baseline (tests/fixtures/fighter-upper-baseline-0cb33fb.json).
 // Run with: node tests/fighter-upper.cjs   (regenerate the fixture: node tests/fighter-upper.cjs --baseline <old js dir>)
+const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const FIXTURE = path.join(__dirname, 'fixtures', 'fighter-upper-baseline-0cb33fb.json');
@@ -12,7 +13,7 @@ function load(jsDir) {
   const store = {};
   const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {}, localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } } };
   scope.window = scope; vm.createContext(scope);
-  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), scope, { filename: name });
+  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), name), scope, { filename: name });
   scope.Hop.Graphics.smooth = false;
   return scope.Hop;
 }
