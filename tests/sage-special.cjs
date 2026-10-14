@@ -6,6 +6,7 @@
 // triggers while 聖護結界 is active or when a merchant SPECIAL takes the contact; the effect (10 s STOPPER block)
 // is unchanged. sageCondition "none" reproduces the warrior-fix game exactly (fixture + fingerprint bd3ce787...).
 // Main 3d13336's 1000-play rates are stored in fixtures/sage-main-rates-1000.json (same seeded player as below).
+const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
@@ -15,7 +16,7 @@ function load(mode, patch = s => s) {
   const element = id => { if (!els.has(id)) els.set(id, { setAttribute() {}, textContent: '', hidden: false, style: {}, addEventListener() {}, getContext: stub }); return els.get(id); };
   const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {} }; scope.window = scope; vm.createContext(scope);
   for (const name of ['config', 'physics', 'game', 'sprites', 'graphics']) {
-    let src = fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8');
+    let src = adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name);
     if (name === 'config' && mode !== undefined) { assert(/sageCondition: "foresight",/.test(src)); src = src.replace(/sageCondition: "foresight",/, `sageCondition: "${mode}",`); }
     if (name === 'config') src = patch(src);
     // The historical 160-play fingerprints count wall frames including the display-only combo scene; the fighter

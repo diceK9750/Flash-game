@@ -3,13 +3,14 @@
 // the next warrior >= 1400 px later, so it was eligible on ~5% of warrior contacts vs ~34-39% for 魔法使い / 武闘家.
 // Now an unarmed warrior contact also draws dashSpecialChance (no draw when armed or when a merchant SPECIAL takes
 // the contact). Speed / angle of 戦陣突破 are unchanged. dashSpecialChance 0 reproduces the old game exactly.
+const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 function load(chance) {
   const scope = {}; scope.window = scope; vm.createContext(scope);
   for (const name of ['config', 'physics', 'game']) {
-    let src = fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8');
+    let src = adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name);
     if (name === 'config' && chance !== undefined) { assert(/dashSpecialChance: [\d.]+,/.test(src)); src = src.replace(/dashSpecialChance: [\d.]+,/, `dashSpecialChance: ${chance},`); }
     // Sage condition (2026-10-13d 先見の結界, was guardSpecialChance in 2026-10-13c) off ("none") here so this test
     // isolates the warrior draw (see sage-special.cjs); "none" is identical to the old guardSpecialChance 0.

@@ -7,6 +7,7 @@
 //  2) easing continuity: no per-frame (1/60 s) jump above a threshold in the cut-in / camera / shake / labels;
 //  3) uniform scale only; 4) skip and reduced motion unchanged; 5) full smooth draw of every SPECIAL never throws.
 // Run: node tests/special-smooth.cjs   (regenerate the fixture: node tests/special-smooth.cjs --baseline <old js dir>)
+const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const FIXTURE = path.join(__dirname, 'fixtures', 'special-smooth-baseline-f87b758.json');
@@ -19,7 +20,7 @@ function load(jsDir) {
   const store = {};
   const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {}, localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } } };
   scope.window = scope; vm.createContext(scope);
-  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), scope, { filename: name });
+  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), name), scope, { filename: name });
   scope.Hop.Graphics.smooth = false;
   return scope.Hop;
 }

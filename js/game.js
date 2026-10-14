@@ -255,6 +255,9 @@ Hop.Game = class {
       // Rare draw (merchantChance); a miss is an ordinary contact judged by the normal SPECIAL rules above.
       const merchantType = merchantCandidate && (this.debug || this.random() < c.merchantChance) ? merchantCandidate : null;
       // Warrior (DASH) not armed: dashSpecialChance draw, only when no merchant SPECIAL takes this contact.
+      // 魔法使い / 武闘家 adjacency holds: gating draw (boost/bounceSpecialChance < 1 only; debugForce skips it).
+      const adjacentChance = object.type === "BOOST" ? c.boostSpecialChance : object.type === "BOUNCE" ? c.bounceSpecialChance : 1;
+      if (rule?.trigger === "adjacent" && eligible && !merchantType && object.debugForce !== true && adjacentChance < 1) eligible = this.random() < adjacentChance;
       if (rule?.trigger === "dash" && !eligible && !merchantType && c.dashSpecialChance > 0) eligible = this.random() < c.dashSpecialChance;
       // Sage (GUARD) not eligible: 先見の結界 (sageConditionMet, deterministic, no random()), only when no 聖護結界 is
       // active and no merchant SPECIAL takes this contact.
