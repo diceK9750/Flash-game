@@ -18,7 +18,7 @@ Hop.Game = class {
     this.state = Hop.STATES.READY;
     this.body = Hop.Physics.create();
     this.angle = Hop.CONFIG.angleDefault;
-    this.power = Hop.CONFIG.powerMin;
+    this.power = Hop.CONFIG.powerMin; this.justLaunch = false;
     this.phaseTime = 0; this.accumulator = 0;
     this.cameraX = 0; this.cameraY = 0;
     this.maxHeight = 0; this.maxSpeed = 0; this.finalDistance = null;
@@ -481,7 +481,7 @@ Hop.Game = class {
     const c = Hop.CONFIG, mode = this.launchCutinReduced ? "reduced" : this.launchCutinViews > 0 ? "repeat" : "full";
     const total = mode === "reduced" ? c.launchCutinReducedDuration : mode === "repeat" ? c.launchCutinRepeatDuration : c.launchCutinDuration;
     this.launchCutinViews++;
-    this.launchCutin = { mode, total, elapsed: 0, skipped: false, power: this.power, ...Hop.Game.launchCutinIntensity(this.power) };
+    this.launchCutin = { mode, total, elapsed: 0, skipped: false, power: this.power, just: !!this.justLaunch, ...Hop.Game.launchCutinIntensity(this.power) };
     return this.launchCutin;
   }
   endLaunchCutin(skipped = false) {
@@ -542,6 +542,11 @@ Hop.Game = class {
   }
   // RESULT rank by final distance (config.rankThresholds, highest first).
   // Stamp SE for a rank: S -> RANK_STAMP_S, SS / SSS -> grander RANK_STAMP_SS, others -> RANK_STAMP.
+  // JUST! launch window (config justPowerMin / justAngleCenter / justAngleHalfWidth); never when disabled.
+  static isJust(angle, power) {
+    const c = Hop.CONFIG;
+    return c.justLaunchEnabled === true && power >= c.justPowerMin && Math.abs(angle - c.justAngleCenter) <= c.justAngleHalfWidth;
+  }
   static rankStampSe(rank) { return rank === "SS" || rank === "SSS" ? "RANK_STAMP_SS" : rank === "S" ? "RANK_STAMP_S" : "RANK_STAMP"; }
   static rank(distance) {
     const d = Number.isFinite(distance) ? distance : 0;
@@ -558,7 +563,9 @@ Hop.Game = class {
       case s.READY: this.state = s.AIM_ANGLE; this.phaseTime = 0; this.angle = Hop.CONFIG.angleMin; break;
       case s.AIM_ANGLE: this.state = s.AIM_POWER; this.phaseTime = 0; break;
       case s.AIM_POWER:
-        Hop.Physics.launch(this.body, this.angle, this.power);
+        this.justLaunch = Hop.Game.isJust(this.angle, this.power);
+        Hop.Physics.launch(this.body, this.angle, this.power * (this.justLaunch ? Hop.CONFIG.justLaunchMultiplier : 1));
+        if (this.justLaunch) this.pushFx({ kind: "JUST" });
         this.maxSpeed = Math.hypot(this.body.vx, this.body.vy);
         this.state = s.FLYING; this.accumulator = 0;
         if (this.launchCutinEnabled && Hop.CONFIG.launchCutinEnabled !== false) this.startLaunchCutin();
