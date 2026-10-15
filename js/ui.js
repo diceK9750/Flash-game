@@ -227,7 +227,7 @@ Hop.UI = class {
     const rankEl = document.getElementById("result-rank");
     if (rankEl && g.state === s.RESULT && g.state === this.lastState && this.rankPending && overlayAlpha >= 1) {
       this.rankPending = false; rankEl.hidden = false;
-      try { Hop.Audio?.play?.(rankEl.textContent === "S" ? "RANK_STAMP_S" : "RANK_STAMP"); } catch { /* SE is optional. */ }
+      try { Hop.Audio?.play?.(Hop.Game.rankStampSe(rankEl.textContent)); } catch { /* SE is optional. */ }
     }
     if (g.state === this.lastState) return;
     this.countFrom = null;
@@ -235,7 +235,7 @@ Hop.UI = class {
       const rank = g.state === s.RESULT && g.tempoEnabled ? Hop.Game.rank(g.finalDistance) : null;
       rankEl.hidden = true; this.rankPending = !!rank;
       rankEl.textContent = rank || ""; if (rankEl.dataset) rankEl.dataset.rank = rank || "";
-      rankEl.className = rank ? "rank-stamp rank-" + rank.toLowerCase() : "rank-stamp";
+      rankEl.className = rank ? "rank-stamp rank-" + rank.toLowerCase() + " rank-len" + rank.length : "rank-stamp"; // len2/3: smaller glyphs fit the circle
     }
     this.overlay.classList?.toggle?.("new-record", g.state === s.RESULT && !g.debugUsed && g.newRecords.includes("distance"));
     this.lastState = g.state;

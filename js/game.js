@@ -541,9 +541,11 @@ Hop.Game = class {
     if (!h.recordPassed && !this.debugUsed && this.best.distance > 0 && m > this.best.distance) { h.recordPassed = true; this.pushFx({ kind: "NEW_RECORD", meters: this.best.distance }); }
   }
   // RESULT rank by final distance (config.rankThresholds, highest first).
+  // Stamp SE for a rank: S -> RANK_STAMP_S, SS / SSS -> grander RANK_STAMP_SS, others -> RANK_STAMP.
+  static rankStampSe(rank) { return rank === "SS" || rank === "SSS" ? "RANK_STAMP_SS" : rank === "S" ? "RANK_STAMP_S" : "RANK_STAMP"; }
   static rank(distance) {
     const d = Number.isFinite(distance) ? distance : 0;
-    return (Hop.CONFIG.rankThresholds.find(([, min]) => d >= min) || ["C"])[0];
+    return (Hop.CONFIG.rankThresholds.find(([, min]) => d >= min) || ["D"])[0];
   }
   // RESULT entrance timing (s) for the tempo measurement: overlay wait and distance count-up.
   resultTiming() {

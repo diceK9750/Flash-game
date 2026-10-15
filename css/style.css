@@ -128,11 +128,16 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 .special-panel.resolved { inset: auto 5% 13%; padding: 7px; background: #fffbedec; gap: 3px; }
 .special-panel.resolved strong { font-size: clamp(17px, 2vw, 28px); }
 #result-highlights { color: #714815; font-weight: 700; font-size: 13px; line-height: 1.6; }
-/* Tempo feedback: RESULT rank stamp (C/B/A/S) and the NEW RECORD flourish (no animation under reduced motion). */
+/* Tempo feedback: RESULT rank stamp (D/C/B/A/S/SS/SSS; 2-3 letters shrink to fit) and the NEW RECORD flourish (no animation under reduced motion). */
 .rank-stamp { position: absolute; right: 7%; top: 14%; width: clamp(64px, 11vw, 132px); aspect-ratio: 1; display: grid; place-items: center; border: 6px solid currentColor; border-radius: 50%; font: 900 clamp(40px, 7vw, 92px)/1 system-ui, sans-serif; color: #8a5a2b; background: #fffdf3cc; transform: rotate(-14deg); animation: rank-stamp 0.32s cubic-bezier(.2,1.6,.4,1) both; pointer-events: none; }
 .rank-stamp.rank-b { color: #2f6aa3; }
 .rank-stamp.rank-a { color: #c2410c; }
-.rank-stamp.rank-s { color: #c9a300; text-shadow: 0 0 12px #fff3a0; box-shadow: 0 0 22px #ffe36e; }
+.rank-stamp.rank-len2 { font-size: clamp(26px, 4.6vw, 60px); letter-spacing: -0.04em; }
+.rank-stamp.rank-len3 { font-size: clamp(19px, 3.3vw, 43px); letter-spacing: -0.06em; }
+.rank-stamp.rank-d { color: #6b6b6b; }
+.rank-stamp.rank-ss, .rank-stamp.rank-sss, .rank-stamp.rank-s { color: #c9a300; text-shadow: 0 0 12px #fff3a0; box-shadow: 0 0 22px #ffe36e; }
+.rank-stamp.rank-ss { color: #d97706; box-shadow: 0 0 26px #ffc94d; }
+.rank-stamp.rank-sss { color: #c026d3; text-shadow: 0 0 12px #ffe1fb, 0 0 4px #fff3a0; box-shadow: 0 0 30px #f5a3ff, inset 0 0 10px #fff3a0; }
 @keyframes rank-stamp { 0% { transform: rotate(-14deg) scale(2.6); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(-14deg) scale(1); opacity: 1; } }
 .overlay.new-record #overlay-title { color: #c2410c; animation: record-pulse 0.9s ease-in-out 2; }
 .overlay.new-record #overlay-label::before { content: "NEW RECORD! · "; color: #c2410c; font-weight: 900; }
