@@ -675,6 +675,7 @@ Hop.Graphics = {
       const sfxY = st.beat === "impact" ? H * 0.2 : H * 0.18 + st.flight * 20;
       this.lcText(ctx, "ドカァァァン！！", W * 0.5, sfxY, 104 + 26 * k, -0.08, cut.tier === "MAX" ? "#ff2d55" : "#ff5a1f", "#1a0f08", pop);
       if (label) this.lcText(ctx, label, W * 0.78, H * 0.84, 70 + 20 * k, -0.12, "#ffe14d", "#3a1200", st.sfx < 1 ? pop : 1 + 0.06 * Math.sin(t * 30));
+      if (cut.just) this.lcText(ctx, "JUST!", W * 0.5, H * 0.36, 88 + 20 * k, -0.1, "#7df9ff", "#062a3a", pop);
       this.lcText(ctx, `POWER ${Math.round((cut.power ?? 1) * 100)}%`, W * 0.18, H * 0.88, 34, -0.05, "#ffffff", "#2a1408");
     }
     ctx.restore();
@@ -1202,7 +1203,7 @@ Hop.Graphics = {
   tempoOverlay(ctx, g, visual, heroX, heroY) {
     const c = Hop.CONFIG, rm = !!visual?.reducedMotion, now = g.realTime || 0;
     for (const f of visual?.fx || []) {
-      const a = now - f.at, life = f.kind === "CHAIN" ? 0.9 : f.kind === "MILESTONE" ? 0.9 : 1.5;
+      const a = now - f.at, life = f.kind === "CHAIN" || f.kind === "MILESTONE" || f.kind === "JUST" ? 0.9 : 1.5;
       if (a < 0 || a > life) continue;
       const fade = Math.min(1, (life - a) / 0.3), sc = this.popScale(a, rm);
       if (f.kind === "CHAIN") {
@@ -1214,6 +1215,9 @@ Hop.Graphics = {
       } else if (f.kind === "MILESTONE_BIG") {
         if (!rm && a < 0.5) { ctx.save(); ctx.globalAlpha = 0.6 * (1 - a / 0.5); ctx.strokeStyle = "#ffe066"; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(c.width / 2, 110, 40 + a * 360, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
         this.tempoText(ctx, `${f.meters} m!!`, c.width / 2, 110, 74, "#ffe066", sc, fade, rm ? 0 : -0.04);
+      } else if (f.kind === "JUST") { // near the hero (effect area), same pop as CHAIN
+        const x = Math.max(120, Math.min(c.width - 120, heroX)), y = Math.max(90, heroY - 90) - (rm ? 0 : a * 30);
+        this.tempoText(ctx, "JUST!", x, y, 60, "#7df9ff", sc, fade, rm ? 0 : -0.08);
       } else if (f.kind === "NEW_RECORD") {
         const y = 200;
         ctx.save(); ctx.globalAlpha = 0.85 * fade; ctx.fillStyle = "#c2410c";

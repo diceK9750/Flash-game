@@ -7,5 +7,7 @@ const RE = /boostSpecialChance: [\d.]+, bounceSpecialChance: [\d.]+,/;
 module.exports = function adjacentGateOff(src, name) {
   if (name !== 'config') return src;
   assert(RE.test(src), 'boost/bounceSpecialChance line present');
-  return src.replace(RE, 'boostSpecialChance: 1, bounceSpecialChance: 1,');
+  // 2026-10-15 JUST! launch also predates the baselines: disabled here (tests/just-launch.cjs covers it).
+  assert(/justLaunchEnabled: true,/.test(src), 'justLaunchEnabled present');
+  return src.replace(RE, 'boostSpecialChance: 1, bounceSpecialChance: 1,').replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,');
 };

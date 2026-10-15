@@ -281,7 +281,11 @@ Hop.UI = class {
     const g = this.game, v = this.visual, now = g.realTime || 0;
     if (g.state !== Hop.STATES.FLYING) { if (g.state !== Hop.STATES.RESULT) { v.fx = []; v.kick = null; } g.fxEvents.length = 0; return; }
     v.fx = (v.fx || []).filter(f => now - f.at < 1.6);
+    const held = [];
     for (const e of g.fxEvents.splice(0)) {
+      // JUST!: SE at the launch tap; the pop waits behind the launch cut-in (which shows its own JUST!).
+      if (e.kind === "JUST" && !e.sePlayed) { e.sePlayed = true; try { Hop.Audio?.play?.("JUST"); } catch { /* SE is optional. */ } }
+      if (e.kind === "JUST") { if (g.launchCutin) { held.push(e); continue; } v.fx.push({ ...e, at: now }); continue; }
       if (e.kind === "IMPACT") { v.kick = { at: now, k: e.k }; continue; }
       if (e.kind === "CHAIN") { v.fx = v.fx.filter(f => f.kind !== "CHAIN"); }
       v.fx.push({ ...e, at: now });
@@ -290,6 +294,7 @@ Hop.UI = class {
         else Hop.Audio?.play?.(e.kind);
       } catch { /* SE is optional. */ }
     }
+    g.fxEvents.push(...held);
   }
   static zone(g) {
     const c = Hop.CONFIG;

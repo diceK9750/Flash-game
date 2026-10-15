@@ -8,6 +8,10 @@ Hop.CONFIG = Object.freeze({
   angleMin: 10, angleMax: 70, angleDefault: 40, anglePeriod: 2.4,
   powerMin: 0.30, powerMax: 1, powerPeriod: 1.7,
   launchSpeed: 1250, // px/s, multiplied by power (30–100%)
+  // JUST! launch (2026-10-15): power >= justPowerMin AND |angle - justAngleCenter| <= justAngleHalfWidth at the
+  // launch tap multiplies the launch speed by justLaunchMultiplier (shows "JUST!" + SE). justLaunchEnabled false
+  // (or multiplier 1 with no pop) = the old game. Center = best average distance in the fixed-seed sim.
+  justLaunchEnabled: true, justPowerMin: 0.97, justAngleCenter: 42, justAngleHalfWidth: 3, justLaunchMultiplier: 1.15,
   gravity: 820, // px/s²; positive Y in physics means height above ground
   airDrag: 0.075, // exponential drag, per second
   restitution: 0.67,

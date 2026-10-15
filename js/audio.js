@@ -115,6 +115,9 @@ Hop.Audio = {
     // passing the best distance in flight
     NEW_RECORD: [783.99, 987.77, 1174.66, 1567.98].map((f, i) => ["tone", i * 0.09, 0.3, 0.045, "triangle", f, f * 1.005, 0.006])
       .concat([["noise", 0.3, 0.6, 0.02, "highpass", 5000, 8000, 0.7], ["tone", 0.3, 0.6, 0.03, "sine", 3136, 3200, 0.01]]),
+    // JUST! launch: a crisp two-note "ching" (bright square + sine octave) with a short sparkle
+    JUST: [["tone", 0, 0.09, 0.05, "square", 1760, 1760, 0.002], ["tone", 0.05, 0.28, 0.05, "square", 2637, 2637, 0.002],
+      ["tone", 0.05, 0.3, 0.03, "sine", 5274, 5274, 0.003], ["noise", 0.04, 0.18, 0.02, "highpass", 7000, 10000, 0.7]],
     // RESULT rank stamp: a thud + paper slap (S adds a ring)
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],

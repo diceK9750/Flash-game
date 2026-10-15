@@ -11,6 +11,8 @@ function load(gateOff) {
   for (const name of ['config', 'physics', 'game']) {
     let src = fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8');
     if (gateOff) src = adjacentGateOff(src, name);
+    // JUST! launch (2026-10-15, tests/just-launch.cjs) off so the fingerprint isolates the BOOST/BOUNCE gate.
+    if (name === 'config') src = src.replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,');
     vm.runInContext(src, scope, { filename: name });
   }
   return scope.Hop;
