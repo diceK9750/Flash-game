@@ -56,7 +56,7 @@ assert(!/\b\d{2,}\b/.test(up.replace(/180/g, '')), 'no literal strengths in aeri
 { const a = flying({ vy: -400 }); a.merchant = { type: 'A', remaining: 3 }; a.aerial('UP');
   near(a.body.vx, 600 + kx, 'A not doubled'); near(a.body.vy, ky, 'A not doubled vy'); assert.deepEqual(a.merchant, { type: 'A', remaining: 3 });
   const b = flying({ vy: -400 }); b.merchant = { type: 'B', charge: 2 }; b.aerial('UP'); assert.deepEqual(b.merchant, { type: 'B', charge: 2 });
-  const a2 = flying({ vy: 0 }); a2.merchant = { type: 'A', remaining: 3 }; a2.applyContact('BOOST'); near(a2.body.vx, 600 + 2 * kx, 'BOOST still doubled'); assert.equal(a2.merchant.remaining, 2);
+  const a2 = flying({ vy: 0 }); a2.merchant = { type: 'A', remaining: 3 }; a2.applyContact('BOOST'); near(a2.body.vx, Math.min(c.maxHorizontalSpeed, 600 + c.typeAMultiplier * kx), 'BOOST still multiplied (typeAMultiplier, 2.5 since 2026-10-16; capped)'); assert.equal(a2.merchant.remaining, 2);
   const b2 = flying({ vy: 0 }); b2.merchant = { type: 'B', charge: 2 }; b2.applyContact('BOOST'); assert.equal(b2.merchant.charge, 3); cases++; }
 // Strength, same moment: from falling states the distance gained by one AERIAL UP is at least that of a BOOST contact
 // at the same moment (the cancelled fall only adds lift) and several times the old +620 / +85 kick.
