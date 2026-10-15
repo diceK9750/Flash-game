@@ -282,6 +282,48 @@ Hop.Graphics = {
     ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", c.width * 0.06, cy - bandH * 0.5 - 4);
     ctx.restore();
   },
+  // Merchant SPECIAL flourish (2026-10-16, display only; never mutates game): gold coin burst + sparkles and a big
+  // skill-name pop, timed on the real-time clock from the merchant cut-in's start and lasting merchantFlourishDuration
+  // (longer than the cut-in). Effects / text only (no characters, no UI motion); reduced motion = a still name plate.
+  merchantFlourish(ctx, g, visual) {
+    if (!visual) return;
+    const c = Hop.CONFIG, cut = g.specialCutin, now = g.realTime || 0, rm = !!visual.reducedMotion;
+    if (cut?.merchantType && visual.merchantFx?.cut !== cut) visual.merchantFx = { cut, at: now, type: cut.merchantType, name: cut.name };
+    const fx = visual.merchantFx; if (!fx) return;
+    const T = c.merchantFlourishDuration, a = now - fx.at;
+    if (g.state !== "FLYING" || !(a >= 0) || a >= T) { if (a >= T || g.state !== "FLYING") visual.merchantFx = null; return; }
+    const fade = Math.min(1, (T - a) / 0.35), cx = c.width * 0.5, cy = c.height * 0.48;
+    ctx.save();
+    if (!rm) {
+      // Coin burst: two waves fly out, arc under gravity and spin (uniform-scale gold discs + glint).
+      for (let i = 0; i < c.merchantCoinCount; i++) {
+        const wave = i % 2, t = a - wave * 0.18; if (t < 0) continue;
+        const ang = (i * 2.399963) % (Math.PI * 2), sp = 520 + (i * 97) % 380;
+        const x = cx + Math.cos(ang) * sp * t, y = cy + Math.sin(ang) * sp * t * 0.75 + 520 * t * t;
+        const r = 13 + (i % 3) * 4, spin = t * 9 + i;
+        ctx.globalAlpha = fade * Math.max(0, 1 - t / (T * 0.9));
+        ctx.fillStyle = "#b8860b"; ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffd447"; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#fff6c0"; ctx.beginPath(); ctx.arc(x - r * 0.3 * Math.cos(spin), y - r * 0.3, r * 0.32, 0, Math.PI * 2); ctx.fill();
+      }
+      // Sparkles twinkling around the burst.
+      for (let i = 0; i < 14; i++) {
+        const ph = (a * 1.6 + i / 14) % 1, ang = i * 0.449 * Math.PI, rr = 160 + 300 * ph;
+        ctx.globalAlpha = fade * Math.sin(ph * Math.PI);
+        this.spark(ctx, cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr * 0.6, 10 + 10 * Math.sin(ph * Math.PI), i % 2 ? "#fff1a8" : "#ffd447", a * 4 + i);
+      }
+      // Gold ring shockwave at the start.
+      if (a < 0.6) { ctx.globalAlpha = 0.7 * (1 - a / 0.6); ctx.strokeStyle = "#ffd447"; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cx, cy, 60 + a * 900, 0, Math.PI * 2); ctx.stroke(); }
+    }
+    // Big skill-name pop (above the cut-in band) from the end of the wipe.
+    const na = a - (c.specialCutinImpact + c.specialCutinWipe);
+    if (na >= 0 || rm) {
+      const sc = rm ? 1 : this.popScale(Math.max(0, na), false) * c.merchantNamePop;
+      this.tempoText(ctx, `✦ ${fx.name} ✦`, cx, c.height * 0.24, 70, "#ffd447", sc, fade, rm ? 0 : -0.04);
+      this.tempoText(ctx, `商人 Type ${fx.type} ・ とっておきの品！`, cx, c.height * 0.24 + 62, 30, "#fff6c0", rm ? 1 : Math.min(1, sc), fade);
+    }
+    ctx.restore();
+  },
   // Smooth display (render interpolation, spring camera, smoothed tilt, pose / sprite cross-fades, extra
   // ambient motion). Off by default so geometry tests keep the raw game camera; main.js turns it on.
   smooth: false,
@@ -470,6 +512,8 @@ Hop.Graphics = {
     if (g.tempoEnabled) this.tempoOverlay(ctx, g, visual, x, y);
     // SPECIAL success cut-in above the world / flash; DOM special-panel stays separate.
     this.specialCutin(ctx, g, visual);
+    // Merchant SPECIAL flourish (display only, over the cut-in and outliving it).
+    this.merchantFlourish(ctx, g, visual);
     // Launch cut-in (truck x hero) above everything while it plays.
     this.launchCutin(ctx, g, visual);
   },

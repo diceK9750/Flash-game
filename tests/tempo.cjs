@@ -214,7 +214,7 @@ for (const seed of [2, 9, 21, 33]) {
   checks++;
 }
 // 8) Rules kept: config pins, merchant 20%, warrior / sage rules, voice gate untouched by the tempo work.
-assert.equal(c.merchantChance, 0.2); assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.sageCondition, 'foresight'); assert.equal(c.sageForesightRange, 460);
+assert.equal(c.merchantChance, 0.1); assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.sageCondition, 'foresight'); assert.equal(c.sageForesightRange, 460);
 assert.equal(c.launchCutinDuration, 1.5); assert.equal(c.launchCutinRepeatDuration, 0.8); assert.equal(c.physicsStep, 1 / 120);
 checks++;
 console.log(`tempo PASS (${checks} check groups): fast-forward / instant finish / hit-stop / repeat combo keep identical results over 60 seeds (saved ${(saved / 60 / 60).toFixed(2)} s per play at 60 fps); chain, milestones, ranks, quick restart, UI, SE.`);

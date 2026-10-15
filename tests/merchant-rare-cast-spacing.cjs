@@ -9,7 +9,9 @@ function test(name, fn) { try { fn(); cases++; } catch (e) { e.message = name + 
 const types = Object.keys(c.objectWeights);
 
 test('config: rare merchant chance, window covers the whole screen plus name tags', () => {
-  assert.equal(c.merchantChance, 0.20, 'merchant draw is 20% (user decision 2026-10-07 15:16)');
+  // phase2 loads through tests/fixtures/adjacent-gate-off.cjs, which pins the historical 20% draw (and old type A-D
+  // strengths); the shipped 10% (2026-10-16 rarer but grander) is checked in tests/merchant-grand.cjs.
+  assert.equal(c.merchantChance, 0.20, 'historical merchant draw 20% (user decision 2026-10-07 15:16), fixture-pinned');
   assert(c.castRepeatWindow >= c.width + 2 * 59, 'window >= screen + tag halves');
   assert.deepEqual(Object.keys(c.castPickWeights), types);
 });

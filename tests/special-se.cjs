@@ -53,7 +53,9 @@ function mockContext() {
     assert(!signatures.has(sig), kind + ' differs from ' + signatures.get(sig)); signatures.set(sig, kind);
     const stops = log.filter(e => e[1] === 'stop').map(e => e[2]);
     const length = Math.max(...stops);
-    assert(length >= 0.5 && length <= 1.05, `${kind} lasts ${length.toFixed(2)} s (cut-in length)`);
+    // Merchant (2026-10-16 grander) follows its longer flourish (merchantFlourishDuration) instead of the cut-in.
+    const maxLen = kind === 'SPECIAL_MERCHANT' ? scope.Hop.CONFIG.merchantFlourishDuration : 1.05;
+    assert(length >= 0.5 && length <= maxLen, `${kind} lasts ${length.toFixed(2)} s (cut-in length)`);
     // Master gain x worst-case simultaneous voice peaks <= cap (no clipping), and not silent.
     const recipe = A.specialRecipes[kind], master = log.find(e => e[0] === 'gain' && e[1] === 'gain' && e[2] === 'set')[3];
     const worst = A.peakSum(recipe);

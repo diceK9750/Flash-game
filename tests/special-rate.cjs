@@ -13,6 +13,8 @@ function load(gateOff) {
     if (gateOff) src = adjacentGateOff(src, name);
     // JUST! launch (2026-10-15, tests/just-launch.cjs) off so the fingerprint isolates the BOOST/BOUNCE gate.
     if (name === 'config') src = src.replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,');
+    // Merchant 2026-10-16 (tests/merchant-grand.cjs) pinned to the old values so the fingerprint isolates the gate.
+    if (name === 'config') src = adjacentGateOff.merchantOld(src);
     vm.runInContext(src, scope, { filename: name });
   }
   return scope.Hop;
@@ -57,7 +59,7 @@ const now = load(false), old = load(true), c = now.CONFIG;
 assert.equal(c.boostSpecialChance, 0.5); assert.equal(c.bounceSpecialChance, 0.5);
 assert.equal(old.CONFIG.boostSpecialChance, 1);
 // Other characters' knobs untouched.
-assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.angleSpecialChance, 0.10); assert.equal(c.merchantChance, 0.20);
+assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.angleSpecialChance, 0.10); assert.equal(c.merchantChance, 0.20, 'pinned old merchant in this suite');
 assert.equal(c.sageCondition, 'foresight');
 assert.equal(JSON.stringify(c.specials.BOOST), JSON.stringify({ trigger: 'adjacent', partner: 'BOUNCE', speed: 2000, angle: 45, name: '爆裂斜光' }));
 assert.equal(JSON.stringify(c.specials.BOUNCE), JSON.stringify({ trigger: 'adjacent', partner: 'BOOST', speed: 1700, angle: 60, name: '巨神昇天拳' }));

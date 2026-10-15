@@ -110,17 +110,22 @@ Hop.CONFIG = Object.freeze({
   boundaryMeters: 100, boundaryClearance: 140, merchantZoneMeters: 10,
   // Hidden "greatest secret art": even when the merchant conditions hold, the merchant only appears on this
   // draw (a miss falls back to the normal SPECIAL rules). DEBUG plays skip the draw so the merchant can be checked.
-  merchantChance: 0.20,
+  // 2026-10-16: 0.20 -> 0.10 (rarer but grander: stronger type A-D effects below + merchantFlourish presentation).
+  merchantChance: 0.10,
+  // Display only: merchant flourish (coin burst + sparkles + big skill-name pop) length (s), coins, name pop scale.
+  merchantFlourishDuration: 1.9, merchantCoinCount: 26, merchantNamePop: 1.15,
   // Placement only: no two roadside cast members of the same type within this world width (screen 1280 px
   // + both name-tag / READY-label halves), so one screen never shows the same character twice.
   castRepeatWindow: 1400,
   castPickWeights: Object.freeze({ BOOST: 0.50, BOUNCE: 0.23, BRAKE: 0.13, ANGLE: 0.055, DASH: 0.032, GUARD: 0.026, STOPPER: 0.017 }),
   merchantTypes: Object.freeze({ STOPPER: "A", DASH: "B", BOOST: "C", BOUNCE: "D" }),
   merchantNames: Object.freeze({ A: "倍化の秘薬", B: "蓄光の護符", C: "浮遊の絨毯", D: "弾跳の靴" }),
-  typeAUses: 3, typeAMultiplier: 2,
-  typeBMaxCharge: 10, typeBBaseSpeed: 650, typeBChargeBonus: 115, typeBAngle: 40,
-  typeCCount: 100, typeCSpeed: 1600, typeCHeight: 190,
-  typeDBounces: 5, typeDMultiplier: 1.2, typeDMinVertical: 450,
+  // 2026-10-16 grander (merchantChance halved): A 3 -> 5 uses, x2 -> x2.5; B base 650 -> 900, +115 -> +160 / charge;
+  // C 100 -> 150 objects; D 5 -> 8 bounces, x1.2 -> x1.28. Tuned with the fixed-seed sim (S reach ~unchanged, SSS < 0.5%).
+  typeAUses: 5, typeAMultiplier: 2.5,
+  typeBMaxCharge: 10, typeBBaseSpeed: 900, typeBChargeBonus: 160, typeBAngle: 40,
+  typeCCount: 150, typeCSpeed: 1600, typeCHeight: 190,
+  typeDBounces: 8, typeDMultiplier: 1.28, typeDMinVertical: 450,
   debugGap: 600, debugFirst: 400,
   // DEBUG kinds (Hop.DEBUG_KINDS in game.js): the check's character(s) stand debugSetupAhead px ahead of the hero
   // before launch (every 10–70° / 30–100% launch touches it during the first ascent, before any ground bounce),

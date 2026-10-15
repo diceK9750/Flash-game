@@ -22,7 +22,7 @@ assert.equal(c.justAngleHalfWidth, 3); assert.equal(c.justLaunchMultiplier, 1.15
 assert(c.justLaunchMultiplier >= 1.10 && c.justLaunchMultiplier <= 1.20, 'modest boost');
 // SPECIAL knobs unchanged.
 assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.boostSpecialChance, 0.5); assert.equal(c.bounceSpecialChance, 0.5);
-assert.equal(c.angleSpecialChance, 0.10); assert.equal(c.merchantChance, 0.20);
+assert.equal(c.angleSpecialChance, 0.10); assert.equal(c.merchantChance, 0.10);
 // Window edges.
 for (const [a, p, want] of [[42, 1, true], [39, 0.97, true], [45, 0.97, true], [38.99, 1, false], [45.01, 1, false], [42, 0.9699, false], [42, 0.5, false]])
   assert.equal(G.isJust(a, p), want, `${a}° ${p}`);
