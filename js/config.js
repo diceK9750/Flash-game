@@ -137,7 +137,7 @@ Hop.CONFIG = Object.freeze({
   // Feedback: distance milestones (small every milestoneMeters, big every milestoneBigMeters), hit chain
   // (consecutive character contacts without touching the ground), rank stamp thresholds (m) for the RESULT.
   milestoneMeters: 100, milestoneBigMeters: 500,
-  rankThresholds: Object.freeze([["S", 3000], ["A", 1200], ["B", 400], ["C", 0]]),
+  rankThresholds: Object.freeze([["SSS", 20000], ["SS", 15000], ["S", 10000], ["A", 5000], ["B", 3000], ["C", 1200], ["D", 0]]),
   shakeMaxPx: 6, shakeSpeedFrom: 1200, shakeSpeedTo: 2000, hitShakePx: 7,
   // RESULT entrance in tempo mode: the overlay appears resultOverlayLead s into the victory pose (fade
   // resultOverlayFade s) and the distance counts up in resultCountTime s. RETRY input is immediate either way.

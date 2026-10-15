@@ -133,9 +133,12 @@ assert(saved > 0, 'tempo saves wall time'); checks += 4;
 
 // 4) Rank thresholds.
 {
-  const cases = [[0, 'C'], [-5, 'C'], [NaN, 'C'], [399.9, 'C'], [400, 'B'], [1199.9, 'B'], [1200, 'A'], [2999.9, 'A'], [3000, 'S'], [1e6, 'S']];
+  // 2026-10-15 stricter table: S = 10000 m, plus SS / SSS above it, D at the bottom.
+  const cases = [[0, 'D'], [-5, 'D'], [NaN, 'D'], [1199.9, 'D'], [1200, 'C'], [2999.9, 'C'], [3000, 'B'], [4999.9, 'B'], [5000, 'A'], [9999.9, 'A'],
+    [10000, 'S'], [14999.9, 'S'], [15000, 'SS'], [19999.9, 'SS'], [20000, 'SSS'], [1e6, 'SSS']];
   for (const [d, r] of cases) assert.equal(Game.rank(d), r, String(d));
-  assert.deepEqual(JSON.parse(JSON.stringify(c.rankThresholds)), [['S', 3000], ['A', 1200], ['B', 400], ['C', 0]]);
+  assert.deepEqual(JSON.parse(JSON.stringify(c.rankThresholds)), [['SSS', 20000], ['SS', 15000], ['S', 10000], ['A', 5000], ['B', 3000], ['C', 1200], ['D', 0]]);
+  for (const [r, se] of [['D', 'RANK_STAMP'], ['C', 'RANK_STAMP'], ['B', 'RANK_STAMP'], ['A', 'RANK_STAMP'], ['S', 'RANK_STAMP_S'], ['SS', 'RANK_STAMP_SS'], ['SSS', 'RANK_STAMP_SS']]) assert.equal(Game.rankStampSe(r), se, r);
   checks++;
 }
 
@@ -177,6 +180,7 @@ for (const seed of [2, 9, 21, 33]) {
   // overlay timing: without the victory sprite (headless) the overlay is shown at once and the stamp follows
   for (let i = 0; i < 40; i++) { g.update(1 / 60); ui.update(); }
   assert.equal(rank.hidden, false);
+  assert(rank.className.includes("rank-len" + rank.textContent.length), rank.className);
   const T = H.UI.tempoOverlayAlpha, rd = H.Sprites.heroStopResult; H.Sprites.heroStopResult = { ready: true };
   assert.equal(T({ stopAt: 1 }, 1 + c.resultOverlayLead - 0.01, S.RESULT), 0);
   assert(Math.abs(T({ stopAt: 1 }, 1 + c.resultOverlayLead + c.resultOverlayFade / 2, S.RESULT) - 0.5) < 1e-9);
@@ -196,7 +200,7 @@ for (const seed of [2, 9, 21, 33]) {
 // 7) SE recipes: every tempo SE exists, stays under the shared peak cap, and the recipe helpers accept pitch / rate.
 {
   const A = H.Audio;
-  for (const kind of ['CHAIN', 'MILESTONE', 'MILESTONE_BIG', 'NEW_RECORD', 'RANK_STAMP', 'RANK_STAMP_S']) {
+  for (const kind of ['CHAIN', 'MILESTONE', 'MILESTONE_BIG', 'NEW_RECORD', 'RANK_STAMP', 'RANK_STAMP_S', 'RANK_STAMP_SS']) {
     assert(A.fxRecipes[kind]?.length >= 2, kind); assert(A.peakSum(A.fxRecipes[kind]) > 0);
   }
   const made = [];

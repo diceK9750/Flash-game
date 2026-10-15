@@ -118,7 +118,11 @@ Hop.Audio = {
     // RESULT rank stamp: a thud + paper slap (S adds a ring)
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
-      ["tone", 0.06, 0.7, 0.03, "triangle", 1318.5, 1318.5, 0.004], ["tone", 0.06, 0.7, 0.02, "triangle", 1975.5, 1975.5, 0.004], ["noise", 0.08, 0.5, 0.015, "highpass", 6000, 9000, 0.7]]
+      ["tone", 0.06, 0.7, 0.03, "triangle", 1318.5, 1318.5, 0.004], ["tone", 0.06, 0.7, 0.02, "triangle", 1975.5, 1975.5, 0.004], ["noise", 0.08, 0.5, 0.015, "highpass", 6000, 9000, 0.7]],
+    // SS / SSS: the S stamp plus a rising major arpeggio and a longer shimmer (same format, scaled by specialPeakCap)
+    RANK_STAMP_SS: [["tone", 0, 0.32, 0.1, "sine", 150, 42, 0.002], ["noise", 0, 0.16, 0.07, "lowpass", 2800, 400, 0.8],
+      ...[1318.5, 1661.2, 1975.5, 2637].map((f, i) => ["tone", 0.06 + i * 0.07, 0.8 - i * 0.08, 0.025, "triangle", f, f, 0.004]),
+      ["noise", 0.1, 0.8, 0.015, "highpass", 6000, 10000, 0.7]]
   },
   // Pitch for the n-th chain hit: +2 semitones per hit from 2HIT, capped at +16.
   chainPitch(n) { return 2 ** (Math.min(16, Math.max(0, (n - 2) * 2)) / 12); },
