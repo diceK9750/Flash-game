@@ -1,7 +1,7 @@
-// 魔法使い (BOOST 爆裂斜光) / 武闘家 (BOUNCE 巨神昇天拳) SPECIAL rate (2026-10-15). Before: eligible whenever the next
-// untouched object was the partner (adjacent rule) -> ~36% of their contacts in the fixed-seed sim. Now the same
-// adjacency arms it and a gating draw (boostSpecialChance / bounceSpecialChance 0.5) decides -> ~18%. One random()
-// only when the adjacency holds and no merchant SPECIAL takes the contact; debugForce skips it; 1 = old game exactly.
+// 魔法使い (BOOST 爆裂斜光) / 武闘家 (BOUNCE 巨神昇天拳) SPECIAL rate. 2026-10-15 a 0.5 draw after the adjacency rule
+// halved it (~36% -> ~18%), but the READY label then lied half the time; 2026-10-16 the draw was abolished (no key, no
+// random()) and the rate is halved by placement instead: a witch / fighter right next to its partner is picked with
+// weight x castPartnerAdjacentFactor (BOOST 0.15, BOUNCE 0.27). Old placement (fixture) = the pre-2026-10-15 game.
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
@@ -14,7 +14,7 @@ function load(gateOff) {
     // JUST! launch (2026-10-15, tests/just-launch.cjs) off so the fingerprint isolates the BOOST/BOUNCE gate.
     if (name === 'config') src = src.replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,');
     // Merchant 2026-10-16 (tests/merchant-grand.cjs) pinned to the old values so the fingerprint isolates the gate.
-    if (name === 'config') src = adjacentGateOff.merchantOld(src);
+    if (name === 'config' && !gateOff) src = adjacentGateOff.merchantOld(src);
     vm.runInContext(src, scope, { filename: name });
   }
   return scope.Hop;
@@ -56,37 +56,25 @@ function fingerprint(H) {
   return crypto.createHash('sha256').update(lines.join('\n')).digest('hex');
 }
 const now = load(false), old = load(true), c = now.CONFIG;
-assert.equal(c.boostSpecialChance, 0.5); assert.equal(c.bounceSpecialChance, 0.5);
-assert.equal(old.CONFIG.boostSpecialChance, 1);
-// Other characters' knobs untouched.
-assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.angleSpecialChance, 0.10); assert.equal(c.merchantChance, 0.20, 'pinned old merchant in this suite');
-assert.equal(c.sageCondition, 'foresight');
+assert.equal(c.boostSpecialChance, undefined); assert.equal(c.bounceSpecialChance, undefined);
+assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.angleSpecialChance, 0.10);
+assert.equal(JSON.stringify(c.castPartnerAdjacentFactor), JSON.stringify({ BOOST: 0.15, BOUNCE: 0.27 }));
+assert.equal(JSON.stringify(old.CONFIG.castPartnerAdjacentFactor), JSON.stringify({ BOOST: 1, BOUNCE: 1 }));
 assert.equal(JSON.stringify(c.specials.BOOST), JSON.stringify({ trigger: 'adjacent', partner: 'BOUNCE', speed: 2000, angle: 45, name: '爆裂斜光' }));
 assert.equal(JSON.stringify(c.specials.BOUNCE), JSON.stringify({ trigger: 'adjacent', partner: 'BOOST', speed: 1700, angle: 60, name: '巨神昇天拳' }));
-// Unit: draw only when the partner is next; win < chance, lose >= chance; no partner = no draw; gate 1 = no draw.
 {
-  const mk = (H, r) => { const g = new H.Game(r); g.objects = []; g.nextObjectX = Infinity; g.nextBoundaryX = Infinity; g.act(); g.angle = 30; g.act(); g.power = 0.8; g.act(); return g; };
+  const mk = r => { const g = new now.Game(r); g.objects = []; g.nextObjectX = Infinity; g.nextBoundaryX = Infinity; g.act(); g.angle = 30; g.act(); g.power = 0.8; g.act(); return g; };
   const hit = (g, type, partner) => { g.objects = [{ x: g.body.x + 5, type, used: false }]; if (partner) g.objects.push({ x: g.body.x + 600, type: partner, used: false }); g.contactObjects({ x: g.body.x, y: g.body.y }); };
-  for (const [type, partner, key] of [['BOOST', 'BOUNCE', 'boostSpecialChance'], ['BOUNCE', 'BOOST', 'bounceSpecialChance']]) {
+  for (const [type, partner] of [['BOOST', 'BOUNCE'], ['BOUNCE', 'BOOST']]) {
     let draws = 0;
-    const win = mk(now, () => { draws++; return c[key] - 1e-9; }); draws = 0; hit(win, type, partner); assert.equal(draws, 1); assert.equal(win.special?.type, type);
-    const lose = mk(now, () => { draws++; return c[key]; }); draws = 0; hit(lose, type, partner); assert.equal(draws, 1); assert.equal(lose.special, null, `${type} gated out`);
-    const none = mk(now, () => { draws++; return 0; }); draws = 0; hit(none, type, 'BRAKE'); assert.equal(draws, 0); assert.equal(none.special, null, 'adjacency still required');
-    const legacy = mk(old, () => { draws++; return 0.99; }); draws = 0; hit(legacy, type, partner); assert.equal(draws, 0); assert.equal(legacy.special?.type, type);
-    const forced = mk(now, () => { draws++; return 0.99; }); draws = 0; forced.objects = [{ x: forced.body.x + 5, type, used: false, debugForce: true }, { x: forced.body.x + 600, type: partner, used: false }];
-    forced.contactObjects({ x: forced.body.x, y: forced.body.y }); assert.equal(draws, 0); assert.equal(forced.special?.type, type, 'debugForce skips the gate');
+    const win = mk(() => { draws++; return 0.999; }); draws = 0; hit(win, type, partner); assert.equal(draws, 0, 'no draw'); assert.equal(win.special?.type, type, 'adjacency always fires');
+    const none = mk(() => { draws++; return 0; }); draws = 0; hit(none, type, 'BRAKE'); assert.equal(draws, 0); assert.equal(none.special, null, 'adjacency still required');
   }
 }
 const PLAYS = 1000, before = rates(old, PLAYS), after = rates(now, PLAYS);
-for (const t of ['BOOST', 'BOUNCE']) {
-  assert(before.rate[t] > 30 && before.rate[t] < 42, `${t} before ${before.rate[t]}`);
-  assert(after.rate[t] > 14 && after.rate[t] < 22, `${t} after ${after.rate[t]}`);
-  assert(Math.abs(after.rate[t] / before.rate[t] - 0.5) < 0.1, `${t} halved`);
-}
-for (const t of TYPES.filter(t => t !== 'BOOST' && t !== 'BOUNCE')) {
-  const p = (before.rate[t] + after.rate[t]) / 200, se = 100 * Math.sqrt(p * (1 - p) * (1 / before.enc[t] + 1 / after.enc[t]));
-  assert(Math.abs(after.rate[t] - before.rate[t]) <= Math.max(2, 3 * se), `${t} unchanged ${before.rate[t].toFixed(2)} -> ${after.rate[t].toFixed(2)}`);
-}
-assert.equal(fingerprint(now), '20d0400ca86a5c6f7b3ea76424080be6b52c42299fb78e9418fa576c477211d4', 'new shipped-config fingerprint (gate 0.5)');
+assert(before.rate.BOOST > 30 && before.rate.BOOST < 40 && before.rate.BOUNCE > 34 && before.rate.BOUNCE < 44, 'old placement ~36%');
+for (const t of ['BOOST', 'BOUNCE']) assert(after.rate[t] > 13 && after.rate[t] < 22, `${t} ${after.rate[t]}`);
+// Other characters: rules untouched; placement shifts their neighbours a little (allow 4 pp).
+for (const t of TYPES.filter(t => t !== 'BOOST' && t !== 'BOUNCE')) assert(Math.abs(after.rate[t] - before.rate[t]) <= 4, `${t} ${before.rate[t].toFixed(2)} -> ${after.rate[t].toFixed(2)}`);
 const fmt = r => Object.fromEntries(TYPES.map(t => [t, +r.rate[t].toFixed(2)]));
-console.log(JSON.stringify({ specialRate: 'PASS', plays: PLAYS, before: fmt(before), after: fmt(after), avgDistanceM: [+before.dist.toFixed(1), +after.dist.toFixed(1)], fingerprint: fingerprint(now) }));
+console.log(JSON.stringify({ specialRate: 'PASS', plays: PLAYS, before: fmt(before), after: fmt(after), avgDistanceM: [+before.dist.toFixed(1), +after.dist.toFixed(1)] }));

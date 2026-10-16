@@ -25,7 +25,7 @@ assert.equal(c.typeAUses, 5); assert.equal(c.typeAMultiplier, 2.5); assert.equal
 assert.equal(c.typeCCount, 150); assert.equal(c.typeDBounces, 8); assert.equal(c.typeDMultiplier, 1.28);
 for (const k of ['typeAUses', 'typeAMultiplier', 'typeBBaseSpeed', 'typeBChargeBonus', 'typeCCount', 'typeDBounces', 'typeDMultiplier']) assert(c[k] > OLD[k], k + ' grander');
 assert.equal(c.typeBMaxCharge, 10); assert.equal(c.typeCSpeed, 1600); assert.equal(c.typeDMinVertical, 450);
-assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.boostSpecialChance, 0.5); assert.equal(c.angleSpecialChance, 0.10);
+assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.boostSpecialChance, undefined); assert.equal(c.angleSpecialChance, 0.10);
 assert.equal(c.justLaunchMultiplier, 1.15); assert.equal(c.justLaunchEnabled, true);
 assert.equal(JSON.stringify(c.merchantTypes), JSON.stringify({ STOPPER: 'A', DASH: 'B', BOOST: 'C', BOUNCE: 'D' }));
 // 2) Draw: same candidate rule, one random() at the new chance (win < 0.10, lose at 0.10 -> normal rules).
