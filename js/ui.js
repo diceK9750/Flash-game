@@ -151,7 +151,8 @@ Hop.UI = class {
     const zone = Hop.UI.justZone(g), justEl = document.getElementById("aim-just");
     if (justEl) {
       justEl.hidden = !zone;
-      if (zone) { justEl.style.left = `${zone.left}%`; justEl.style.width = `${zone.width}%`; }
+      // A band touching the gauge end is anchored right, so its CSS min-width grows inward (never past the track).
+      if (zone) { const end = zone.left + zone.width >= 100 - 1e-9; justEl.style.left = end ? "auto" : `${zone.left}%`; justEl.style.right = end ? "0" : "auto"; justEl.style.width = `${zone.width}%`; }
       document.getElementById("aim-display").classList?.toggle?.("in-just", !!zone && zone.inside);
     }
     const set = (id, value) => { if (this.fields[id].textContent !== value) this.fields[id].textContent = value; };

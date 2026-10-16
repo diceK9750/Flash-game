@@ -56,7 +56,11 @@ h1 { font-size: clamp(22px, 4vw, 48px); margin: 0; color: #244e43; }
 .aim-track { height: 9px; margin-top: 7px; background: #dce7cc; border-radius: 5px; overflow: hidden; }
 #aim-fill { height: 100%; background: #3f8a5a; }
 /* JUST! window on the aim gauge (2026-10-16, static band; the gauge turns cyan while the needle is inside). */
-.aim-track { position: relative; }
+.aim-track { position: relative; overflow: visible; margin-top: 22px; }
+.aim-track #aim-fill { border-radius: 5px; }
+/* Static "JUST" tag above the band (2026-10-16 cycle 02) and a minimum drawn width so the 3% power band reads on phones. */
+.aim-just { min-width: 10px; border-radius: 3px; }
+.aim-just::after { content: "JUST"; position: absolute; left: 50%; bottom: calc(100% + 3px); transform: translateX(-50%); padding: 0 4px; font: 900 11px/14px system-ui, sans-serif; letter-spacing: 0.04em; color: #fff; background: #0b6b78; border-radius: 4px; white-space: nowrap; }
 .aim-just { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(90deg, #7df9ffcc 0 3px, #22b8c8cc 3px 6px); box-shadow: inset 0 0 0 1px #0b6b78; }
 .aim-display.in-just #aim-fill { background: #18a9ba; }
 .aim-display.in-just strong { color: #0b6b78; }
@@ -97,7 +101,7 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 
   .eyebrow { margin-bottom: 4px; font-size: 10px; }
   #overlay-detail { margin: 5px 0 8px; font-size: 14px; }
-  .aim-display { width: 48%; padding: 6px; top: 5%; }
+  .aim-display { width: 48%; padding: 6px; top: 5%; } .aim-just { min-width: 12px; } .aim-just::after { font-size: 10px; line-height: 13px; }
   .flight-tag { font-size: 10px; }
   .result-grid { grid-template-columns: 1fr 1fr; }
   .result-stats { padding: 12px; }
