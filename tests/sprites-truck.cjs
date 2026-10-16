@@ -72,6 +72,7 @@ const canvasTruck = (x, ground) => { const saved = s.drawTruck; delete s.drawTru
   for (let x = 0; x < png.w; x++) for (const y of [0, png.h - 1]) assert.equal(png.px[(y * png.w + x) * 4 + 3], 0, 'not clipped');
   // Loader: the real bundle loads; disabled = never requested; bad metadata / offline -> not ready.
   const asset = await s.truckReady; assert.equal(asset.ready, true); assert.equal(s.truckIdle, asset);
+  await s.castReady; // cycle 19: cut-in plates start once the truck is ready; settle them before counting requests
   assert(requested.includes(def.metadata) && requested.includes(def.src));
   let n = requested.length; assert.equal((await s.load({ ...def, enabled: false })).ready, false); assert.equal(requested.length, n, 'disabled = never requested');
   assert.equal((await s.load({ ...def, id: 'HERO' })).ready, false, 'id must be TRUCK');
