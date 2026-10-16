@@ -55,6 +55,11 @@ h1 { font-size: clamp(22px, 4vw, 48px); margin: 0; color: #244e43; }
 .aim-display strong { font-size: clamp(15px, 2vw, 24px); }
 .aim-track { height: 9px; margin-top: 7px; background: #dce7cc; border-radius: 5px; overflow: hidden; }
 #aim-fill { height: 100%; background: #3f8a5a; }
+/* JUST! window on the aim gauge (2026-10-16, static band; the gauge turns cyan while the needle is inside). */
+.aim-track { position: relative; }
+.aim-just { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(90deg, #7df9ffcc 0 3px, #22b8c8cc 3px 6px); box-shadow: inset 0 0 0 1px #0b6b78; }
+.aim-display.in-just #aim-fill { background: #18a9ba; }
+.aim-display.in-just strong { color: #0b6b78; }
 footer { padding: 14px 0; }
 footer p { margin: 0 0 5px; font-size: 16px; }
 small { color: #40594d; font-size: 14px; line-height: 1.6; }

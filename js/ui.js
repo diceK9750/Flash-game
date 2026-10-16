@@ -147,6 +147,13 @@ Hop.UI = class {
     document.getElementById("aim-display").hidden = ![s.AIM_ANGLE, s.AIM_POWER].includes(g.state);
     document.getElementById("aim-title").textContent = g.state === s.AIM_ANGLE ? `角度 ${g.angle.toFixed(1)}°` : `パワー ${Math.round(g.power * 100)}%`;
     document.getElementById("aim-fill").style.width = `${g.state === s.AIM_ANGLE ? (g.angle - c.angleMin) / (c.angleMax - c.angleMin) * 100 : g.power * 100}%`;
+    // JUST! window marker (same gauge scale as aim-fill); in-just = the tap now would be JUST (truthful: Game.isJust rules).
+    const zone = Hop.UI.justZone(g), justEl = document.getElementById("aim-just");
+    if (justEl) {
+      justEl.hidden = !zone;
+      if (zone) { justEl.style.left = `${zone.left}%`; justEl.style.width = `${zone.width}%`; }
+      document.getElementById("aim-display").classList?.toggle?.("in-just", !!zone && zone.inside);
+    }
     const set = (id, value) => { if (this.fields[id].textContent !== value) this.fields[id].textContent = value; };
     set("state", g.state); set("angle", `${g.angle.toFixed(1)}°`);
     set("power", `${Math.round(g.power * 100)}%`);
@@ -305,6 +312,17 @@ Hop.UI = class {
     const boundary = marked ? marked.x / c.pixelsPerMeter : Math.max(c.boundaryMeters, Math.ceil(distance / c.boundaryMeters) * c.boundaryMeters);
     const remaining = boundary - distance;
     return remaining >= 0 && remaining <= c.merchantZoneMeters ? { boundary, remaining } : null;
+  }
+  // JUST! zone on the aim gauge in % of the track (angle: angleMin..angleMax; power: 0..100 like aim-fill), or null.
+  // inside: the current angle (AIM_ANGLE) / power (AIM_POWER) is within that part of the JUST window.
+  static justZone(g) {
+    const c = Hop.CONFIG, s = Hop.STATES;
+    if (c.justLaunchEnabled !== true || (g.state !== s.AIM_ANGLE && g.state !== s.AIM_POWER)) return null;
+    if (g.state === s.AIM_ANGLE) {
+      const lo = c.justAngleCenter - c.justAngleHalfWidth, hi = c.justAngleCenter + c.justAngleHalfWidth, span = c.angleMax - c.angleMin;
+      return { left: (lo - c.angleMin) / span * 100, width: (hi - lo) / span * 100, inside: Math.abs(g.angle - c.justAngleCenter) <= c.justAngleHalfWidth };
+    }
+    return { left: c.justPowerMin * 100, width: (c.powerMax - c.justPowerMin) * 100, inside: g.power >= c.justPowerMin };
   }
   static readyTargets(g) {
     if (g.state !== Hop.STATES.FLYING || g.special || g.specialMessage || g.merchant?.type === "C") return [];
