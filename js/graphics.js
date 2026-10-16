@@ -478,6 +478,8 @@ Hop.Graphics = {
     if (!rm && anim.landHard && ev.landAge < 0.35) this.landRing(ctx, sx(anim.landX), ground, ev.landAge);
     if (!rm && ev.skid > 0.02) this.skidDust(ctx, x, ground, g.displayTime || 0, ev.skid);
     if (g.normalGuard || g.guardSpecial.active) this.guardCue(ctx, x, y, g.guardSpecial.active);
+    // GUARD SPECIAL end (cycle 29): the barrier ring widens and fades once (sound only under reduced motion).
+    if (visual.guardEndAt != null && !visual.reducedMotion && g.state === "FLYING") this.guardEndCue(ctx, x, y, (g.displayTime || 0) - visual.guardEndAt);
     if (g.successVisual?.strong && !visual.reducedMotion) {
       const age = c.stopperTrailDuration - g.successVisual.remaining;
       ctx.save(); ctx.globalAlpha = g.successVisual.remaining / c.stopperTrailDuration;
@@ -1256,6 +1258,15 @@ Hop.Graphics = {
     ctx.globalAlpha = 0.85; ctx.fillStyle = special ? "#6b4e0e" : "#4b2d73"; ctx.fillRect(x - w / 2, ty - 12, w, 22);
     ctx.globalAlpha = 1; ctx.fillStyle = "#fffdf2"; ctx.fillText(label, x, ty + 4);
     ctx.restore(); return label;
+  },
+  guardEndCue(ctx, x, y, age) {
+    const T = 0.45;
+    if (!(age >= 0 && age < T)) return;
+    const q = age / T, r = 48 + 26 * q;
+    ctx.save(); ctx.globalAlpha = 0.9 * (1 - q); ctx.lineWidth = 4;
+    ctx.strokeStyle = "#6b4e0e"; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(x, y - 12, r, 0, Math.PI * 2); ctx.stroke(); // dark rim
+    ctx.strokeStyle = "#e8b936"; ctx.lineWidth = 3.5; ctx.setLineDash([7, 6]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
   },
   dustPuffs(ctx, anim, x, ground, age, strength) {
     const p = anim.puff;
