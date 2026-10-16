@@ -127,6 +127,8 @@ Hop.Audio = {
     // Landing impact (2026-10-17 cycle 15): soft dull tap / hard low thud + grit; both quieter than RANK_STAMP.
     LAND_SOFT: [["tone", 0, 0.09, 0.03, "sine", 170, 90, 0.002], ["noise", 0, 0.06, 0.02, "lowpass", 900, 300, 0.7]],
     LAND_HARD: [["tone", 0, 0.2, 0.06, "sine", 110, 42, 0.002], ["noise", 0, 0.14, 0.04, "lowpass", 1600, 260, 0.8]],
+    // AERIAL DOWN dive (2026-10-17 cycle 17): falling band-passed whoosh + low falling tone, quieter than RANK_STAMP.
+    AERIAL_DIVE: [["noise", 0, 0.22, 0.04, "bandpass", 2600, 500, 1.4], ["tone", 0, 0.2, 0.03, "triangle", 660, 180, 0.004]],
     SLIDE_STOP: [["tone", 0, 0.16, 0.05, "sine", 120, 60, 0.002], ["noise", 0, 0.14, 0.035, "lowpass", 1100, 250, 0.7]],
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],

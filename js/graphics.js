@@ -428,6 +428,7 @@ Hop.Graphics = {
     if (g.effect) {
       ctx.save(); ctx.globalAlpha = g.effect.remaining / c.effectDuration;
       this.line(ctx, [[x - 28, y + 20], [x - 12, y + (g.effect.label.endsWith("UP") ? -30 : 55)]], "#277ca5", 6); ctx.restore();
+      if (g.effect.label === "AERIAL DOWN" && !visual.reducedMotion) this.diveStreaks(ctx, x, y, g.body.vx, g.body.vy, 1 - g.effect.remaining / c.effectDuration);
     }
     // Afterimages (display only): two fading ghosts along the trail while fast or spinning after a hit.
     const ev = anim.ev, speed = Math.hypot(g.body.vx, g.body.vy);
@@ -1195,6 +1196,21 @@ Hop.Graphics = {
     const at = visual?.justGlowAt, T = Hop.CONFIG.justAfterglowTime || 0;
     if (at == null || !(T > 0) || g.state !== "FLYING") return 0;
     const a = (g.realTime || 0) - at; return a < 0 || a >= T ? 0 : 1 - a / T;
+  },
+  // AERIAL DOWN dive streaks (cycle 17, display only): four white streaks trailing the hero along its velocity,
+  // fading over the effect (p 0..1). Hero area only, no allocation.
+  diveStreaks(ctx, x, y, vx, vy, p) {
+    if (!(p >= 0 && p < 1)) return;
+    const sp = Math.hypot(vx, vy) || 1, ux = vx / sp, uy = -vy / sp, nx = -uy, ny = ux, len = 70 * (1 - 0.4 * p);
+    ctx.save(); ctx.strokeStyle = "#ffffff"; ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const o = (i - 1.5) * 11, back = 24 + (i % 2) * 14;
+      ctx.globalAlpha = 0.85 * (1 - p); ctx.lineWidth = i % 2 ? 3 : 4;
+      ctx.beginPath(); ctx.moveTo(x - ux * back + nx * o, y - uy * back + ny * o); ctx.lineTo(x - ux * (back + len) + nx * o, y - uy * (back + len) + ny * o);
+      ctx.strokeStyle = "#1e5f80"; ctx.lineWidth += 3; ctx.globalAlpha *= 0.45; ctx.stroke(); // dark rim so it reads on sky
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth -= 3; ctx.globalAlpha = 0.9 * (1 - p); ctx.stroke();
+    }
+    ctx.restore();
   },
   dustPuffs(ctx, anim, x, ground, age, strength) {
     const p = anim.puff;

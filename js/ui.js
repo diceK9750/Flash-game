@@ -128,6 +128,8 @@ Hop.UI = class {
       if (launched && sp?.heroHit?.ready) sp.startOneShot(v, "HIT", g.phaseTime);
       if (bounced && fresh?.label !== "BOUND BOOST" && !g.body.grounded && sp?.groundBounceAllowed?.(v, g.phaseTime, g.body.vy)) sp.startOneShot(v, "GROUND_BOUNCE", g.phaseTime);
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
+      // AERIAL DOWN dive SE (2026-10-17 cycle 17, sound only): a falling whoosh once per new dive.
+      if (aerial?.[1] === "DOWN") { try { Hop.Audio?.play?.("AERIAL_DIVE"); } catch { /* SE is optional. */ } }
       if (aerial && sp?.startOneShot) sp.startOneShot(v, "AERIAL_" + aerial[1], g.phaseTime);
       if (aerial && !v.flightVoicePlayed) {
         v.flightVoicePlayed = true;
