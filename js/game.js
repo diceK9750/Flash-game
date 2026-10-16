@@ -430,6 +430,9 @@ Hop.Game = class {
         }
         this.specialSuccesses++; pending.entry.label = `${pending.type} SPECIAL`;
         if (pending.partner) pending.partner.used = true;
+        // Display only: the combo partner joins (used up, no contact event). Non-enumerable so JSON fingerprints of
+        // the game state stay identical; ui.js shows it in the contact log / RESULT.
+        if (pending.partner) Object.defineProperty(pending.entry, "partner", { value: pending.partner.type, enumerable: false, configurable: true });
       }
       if (this.tempoEnabled) this.hitStop = Math.max(this.hitStop, c.hitStopSpecial);
       this.flash = c.specialFlashDuration; this.specialTrail = c.specialTrailDuration;
