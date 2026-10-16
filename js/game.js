@@ -462,6 +462,10 @@ Hop.Game = class {
       detail: pending.merchantType ? `商人 Type ${pending.merchantType} / ${c.merchantNames[pending.merchantType]}` : c.specials[pending.type].name,
       remaining: c.specialMessageDuration
     };
+    // Display only (MISS reason line in ui.js): what the missed contact did instead. Non-enumerable so JSON
+    // fingerprints of the game state stay identical. MISS only ever comes from the window running out.
+    if (!success) Object.defineProperty(this.specialMessage, "missOutcome", { value: this.body.stopped ? "stop" : pending.entry?.label?.includes("GUARDED") ? "guard" : "normal", enumerable: false });
+    if (!success) Object.defineProperty(this.specialMessage, "missType", { value: pending.type, enumerable: false });
     if (this.body.stopped) this.finish();
     return true;
   }
