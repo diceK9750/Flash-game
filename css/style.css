@@ -128,6 +128,9 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 #merchant-hud { color: #805018; max-width: 43%; }
 #aerial-hud-charge, #merchant-hud-charge { width: 48px; height: 6px; accent-color: #16727b; }
 .flight-tag { display: none; }
+/* Next rank goal in flight (2026-10-16 cycle 04): static text, bottom-right of the stage, no animation. */
+.next-rank { position: absolute; right: 8px; bottom: 8px; padding: 3px 8px; border-radius: 6px; background: #fffbe6e6; color: #5a3d0a; font: 700 clamp(11px, 1.2vw, 15px) system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
+.next-rank b { color: #c2410c; }
 .ready-targets { position: absolute; top: 48px; left: 8px; max-width: calc(100% - 16px); padding: 3px 7px; border-radius: 6px; background: #fffbe6dc; color: #6b4609; font: 700 clamp(11px, 1.2vw, 15px) system-ui; pointer-events: none; }
 .contact-tag { top: 38%; }
 .merchant-zone { position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 3px 8px; background: #fff4cdcc; color: #77531e; border-radius: 5px; font: 700 clamp(11px, 1.4vw, 17px) system-ui; pointer-events: none; }
