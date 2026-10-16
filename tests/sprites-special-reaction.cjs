@@ -32,6 +32,7 @@ if (process.argv.includes('--loader')) {
     vm.createContext(scope); vm.runInContext(code, scope);
     const s = scope.Hop.Sprites, def = s.definitions.HERO.SPECIAL_REACTION;
     const startup = await s.specialReactionReady;
+    await s.castReady; // startup loads are two-phase since cycle 19 (cut-in plates after truck + hero IDLE): settle before counting
     if (def.enabled === false) {
       assert.equal(startup.ready, false);
       assert(!requested.some(u => u.includes('special_reaction')), 'disabled asset is never requested (no 404 in console)');

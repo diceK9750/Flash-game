@@ -448,13 +448,21 @@ Hop.Sprites.specialReactionReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO
   Hop.Sprites.heroSpecialReaction = asset;
   return asset;
 });
-Hop.Sprites.castAssets = {};
-Hop.Sprites.castReady = Promise.all(Object.entries(Hop.Sprites.definitions.CAST).flatMap(([id, slots]) =>
-  Object.entries(slots).map(([name, definition]) => Hop.Sprites.load(definition).then(asset => {
-    (Hop.Sprites.castAssets[id] ||= {})[name] = asset;
-    return asset;
-  }))));
 Hop.Sprites.truckReady = Hop.Sprites.load(Hop.Sprites.definitions.TRUCK.IDLE).then(asset => {
   Hop.Sprites.truckIdle = asset;
   return asset;
 });
+Hop.Sprites.castAssets = {};
+// Load order (2026-10-17 cycle 19): the eight CUTIN_FACE plates (~2.3 MB, 51% of first-load bytes) are only drawn
+// inside a SPECIAL cut-in, so they start after the truck + hero IDLE (title screen) are ready instead of competing
+// with them. Same files, same drawing; castReady still resolves only when every slot (plates included) settled.
+// Until a plate is ready the cut-in already falls back to the cast body layer (cutinFaceLayer -> null).
+Hop.Sprites.castLoad = (pick) => Object.entries(Hop.Sprites.definitions.CAST).flatMap(([id, slots]) =>
+  Object.entries(slots).filter(([name]) => pick(name)).map(([name, definition]) => Hop.Sprites.load(definition).then(asset => {
+    (Hop.Sprites.castAssets[id] ||= {})[name] = asset;
+    return asset;
+  })));
+Hop.Sprites.castBodyReady = Promise.all(Hop.Sprites.castLoad(name => name !== "CUTIN_FACE"));
+Hop.Sprites.cutinFaceReady = Promise.all([Hop.Sprites.truckReady, Hop.Sprites.idleReady].map(p => p.catch(() => null)))
+  .then(() => Promise.all(Hop.Sprites.castLoad(name => name === "CUTIN_FACE")));
+Hop.Sprites.castReady = Promise.all([Hop.Sprites.castBodyReady, Hop.Sprites.cutinFaceReady]).then(([a, b]) => a.concat(b));
