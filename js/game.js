@@ -41,6 +41,7 @@ Hop.Game = class {
     this.flash = 0; this.specialTrail = 0;
     this.history = []; this.counts = Object.fromEntries(Object.keys(Hop.CONFIG.objectWeights).map(type => [type, 0]));
     this.specialCount = 0; this.specialSuccesses = 0;
+    this.setEndCause(null);
     this.debugUsed = this.debug; this.newRecords = []; this.debugIndex = 0;
     this.objects = [];
     this.nextBoundaryX = Hop.CONFIG.boundaryMeters * Hop.CONFIG.pixelsPerMeter;
@@ -57,7 +58,10 @@ Hop.Game = class {
     } catch { this.storageAvailable = false; }
     return best;
   }
+  // Display only (RESULT end-cause line): non-enumerable so JSON fingerprints of the game stay identical.
+  setEndCause(cause) { Object.defineProperty(this, "endCause", { value: cause, writable: true, configurable: true, enumerable: false }); }
   finish() {
+    if (!this.endCause) this.setEndCause({ kind: "slide" }); // ground deceleration ran out (physics.js stopSpeed)
     this.state = Hop.STATES.RESULT;
     this.finalDistance = this.body.x / Hop.CONFIG.pixelsPerMeter;
     this.accumulator = 0;
@@ -339,6 +343,7 @@ Hop.Game = class {
     if (type === "BRAKE") { b.vx *= c.brakeRetention; b.vy *= c.brakeRetention; }
     if (type === "STOPPER") {
       b.vx = 0; b.vy = 0; b.stopped = true;
+      this.setEndCause({ kind: "stopper", miss: false });
       this.revive(); return;
     }
     if (type === "ANGLE") {
@@ -371,7 +376,7 @@ Hop.Game = class {
   revive() {
     if (this.merchant?.type !== "B" || this.merchant.charge < 1) return false;
     const c = Hop.CONFIG, charge = this.merchant.charge;
-    this.merchant = null; this.merchantStats.revives++;
+    this.merchant = null; this.merchantStats.revives++; this.setEndCause(null); // run goes on
     this.launchVector(c.typeBBaseSpeed + charge * c.typeBChargeBonus, c.typeBAngle); this.limitSpeed();
     this.specialMessage = { label: "TYPE B / 再出発！", remaining: c.specialMessageDuration };
     return true;
@@ -455,7 +460,10 @@ Hop.Game = class {
       this.soundEvent = pending.merchantType ? "SPECIAL_MERCHANT" : `SPECIAL_${pending.type}`;
       this.contact = { label: pending.type, remaining: c.contactDuration };
       if (!pending.merchantType && this.comboEnabled && pending.partner && (pending.type === "BOOST" || pending.type === "BOUNCE")) this.startCombo(pending);
-    } else this.normalContact(pending.type, pending.entry, pending.guardAtContact);
+    } else {
+      this.normalContact(pending.type, pending.entry, pending.guardAtContact);
+      if (this.endCause?.kind === "stopper" && this.body.stopped) this.setEndCause({ kind: "stopper", miss: true });
+    }
     this.updateAerialMode();
     this.specialMessage = {
       label: success ? "SPECIAL SUCCESS" : "SPECIAL MISS",

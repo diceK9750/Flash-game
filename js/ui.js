@@ -250,6 +250,8 @@ Hop.UI = class {
     this.lastState = g.state;
     document.getElementById("result-highlights").textContent = g.state === s.RESULT ? "今回のハイライト：" + Hop.UI.highlights(g).join(" · ") : "";
     const helpedEl = document.getElementById("result-helped");
+    const endEl = document.getElementById("result-end");
+    if (endEl) endEl.textContent = g.state === s.RESULT ? Hop.UI.endCauseText(g) : "";
     if (helpedEl) helpedEl.textContent = g.state === s.RESULT ? "効いたもの：" + (Hop.UI.helped(g).join(" · ") || "なし（通常接触のみ）") : "";
     this.overlay.hidden = g.state !== s.READY && g.state !== s.RESULT;
     document.getElementById("flight-tag").hidden = g.state !== s.FLYING;
@@ -354,6 +356,13 @@ Hop.UI = class {
     const why = `タップが間に合わず（受付 ${Hop.CONFIG.specialWindow}秒）`;
     const then = m.missOutcome === "stop" ? "僧侶の効果で停止" : m.missOutcome === "guard" ? (m.missType === "STOPPER" ? "GUARDで停止を防いだ" : "GUARDで打ち消し（効果なし）") : "通常の効果のみ";
     return `${m.detail} · ${why} → ${then}`;
+  }
+  // RESULT end-cause line from Game.endCause (set where the run actually stops).
+  static endCauseText(g) {
+    const e = g.endCause, stopper = Hop.CAST?.STOPPER?.name || "STOPPER";
+    if (!e) return "";
+    if (e.kind === "stopper") return `終了理由：${stopper}にぶつかって停止` + (e.miss ? "（SPECIAL MISS：タップが間に合わず）" : "");
+    return "終了理由：地面を滑って停止（勢いが尽きた）";
   }
   static nearMissHtml(nr) {
     return !nr ? "" : nr.next ? `ランク ${nr.rank} · あと <b>${nr.remaining}m</b> で ${nr.next}` : `最高ランク <b>${nr.rank}</b> 到達！`;

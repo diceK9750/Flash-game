@@ -144,6 +144,7 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 .special-panel.resolved { inset: auto 5% 13%; padding: 7px; background: #fffbedec; gap: 3px; }
 .special-panel.resolved strong { font-size: clamp(17px, 2vw, 28px); }
 /* RESULT "what helped" (2026-10-16 cycle 09): full per-run tally, static text. */
+#result-end { color: #5a3d0a; font-size: 13px; font-weight: 700; }
 #result-helped { color: #5a3d0a; font-size: 13px; line-height: 1.6; }
 #result-highlights { color: #714815; font-weight: 700; font-size: 13px; line-height: 1.6; }
 /* Tempo feedback: RESULT rank stamp (D/C/B/A/S/SS/SSS; 2-3 letters shrink to fit) and the NEW RECORD flourish (no animation under reduced motion). */
