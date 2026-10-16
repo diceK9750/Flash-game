@@ -328,6 +328,13 @@ Hop.UI = class {
   // HUD target names (2026-10-16 cycle 03): on-screen READY characters by name; an armed 戦士 / 僧侶 / 盗賊 with no
   // READY copy on screen is shown as "次の〇〇→" (the next one ahead fires while the arming lasts), so the HUD never
   // reads as if an off-screen character were the one in view. Same conditions as before (truthful).
+  // Rank goal for a distance (m): current rank (Game.rank), the next higher rank and whole metres left (ceil), or
+  // next null at the top rank. Same table as the RESULT stamp (config.rankThresholds).
+  static nextRank(meters) {
+    const d = Number.isFinite(meters) ? Math.max(0, meters) : 0, table = Hop.CONFIG.rankThresholds, rank = Hop.Game.rank(d);
+    const i = table.findIndex(([r]) => r === rank), up = i > 0 ? table[i - 1] : null;
+    return { rank, next: up ? up[0] : null, remaining: up ? Math.max(1, Math.ceil(up[1] - d)) : 0 };
+  }
   static readyHudTargets(g, ready = Hop.UI.readyTargets(g)) {
     const shown = ready.filter(t => t.label === "SPECIAL"), onScreen = new Set(shown.map(t => t.object.type));
     const names = [...new Set(shown.map(t => Hop.CAST[t.object.type].name))];
@@ -384,6 +391,13 @@ Hop.UI = class {
     el("merchant-hud-charge").hidden = m?.type !== "B";
     el("merchant-hud-charge").value = m?.type === "B" ? m.charge / c.typeBMaxCharge : 0;
     this.visual.readyTargets = Hop.UI.readyTargets(g);
+    // Next rank goal (flight only): written only when the text changes (whole metres).
+    const nr = flying ? Hop.UI.nextRank(g.body.x / c.pixelsPerMeter) : null, nrEl = el("next-rank");
+    if (nrEl) {
+      nrEl.hidden = !nr;
+      const html = !nr ? "" : nr.next ? `次のランク <b>${nr.next}</b> まで あと ${nr.remaining}m` : `最高ランク <b>${nr.rank}</b> 到達！`;
+      if (nrEl.innerHTML !== html) nrEl.innerHTML = html;
+    }
     const targets = Hop.UI.readyHudTargets(g, this.visual.readyTargets);
     el("ready-targets").hidden = !targets.length;
     el("ready-targets").textContent = targets.length ? "SPECIAL READY · 対象：" + targets.join(" / ") : "";
