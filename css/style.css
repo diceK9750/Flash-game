@@ -181,4 +181,10 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
   .readouts { margin-bottom: 8px; }
   .readouts div { padding: 5px 6px; }
   .readouts span { margin-bottom: 2px; }
+  /* Phone header (2026-10-16 cycle 07): version / 音声・SE / BEST stay on one static row down to 360px (the version
+     note wraps inside its own cell; the SE button keeps its 40px tap height). */
+  .header-meta { flex-wrap: nowrap; gap: 6px; }
+  .edition { flex: 1 1 auto; min-width: 0; font-size: 10px; line-height: 13px; }
+  #se-toggle { flex: none; min-width: 0; padding: 0 8px; }
+  #best-summary { flex: none; font-size: 12px; padding: 4px 9px; }
 }
