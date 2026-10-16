@@ -325,6 +325,19 @@ Hop.UI = class {
     }
     return { left: c.justPowerMin * 100, width: (c.powerMax - c.justPowerMin) * 100, inside: g.power >= c.justPowerMin };
   }
+  // HUD target names (2026-10-16 cycle 03): on-screen READY characters by name; an armed 戦士 / 僧侶 / 盗賊 with no
+  // READY copy on screen is shown as "次の〇〇→" (the next one ahead fires while the arming lasts), so the HUD never
+  // reads as if an off-screen character were the one in view. Same conditions as before (truthful).
+  static readyHudTargets(g, ready = Hop.UI.readyTargets(g)) {
+    const shown = ready.filter(t => t.label === "SPECIAL"), onScreen = new Set(shown.map(t => t.object.type));
+    const names = [...new Set(shown.map(t => Hop.CAST[t.object.type].name))];
+    if (g.state === Hop.STATES.FLYING && !g.special && !g.specialMessage && g.merchant?.type !== "C") {
+      for (const [key, type] of [["dash", "DASH"], ["stopper", "STOPPER"], ["brake", "BRAKE"]]) {
+        if (g.specialArmed[key] && !onScreen.has(type)) names.push("次の" + Hop.CAST[type].name + "→");
+      }
+    }
+    return names;
+  }
   static readyTargets(g) {
     if (g.state !== Hop.STATES.FLYING || g.special || g.specialMessage || g.merchant?.type === "C") return [];
     const c = Hop.CONFIG, zone = Hop.UI.zone(g);
@@ -371,12 +384,9 @@ Hop.UI = class {
     el("merchant-hud-charge").hidden = m?.type !== "B";
     el("merchant-hud-charge").value = m?.type === "B" ? m.charge / c.typeBMaxCharge : 0;
     this.visual.readyTargets = Hop.UI.readyTargets(g);
-    const targets = new Set(this.visual.readyTargets.filter(t => t.label === "SPECIAL").map(t => Hop.CAST[t.object.type].name));
-    if (flying && !g.special && !g.specialMessage && m?.type !== "C") {
-      for (const [key, type] of [["dash", "DASH"], ["stopper", "STOPPER"], ["brake", "BRAKE"]]) if (g.specialArmed[key]) targets.add(Hop.CAST[type].name);
-    }
-    el("ready-targets").hidden = !targets.size;
-    el("ready-targets").textContent = targets.size ? "SPECIAL READY · 対象：" + [...targets].join(" / ") : "";
+    const targets = Hop.UI.readyHudTargets(g, this.visual.readyTargets);
+    el("ready-targets").hidden = !targets.length;
+    el("ready-targets").textContent = targets.length ? "SPECIAL READY · 対象：" + targets.join(" / ") : "";
     // MERCHANT ZONE hint: DEBUG plays only (the merchant is hidden in normal play).
     const zone = g.debug ? Hop.UI.zone(g) : null;
     el("merchant-zone").hidden = !zone || !!g.specialMessage;
