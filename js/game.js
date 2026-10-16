@@ -29,7 +29,7 @@ Hop.Game = class {
     this.special = null; this.specialMessage = null;
     this.specialArmed = { dash: false, stopper: false, brake: false };
     this.aerialMode = "DOWN"; this.aerialDownLock = null; this.successVisual = null; this.specialCutin = null; this.soundEvent = null;
-    this.merchant = null; this.merchantVisual = null;
+    this.merchant = null; this.merchantVisual = null; this.preImpactArmed = null;
     this.combo = null; this.comboAfter = null; this.launchCutin = null;
     // Tempo (display time only): timeScale = current game-time multiplier, hitStop = real seconds of freeze left.
     this.timeScale = 1; this.hitStop = 0; this.tailFinished = false;
@@ -189,6 +189,16 @@ Hop.Game = class {
       }
       let pool = entries.filter(([type]) => !near.has(type));
       if (!pool.length) { const far = Math.max(...near.values()); pool = entries.filter(([type]) => near.get(type) === far); }
+      // 2026-10-16 placement: a 魔法使い (BOOST) / 武闘家 (BOUNCE) right next to its partner (nearest existing object on
+      // either side) gets its weight x castPartnerAdjacentFactor, so fewer witch-fighter pairs stand back to back
+      // (their SPECIAL needs exactly that). Still one random() per object; factor 1 = the old placement.
+      const fs = c.castPartnerAdjacentFactor || {}, f = (fs.BOOST ?? 1) !== 1 || (fs.BOUNCE ?? 1) !== 1;
+      if (f) {
+        let left = null, right = null;
+        for (const o of this.objects) { if (o.x < x && (!left || o.x > left.x)) left = o; if (o.x > x && (!right || o.x < right.x)) right = o; }
+        const partnerOf = { BOOST: "BOUNCE", BOUNCE: "BOOST" };
+        pool = pool.map(([type, w]) => [type, partnerOf[type] && (left?.type === partnerOf[type] || right?.type === partnerOf[type]) ? w * (fs[type] ?? 1) : w]);
+      }
       const total = pool.reduce((sum, entry) => sum + entry[1], 0);
       let choice = this.random() * total;
       return pool.find(([, weight]) => (choice -= weight) < 0)?.[0] || pool[pool.length - 1][0];
@@ -247,7 +257,7 @@ Hop.Game = class {
       let eligible = rule && (rule.trigger === "adjacent" ? partner?.type === rule.partner :
         rule.trigger === "chance" ? object.debugForce === true || this.random() < c.angleSpecialChance :
         rule.trigger === "guard" ? guardAtContact && !this.guardSpecial.active :
-        this.specialArmed[rule.trigger]);
+        this.specialArmed[rule.trigger] || !!this.preImpactArmed?.[rule.trigger]);
       const spacing = c.boundaryMeters * c.pixelsPerMeter;
       const atBoundary = object.debugBoundary === true || object.x > 0 && Math.abs(object.x / spacing - Math.round(object.x / spacing)) < 1e-9;
       const inZone = b.x >= object.x - c.merchantZoneMeters * c.pixelsPerMeter && previous.x <= object.x;
@@ -255,9 +265,6 @@ Hop.Game = class {
       // Rare draw (merchantChance); a miss is an ordinary contact judged by the normal SPECIAL rules above.
       const merchantType = merchantCandidate && (this.debug || this.random() < c.merchantChance) ? merchantCandidate : null;
       // Warrior (DASH) not armed: dashSpecialChance draw, only when no merchant SPECIAL takes this contact.
-      // 魔法使い / 武闘家 adjacency holds: gating draw (boost/bounceSpecialChance < 1 only; debugForce skips it).
-      const adjacentChance = object.type === "BOOST" ? c.boostSpecialChance : object.type === "BOUNCE" ? c.bounceSpecialChance : 1;
-      if (rule?.trigger === "adjacent" && eligible && !merchantType && object.debugForce !== true && adjacentChance < 1) eligible = this.random() < adjacentChance;
       if (rule?.trigger === "dash" && !eligible && !merchantType && c.dashSpecialChance > 0) eligible = this.random() < c.dashSpecialChance;
       // Sage (GUARD) not eligible: 先見の結界 (sageConditionMet, deterministic, no random()), only when no 聖護結界 is
       // active and no merchant SPECIAL takes this contact.
@@ -371,6 +378,10 @@ Hop.Game = class {
   groundImpact(impact) {
     this.hype.chain = 0; // touching the ground ends the hit chain
     this.clearAerialDownLock();
+    // READY truth (2026-10-16): a contact within armedGroundGraceSteps physics steps of this touch still uses the
+    // arming the HUD showed (the touch and the contact land in the same 1/60 s display frame).
+    const grace = Hop.CONFIG.armedGroundGraceSteps || 0;
+    if (grace > 0 && (this.specialArmed.stopper || this.specialArmed.brake)) this.preImpactArmed = { stopper: this.specialArmed.stopper, brake: this.specialArmed.brake, steps: grace };
     this.specialArmed.stopper = false;
     this.specialArmed.brake = false;
     if (this.merchant?.type !== "D") return;
@@ -649,6 +660,7 @@ Hop.Game = class {
         if (impact) this.groundImpact(impact);
         else this.applyAerialDownLock();
         this.contactObjects(previous);
+        if (this.preImpactArmed && --this.preImpactArmed.steps <= 0) this.preImpactArmed = null;
       }
       this.accumulator -= c.physicsStep;
       this.noteDistance();
