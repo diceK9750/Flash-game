@@ -22,9 +22,11 @@ test('one tap ascending DOWN, descending UP, charge/no charges are no-ops',()=>{
 test('hysteresis retains last mode in inclusive dead band',()=>{
  const g=isolated();for(const [vy,mode] of [[0,'DOWN'],[41,'DOWN'],[-40,'DOWN'],[-41,'UP'],[40,'UP'],[0,'UP'],[41,'DOWN']]){g.body.vy=vy;assert.equal(g.updateAerialMode(),mode);}
 });
-test('nonprimary/right/middle pointer cannot advance, keyboard ignored except the D (DEBUG menu) keys',()=>{
+test('nonprimary/right/middle pointer cannot advance; keyboard: Space / Enter = tap (cycle 22), D = DEBUG menu',()=>{
  const g=new scope.Hop.Game();bind(g);tap({button:2});tap({button:1});tap({isPrimary:false});assert.equal(g.state,'READY');
- for(const code of ['Space','Enter'])document.listeners.keydown({code,repeat:false});assert.equal(g.state,'READY');
+ for(const code of ['KeyA','Escape','Tab'])document.listeners.keydown({code,repeat:false});assert.equal(g.state,'READY');
+ document.listeners.keydown({code:'Space',repeat:true});assert.equal(g.state,'READY');
+ document.listeners.keydown({code:'Space',repeat:false});assert.equal(g.state,'AIM_ANGLE');g.state='READY';
  // D opens the DEBUG menu (number keys pick a kind; 1 = the original fixed-order DEBUG); a repeat is ignored.
  document.listeners.keydown({code:'KeyD',repeat:false});assert(!g.debug);assert(!element('debug-menu').hidden);
  document.listeners.keydown({code:'Digit1',repeat:false});assert(g.debug);assert(element('debug-menu').hidden);
@@ -35,8 +37,8 @@ test('all seven special taps only resolve, never trigger AERIAL',()=>{
   const g=isolated();bind(g);g.random=()=>0;const rule=scope.Hop.CONFIG.specials[type];
   if(type==='GUARD')g.normalGuard=1;else g.specialArmed[rule.trigger]=true;
   hit(g,type,{next:rule.partner?[{x:900,type:rule.partner}]:[]});assert(g.special);
-  for(const code of ['Space','Enter'])document.listeners.keydown({code,repeat:false});assert(g.special);
-  tap();assert.equal(g.special,null);assert.equal(g.upRemaining,3);near(g.downCharge,1);
+  document.listeners.keydown({code:'Space',repeat:true});assert(g.special); // repeat ignored
+  document.listeners.keydown({code:type.length%2?'Space':'Enter',repeat:false});assert.equal(g.special,null); // key = tap (cycle 22)assert.equal(g.upRemaining,3);near(g.downCharge,1);
  }
 });
 test('audio absent, denied, or suspended never breaks controls',()=>{
