@@ -166,4 +166,19 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
   #aerial-hud-charge, #merchant-hud-charge { width: 34px; height: 5px; }
   .ready-targets { top: 30px; left: 4px; max-width: calc(100% - 8px); padding: 1px 6px; font-size: 10px; line-height: 15px; }
   .next-rank { right: 4px; bottom: 4px; padding: 1px 6px; font-size: 10px; line-height: 15px; }
+  /* Phone status panel (2026-10-16 cycle 06): AERIAL / CONTACT / GUARD / DEBUG on one static row (CONTACT
+     shrinks with an ellipsis only past 72px, DEBUG stays right), tighter readout cells, so the stage sits higher. */
+  .aerial-status { flex-wrap: nowrap; gap: 9px; font-size: 11px; line-height: 18px; margin: 0 0 8px; white-space: nowrap; }
+  .aerial-status .down-readout { gap: 4px; flex: none; }
+  #down-charge { width: 34px; }
+  /* "AERIAL ↓ READY" text is visually replaced by a ↓ before the charge bar (still read by screen readers); the
+     flight HUD shows the same AERIAL state on the stage. */
+  .aerial-status .down-readout::before { content: "↓"; font-weight: 700; }
+  #down-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #up-status, #guard-status { flex: none; }
+  #contact-status { flex: 1 1 auto; min-width: 72px; overflow: hidden; text-overflow: ellipsis; }
+  .aerial-status .debug-tools { flex: none; margin-left: auto; }
+  .readouts { margin-bottom: 8px; }
+  .readouts div { padding: 5px 6px; }
+  .readouts span { margin-bottom: 2px; }
 }
