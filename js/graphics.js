@@ -431,6 +431,8 @@ Hop.Graphics = {
       if (g.effect.label === "AERIAL UP" && !visual.reducedMotion) this.riseBurst(ctx, x, y, 1 - g.effect.remaining / c.effectDuration);
       if (g.effect.label === "AERIAL DOWN" && !visual.reducedMotion) this.diveStreaks(ctx, x, y, g.body.vx, g.body.vy, 1 - g.effect.remaining / c.effectDuration);
     }
+    // AERIAL ↓ READY cue (cycle 27): a ring closing in on the hero + a down chevron, 0.5 s (sound only under reduced motion); gone as soon as the charge is used.
+    if (visual.downCueAt != null && !visual.reducedMotion && g.state === "FLYING" && !combo && g.downCharge >= 1) this.downReadyCue(ctx, x, y, (g.displayTime || 0) - visual.downCueAt);
     // Afterimages (display only): two fading ghosts along the trail while fast or spinning after a hit.
     const ev = anim.ev, speed = Math.hypot(g.body.vx, g.body.vy);
     const ghosts = g.state === "FLYING" && !rm && !comboHero && g.trail.length > 8 && (speed > 950 || ev.hitAge < 0.4);
@@ -1213,6 +1215,20 @@ Hop.Graphics = {
       const a = Math.PI / 2 + (i - 2) * 0.38, r0 = 20 + q * 22, r1 = r0 + 18 * (1 - q) + 6;
       ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, cy - 6 + Math.sin(a) * r0 * 0.6); ctx.lineTo(x + Math.cos(a) * r1, cy - 6 + Math.sin(a) * r1 * 0.6); ctx.stroke();
     }
+    ctx.restore();
+  },
+  downReadyCue(ctx, x, y, age) {
+    const T = 0.5;
+    if (!(age >= 0 && age < T)) return;
+    const q = age / T, r = 58 - 30 * q, fade = q < 0.2 ? q / 0.2 : 1 - (q - 0.2) / 0.8;
+    ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const pass = (color, w, a) => {
+      ctx.globalAlpha = a * fade; ctx.strokeStyle = color; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+      const cy = y + r + 10 - 6 * q;
+      ctx.beginPath(); ctx.moveTo(x - 12, cy - 7); ctx.lineTo(x, cy + 5); ctx.lineTo(x + 12, cy - 7); ctx.stroke();
+    };
+    pass("#1e5f80", 7, 0.5); pass("#ffffff", 3.5, 0.95); // dark rim so it reads on sky
     ctx.restore();
   },
   diveStreaks(ctx, x, y, vx, vy, p) {

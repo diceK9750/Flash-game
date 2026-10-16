@@ -6,7 +6,7 @@ const els=new Map();const element=id=>{if(!els.has(id))els.set(id,{setAttribute(
 const sc={document:{getElementById:element,addEventListener(){}},requestAnimationFrame(){},localStorage:{getItem:()=>null,setItem(){}},devicePixelRatio:1};sc.window=sc;vm.createContext(sc);
 for(const n of['config','physics','game','sprites','graphics','ui','audio','voice','input'])vm.runInContext(fs.readFileSync(path.join(root,'js',n+'.js'),'utf8'),sc,{filename:n});
 const H=sc.Hop,G=H.Graphics,rng=s=>()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296);
-const MOTION=['speedLines','windLines','contactEffect','truckMotion','dustPuffs','skidDust','landRing','riseBurst','diveStreaks'].filter(k=>typeof G[k]==='function');
+const MOTION=['speedLines','windLines','contactEffect','truckMotion','dustPuffs','skidDust','landRing','riseBurst','diveStreaks','downReadyCue'].filter(k=>typeof G[k]==='function');
 const calls={},style={special:0,launch:0,combo:0,tempoShake:0};
 for(const k of MOTION){const f=G[k];G[k]=function(...a){if(sc.__rm)calls[k]=(calls[k]||0)+1;return f.apply(this,a);};}
 const ss=G.specialCutinStyle;G.specialCutinStyle=function(age,rm,st){const r=ss.call(this,age,rm,st);if(sc.__rm&&(r.shakeX||r.shakeY||r.flash>0.01))style.special++;return r;};
