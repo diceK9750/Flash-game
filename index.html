@@ -43,14 +43,14 @@
     </div>
     <p id="special-state" class="special-state" hidden></p>
     <div class="stage" id="stage">
-      <canvas id="canvas" width="1280" height="720" aria-label="勇者が草原の街道を飛ぶゲーム。画面タップまたは左クリックだけで操作できます。"></canvas>
+      <canvas id="canvas" width="1280" height="720" aria-label="勇者が草原の街道を飛ぶゲーム。画面タップ、左クリック、またはSpace / Enterキーだけで操作できます。"></canvas>
       <div id="aim-display" class="aim-display" hidden><strong id="aim-title"></strong><div class="aim-track"><div id="aim-fill"></div><div id="aim-just" class="aim-just" hidden></div></div></div>
       <div class="overlay" id="overlay">
         <p class="eyebrow" id="overlay-label">ONE LAUNCH. HOW FAR?</p>
         <h1 id="overlay-title">勇者、空の旅へ！</h1>
         <p id="overlay-detail">角度とパワーを決めて、飛距離に挑戦。</p>
         <p id="overlay-next" class="overlay-next" hidden></p>
-        <p id="overlay-prompt">画面をタップ / クリック</p>
+        <p id="overlay-prompt">画面をタップ / クリック / Space</p>
         <div id="result-rank" class="rank-stamp" aria-label="ランク" hidden></div>
       </div>
       <div class="flight-tag" id="flight-tag" hidden>IN FLIGHT</div>
@@ -70,7 +70,7 @@
     </div>
     <div id="debug-menu" class="debug-menu" role="dialog" aria-modal="true" aria-labelledby="debug-menu-title" hidden></div>
     <div id="announcements" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
-    <footer><p id="hint">画面をタップ / クリック</p></footer>
+    <footer><p id="hint">画面をタップ / クリック / Space</p></footer>
     <p class="final-line">FINAL / 最終飛距離 <strong id="final">—</strong></p>
     <p class="history" id="history">CONTACT / —</p>
     <section id="result-stats" class="result-stats" hidden aria-label="今回の記録と自己ベスト">
@@ -91,7 +91,7 @@
       <p id="storage-status"></p>
     </section>
     <details class="rules"><summary>遊び方・仲間の効果・SPECIAL条件</summary>
-      <p>画面をタップ / 左クリックするだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。UPは落下を止めてから45°へ800px/s加算（魔法使いのBOOSTと同じ強さ）。DOWNは今の飛行角を水平線で折り返した反射角でダイブし、地面かキャラに触れるまでその角度を維持（浅い上昇は最低30°）。DOWNは使用後0%になり、通常飛行1.5秒で100%へ充電して再使用。SPECIAL受付・成功失敗表示・浮遊中は充電停止。SPECIALは1秒以内にタップ。成功時は決め顔ドアップのカットインと、SPECIALごとの専用SEあり。RESULTも画面タップでRETRY。</p>
+      <p>画面をタップ / 左クリック（キーボードはSpace / Enter）するだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。UPは落下を止めてから45°へ800px/s加算（魔法使いのBOOSTと同じ強さ）。DOWNは今の飛行角を水平線で折り返した反射角でダイブし、地面かキャラに触れるまでその角度を維持（浅い上昇は最低30°）。DOWNは使用後0%になり、通常飛行1.5秒で100%へ充電して再使用。SPECIAL受付・成功失敗表示・浮遊中は充電停止。SPECIALは1秒以内にタップ。成功時は決め顔ドアップのカットインと、SPECIALごとの専用SEあり。RESULTも画面タップでRETRY。</p>
       <p>魔法使い（BOOST）：45°へ800px/s加算 / 武闘家（BOUNCE）：60°へ880px/s加算 / 盗賊（BRAKE）：速度全体を半減 / 遊び人（ANGLE）：速さを保ち90°−角度の絶対値へ変更 / 戦士（DASH）：25°へ880px/s加算 / 賢者（GUARD）：次の1接触まで結界 / 僧侶（STOPPER）：強制停止</p>
       <p id="special-rules"></p>
       <p>BRAKE SPECIAL成功は速度・角度を維持。ANGLE SPECIAL成功は速度を保ち水平へ。GUARD SPECIAL成功はSTOPPER専用防御10秒。通常GUARDは次の接触で消滅し、BOOST・BOUNCE・DASH・STOPPERを防ぎます（BRAKE・ANGLEは防ぎません）。</p>

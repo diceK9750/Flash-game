@@ -220,7 +220,7 @@ Hop.UI = class {
     const contactType = g.contact?.label.split(" ")[0];
     contactTag.textContent = g.contact ? `${Hop.CAST[contactType]?.name || contactType} · ${g.contact.label.includes("GUARD BLOCK") ? "結界でガード！" : Hop.CAST[contactType]?.effect || g.contact.label}` : "";
     contactTag.style.color = this.objectColor(g.contact?.label);
-    const labels = { READY: "画面をタップ / クリック", AIM_ANGLE: "タップで角度決定", AIM_POWER: "タップで発射", RESULT: "画面をタップしてRETRY" };
+    const labels = { READY: "画面をタップ / クリック / Space", AIM_ANGLE: "タップで角度決定", AIM_POWER: "タップで発射", RESULT: "画面をタップ（Space）してRETRY" };
     const mode = g.aerialMode;
     const flightHint = g.combo ? "TAP → SKIP" : g.special ? "TAP → SPECIAL!" : floating ? "FLOAT / 浮遊中" : !airborne ? "AERIAL / 空中で使用可能" : mode === "DOWN" ? `AERIAL ↓ ${chargeText}` : `AERIAL ↑ ×${g.upRemaining}`;
     const fastHint = g.timeScale > 1.05 ? `スキップ ▶▶ ×${Math.round(g.timeScale)}${g.body.grounded ? " · タップで結果へ" : ""}` : null;
@@ -275,7 +275,7 @@ Hop.UI = class {
       nextEl.innerHTML = Hop.UI.nearMissHtml(nr);
       nextEl.hidden = !nr || (g.tempoEnabled && this.rankPending);
     }
-    document.getElementById("overlay-prompt").textContent = g.state === s.RESULT ? "画面をタップしてRETRY" : "画面をタップ / クリック";
+    document.getElementById("overlay-prompt").textContent = g.state === s.RESULT ? "画面をタップ（Space）してRETRY" : "画面をタップ / クリック / Space";
     document.getElementById("result-stats").hidden = g.state !== s.RESULT;
     if (g.state === s.RESULT) {
       document.getElementById("record-status").textContent = g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : "FLIGHT RECORD";
