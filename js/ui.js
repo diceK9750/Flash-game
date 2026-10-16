@@ -8,7 +8,9 @@ Hop.UI = class {
     this.notices = { special: null, message: null, charge: 1, guard: false };
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     this.visual = { launchAt: -Infinity, contactAt: -Infinity, lastContact: null, oneShot: null, lastEffect: null, lastBounces: 0, lastSpecialSuccesses: 0, lastMerchantSuccesses: 0, flightVoicePlayed: false, stopAt: null, frozenAt: null, reducedMotion: motion?.matches || false };
-    motion?.addEventListener?.("change", event => { this.visual.reducedMotion = event.matches; });
+    // Follow live OS changes; older Safari (< 14) only has the legacy addListener (2026-10-17 cycle 23).
+    const follow = event => { this.visual.reducedMotion = event.matches; };
+    if (motion?.addEventListener) motion.addEventListener("change", follow); else motion?.addListener?.(follow);
     this.initBacking();
   }
   // Display-only: the canvas backing store follows its CSS width x devicePixelRatio (clamped to
