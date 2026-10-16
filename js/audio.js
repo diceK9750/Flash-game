@@ -136,6 +136,9 @@ Hop.Audio = {
     // GUARD SPECIAL end (2026-10-17 cycle 29): soft falling shimmer (bell partials gliding down), quieter than RANK_STAMP.
     GUARD_END: [["tone", 0, 0.32, 0.03, "sine", 1975.5, 1318.5, 0.004], ["tone", 0.04, 0.3, 0.015, "sine", 3951, 2637, 0.004],
       ["tone", 0, 0.28, 0.025, "triangle", 440, 220, 0.01]],
+    // SPECIAL window open (2026-10-17 cycle 31): two quick rising bright blips ("pi-pin!"), quieter than RANK_STAMP.
+    SPECIAL_OPEN: [["tone", 0, 0.07, 0.035, "square", 1174.7, 1174.7, 0.002], ["tone", 0.07, 0.12, 0.035, "square", 1760, 1760, 0.002],
+      ["tone", 0.07, 0.14, 0.015, "sine", 3520, 3520, 0.003]],
     SLIDE_STOP: [["tone", 0, 0.16, 0.05, "sine", 120, 60, 0.002], ["noise", 0, 0.14, 0.035, "lowpass", 1100, 250, 0.7]],
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
