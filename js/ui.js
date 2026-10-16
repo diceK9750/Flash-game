@@ -198,7 +198,7 @@ Hop.UI = class {
     specialPanel.hidden = !g.special && success ? success.waiting
       : (g.state !== s.FLYING && !(g.state === s.RESULT && g.specialMessage?.label === "SPECIAL MISS" && Date.now() < this.messageUntil)) || (!g.special && !g.specialMessage);
     document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : success ? success.title : (g.specialMessage?.label === "SPECIAL SUCCESS" ? "SPECIAL SUCCESS!" : g.specialMessage?.label || "");
-    document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : success ? success.detail : g.specialMessage?.detail || "";
+    document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : success ? success.detail : Hop.UI.specialMessageDetail(g.specialMessage);
     document.getElementById("special-track").hidden = !g.special;
     document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
     document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL、BOUNCE→BOOST隣接でBOUNCE SPECIAL（未使用キャラのx順）。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL。BRAKE：AERIAL DOWN成功後、地面・他キャラ・UPなしで接触。ANGLE：接触時10%抽選。GUARD：通常GUARDを持って再GUARD。ごくまれに謎の商人が現れる…？`;
@@ -347,6 +347,14 @@ Hop.UI = class {
     return { rank, next: up ? up[0] : null, remaining: up ? Math.max(1, Math.ceil(up[1] - d)) : 0 };
   }
   // RESULT near-miss text for a UI.nextRank result ("" for none).
+  // SPECIAL panel detail after resolve. MISS adds why (no tap within the window) and what happened instead.
+  static specialMessageDetail(m) {
+    if (!m) return "";
+    if (m.label !== "SPECIAL MISS" || !m.missOutcome) return m.detail || "";
+    const why = `タップが間に合わず（受付 ${Hop.CONFIG.specialWindow}秒）`;
+    const then = m.missOutcome === "stop" ? "僧侶の効果で停止" : m.missOutcome === "guard" ? (m.missType === "STOPPER" ? "GUARDで停止を防いだ" : "GUARDで打ち消し（効果なし）") : "通常の効果のみ";
+    return `${m.detail} · ${why} → ${then}`;
+  }
   static nearMissHtml(nr) {
     return !nr ? "" : nr.next ? `ランク ${nr.rank} · あと <b>${nr.remaining}m</b> で ${nr.next}` : `最高ランク <b>${nr.rank}</b> 到達！`;
   }
