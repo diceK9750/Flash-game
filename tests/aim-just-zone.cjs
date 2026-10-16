@@ -28,10 +28,14 @@ for (let p = c.powerMin; p <= c.powerMax + 1e-12; p += 0.005) { g.power = p; ass
 // DOM: band placed + in-just class follows the needle (UI.updateHud path).
 const ui = new U(g, el('game'));
 g.power = 0.99; ui.update?.(); const band = el('aim-just');
-assert.equal(band.hidden, false); assert.equal(band.style.left, '97%'); assert(el('aim-display').cls.has('in-just'));
+assert.equal(band.hidden, false); assert.equal(band.style.left, 'auto'); assert.equal(band.style.right, '0', 'end band anchored right (min-width grows inward)'); assert(el('aim-display').cls.has('in-just'));
 g.power = 0.5; ui.update?.(); assert(!el('aim-display').cls.has('in-just'));
 g.act(); assert.equal(g.state, S.FLYING); assert.equal(U.justZone(g), null);
 // Disabled feature: no band.
 const off = load(s => s.replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,'));
 const g2 = new off.H.Game(() => 0.5); g2.act(); assert.equal(off.H.UI.justZone(g2), null);
+// Cycle 02: static JUST tag above the band, minimum drawn width (phones), angle band anchored by left.
+assert(/\.aim-just::after \{[^}]*content: "JUST"/.test(css)); assert(/\.aim-just \{ min-width: 10px;/.test(css));
+assert(/\.aim-track \{ position: relative; overflow: visible;/.test(css));
+{ const g3 = new H.Game(() => 0.5), ui3 = new U(g3, el('game')); g3.act(); g3.angle = 20; ui3.update?.(); assert.equal(el('aim-just').style.left, (29 / 60 * 100) + '%'); assert.equal(el('aim-just').style.right, 'auto'); }
 console.log(JSON.stringify({ aimJustZone: 'PASS', angleBand: [39, 45], powerBand: [97, 100] }));
