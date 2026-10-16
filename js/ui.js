@@ -174,7 +174,7 @@ Hop.UI = class {
     const debugText = g.debug ? "DEBUG: " + Hop.Game.debugKindLabel(g.activeDebugKind()).title : "DEBUG";
     if (debugStatus.textContent !== debugText) debugStatus.textContent = debugText;
     document.getElementById("debug-toggle").setAttribute("aria-expanded", String(!!this.debugMenuOpen));
-    document.getElementById("history").textContent = `CONTACT / ${g.history.slice(-8).map(entry => `${Hop.CAST[entry.type]?.name || entry.type} (${entry.label})`).join(" → ") || "—"}`;
+    document.getElementById("history").textContent = `CONTACT / ${g.history.slice(-8).map(entry => `${Hop.CAST[entry.type]?.name || entry.type} (${entry.label}${entry.partner ? "＋" + (Hop.CAST[entry.partner]?.name || entry.partner) : ""})`).join(" → ") || "—"}`;
     // Display only: a SPECIAL SUCCESS panel (normal or merchant) waits while the cut-in covers the stage
     // (Graphics.specialCutinCovering: until its fade-out / the reducedMotion still ends), then stays for
     // specialMessageDuration of game time — the same length as before — even after game.specialMessage
@@ -276,7 +276,8 @@ Hop.UI = class {
       const metMerchant = g.debugUsed || g.merchantStats.attempts > 0 || g.merchantStats.successes > 0;
       document.getElementById("merchant-totals").hidden = !metMerchant;
       document.getElementById("merchant-totals").textContent = !metMerchant ? "" : `商人SPECIAL発生 ${g.merchantStats.attempts} / 成功 ${g.merchantStats.successes} / 最終Type ${g.merchantStats.lastType || "—"} / 復活 ${g.merchantStats.revives}`;
-      document.getElementById("type-counts").textContent = Object.entries(g.counts).map(([type, count]) => `${Hop.CAST[type].name} ${type} ${count}`).join(" · ");
+      const joined = {}; for (const e of g.history) if (e.partner) joined[e.partner] = (joined[e.partner] || 0) + 1;
+      document.getElementById("type-counts").textContent = Object.entries(g.counts).map(([type, count]) => `${Hop.CAST[type].name} ${type} ${count}${joined[type] ? `（＋合体参加 ${joined[type]}）` : ""}`).join(" · ");
       document.getElementById("best-comparison").textContent = [
         `DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`,
         `HEIGHT 今回 ${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m / BEST ${g.best.height.toFixed(1)} m`,
@@ -380,16 +381,17 @@ Hop.UI = class {
   // RESULT "what helped": every success of this run with counts, from the run's own records (the same labels
   // resolveSpecial / normalContact write): JUST launch, SPECIAL per character, merchant types, GUARD blocks.
   static helped(g) {
-    const sp = {}, merchant = [], out = [];
+    const sp = {}, merchant = [], out = [], partners = {};
+    const withPartner = t => partners[t] ? "（＋" + Object.keys(partners[t]).map(p => Hop.CAST?.[p]?.name || p).join("・") + "）" : "";
     let blocks = 0;
     for (const e of g.history || []) {
       const m = e.label.match(/MERCHANT TYPE ([A-D])/);
       if (m) merchant.push(m[1]);
-      else if (e.label === e.type + " SPECIAL") sp[e.type] = (sp[e.type] || 0) + 1;
+      else if (e.label === e.type + " SPECIAL") { sp[e.type] = (sp[e.type] || 0) + 1; if (e.partner) (partners[e.type] ||= {})[e.partner] = 1; }
       else if (e.label.includes("GUARDED")) blocks++;
     }
     if (g.justLaunch) out.push("JUST発射");
-    for (const t of Object.keys(Hop.CAST || {})) if (sp[t]) out.push(`${Hop.CAST[t].name} SPECIAL×${sp[t]}`);
+    for (const t of Object.keys(Hop.CAST || {})) if (sp[t]) out.push(`${Hop.CAST[t].name} SPECIAL×${sp[t]}${withPartner(t)}`);
     for (const t of Object.keys(sp)) if (!Hop.CAST?.[t]) out.push(`${t} SPECIAL×${sp[t]}`);
     if (merchant.length) out.push("商人 Type " + merchant.join("→"));
     if (blocks) out.push(`GUARD BLOCK×${blocks}`);
