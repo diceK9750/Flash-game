@@ -157,3 +157,13 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) {
   .stage *, .stage { animation: none !important; transition: none !important; }
 }
+/* Must follow the base flight HUD rules (cascade order). */
+@media (max-width: 650px) {
+  /* Phone flight HUD (2026-10-16 cycle 05): one compact row per box so AERIAL / merchant / SPECIAL READY / next rank
+     stack without covering the stage (static layout only). */
+  .flight-hud { top: 4px; left: 4px; right: 4px; gap: 4px; font-size: 11px; }
+  #aerial-hud, #merchant-hud { flex-wrap: nowrap; gap: 5px; padding: 2px 6px; border-radius: 6px; line-height: 16px; white-space: nowrap; }
+  #aerial-hud-charge, #merchant-hud-charge { width: 34px; height: 5px; }
+  .ready-targets { top: 30px; left: 4px; max-width: calc(100% - 8px); padding: 1px 6px; font-size: 10px; line-height: 15px; }
+  .next-rank { right: 4px; bottom: 4px; padding: 1px 6px; font-size: 10px; line-height: 15px; }
+}
