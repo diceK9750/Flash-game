@@ -18,6 +18,7 @@ function load(mode, patch = s => s) {
   for (const name of ['config', 'physics', 'game', 'sprites', 'graphics']) {
     let src = adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name);
     if (name === 'config' && mode !== undefined) { assert(/sageCondition: "foresight",/.test(src)); src = src.replace(/sageCondition: "foresight",/, `sageCondition: "${mode}",`); }
+    if (name === 'config') src = src.replace(/typeCTempo: \d+,/, 'typeCTempo: 1,'); // historical wall-frame fingerprint: x1 Type C ride (cycle 32; x4 proven distance-identical in merchant-c-tempo.cjs)
     if (name === 'config') src = patch(src);
     // The historical 160-play fingerprints count wall frames including the display-only combo scene; the fighter
     // scene was 2.65 s until the 2026-10-13 upper rework (3.2 s now; distances checked in tests/fighter-upper.cjs).

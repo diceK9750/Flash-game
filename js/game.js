@@ -677,7 +677,11 @@ Hop.Game = class {
       }
       this.generateObjects();
       const previous = { x: this.body.x, y: this.body.y, vx: this.body.vx, vy: this.body.vy };
-      if (this.merchant?.type === "C") this.floatStep(c.physicsStep);
+      if (this.merchant?.type === "C") {
+        // Type C tempo (cycle 32): same path, typeCTempo float sub-steps per physics step (objects generated per sub-step).
+        this.floatStep(c.physicsStep);
+        for (let k = 1; k < (c.typeCTempo || 1) && this.merchant?.type === "C"; k++) { this.noteDistance(); this.generateObjects(); this.floatStep(c.physicsStep); }
+      }
       else {
         const impact = Hop.Physics.step(this.body, c.physicsStep);
         if (impact) this.groundImpact(impact);
@@ -696,7 +700,8 @@ Hop.Game = class {
     }
     // Display only: fraction of a physics step left in the accumulator (0..1) for render interpolation.
     this.renderAlpha = this.state === Hop.STATES.FLYING ? Math.max(0, Math.min(1, this.accumulator / c.physicsStep)) : 1;
-    const follow = 1 - Math.exp(-c.cameraFollowRate * dt);
+    // Faster Type C ride keeps the same camera lag (hero stays on screen).
+    const follow = 1 - Math.exp(-c.cameraFollowRate * (this.merchant?.type === "C" ? c.typeCTempo || 1 : 1) * dt);
     this.cameraX += (Math.max(0, c.launchX + this.body.x - c.cameraAnchorX) - this.cameraX) * follow;
     // Lift the view on high shots, keeping the player visible at maximum power.
     this.cameraY = Math.max(0, this.body.y - (c.groundY - 160));
