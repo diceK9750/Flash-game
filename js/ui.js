@@ -249,6 +249,8 @@ Hop.UI = class {
     this.overlay.classList?.toggle?.("new-record", g.state === s.RESULT && !g.debugUsed && g.newRecords.includes("distance"));
     this.lastState = g.state;
     document.getElementById("result-highlights").textContent = g.state === s.RESULT ? "今回のハイライト：" + Hop.UI.highlights(g).join(" · ") : "";
+    const helpedEl = document.getElementById("result-helped");
+    if (helpedEl) helpedEl.textContent = g.state === s.RESULT ? "効いたもの：" + (Hop.UI.helped(g).join(" · ") || "なし（通常接触のみ）") : "";
     this.overlay.hidden = g.state !== s.READY && g.state !== s.RESULT;
     document.getElementById("flight-tag").hidden = g.state !== s.FLYING;
     document.getElementById("overlay-label").textContent = g.state === s.RESULT ? "FINAL DISTANCE / 最終飛距離" : "ONE LAUNCH. HOW FAR?";
@@ -374,6 +376,24 @@ Hop.UI = class {
       const merchant = g.debug && zone && Math.abs(object.x / c.pixelsPerMeter - zone.boundary) < 1e-7 && c.merchantTypes[object.type];
       return merchant || eligible ? [{ object, label: merchant ? "MERCHANT" : "SPECIAL" }] : [];
     });
+  }
+  // RESULT "what helped": every success of this run with counts, from the run's own records (the same labels
+  // resolveSpecial / normalContact write): JUST launch, SPECIAL per character, merchant types, GUARD blocks.
+  static helped(g) {
+    const sp = {}, merchant = [], out = [];
+    let blocks = 0;
+    for (const e of g.history || []) {
+      const m = e.label.match(/MERCHANT TYPE ([A-D])/);
+      if (m) merchant.push(m[1]);
+      else if (e.label === e.type + " SPECIAL") sp[e.type] = (sp[e.type] || 0) + 1;
+      else if (e.label.includes("GUARDED")) blocks++;
+    }
+    if (g.justLaunch) out.push("JUST発射");
+    for (const t of Object.keys(Hop.CAST || {})) if (sp[t]) out.push(`${Hop.CAST[t].name} SPECIAL×${sp[t]}`);
+    for (const t of Object.keys(sp)) if (!Hop.CAST?.[t]) out.push(`${t} SPECIAL×${sp[t]}`);
+    if (merchant.length) out.push("商人 Type " + merchant.join("→"));
+    if (blocks) out.push(`GUARD BLOCK×${blocks}`);
+    return out;
   }
   static highlights(g) {
     const ranked = g.history.map(entry => {
