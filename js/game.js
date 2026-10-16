@@ -528,6 +528,11 @@ Hop.Game = class {
     if (b.bounces < 1) return false;
     return b.grounded || b.vx < c.tailSpeed;
   }
+  // Display only (cycle 28): would a tap right now finish the run (the act() FLYING branch reaching finishTail)?
+  tapFinishesRun() {
+    return this.state === Hop.STATES.FLYING && this.tempoEnabled && !this.launchCutin && !this.combo && !this.special &&
+      this.body.grounded && this.tailActive();
+  }
   // Fast-forward factor for the tail: tailFastForward when nothing can be done (rolling, or no AERIAL UP left);
   // a gentler tailAirFastForward while airborne with AERIAL UP still available (the tap still works).
   tailScale() {
