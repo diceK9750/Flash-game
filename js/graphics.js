@@ -417,6 +417,8 @@ Hop.Graphics = {
       ctx.globalAlpha = i / g.trail.length * (g.successVisual?.strong ? 0.95 : g.specialTrail > 0 ? 0.75 : 0.25);
       this.circle(ctx, sx(point.x), sy(point.y), 4 + i / 4, "#e99c40");
     }); ctx.globalAlpha = 1;
+    const glow = this.justGlow(visual, g); // JUST afterglow (cycle 16): cyan halo over the hero trail, fading out
+    if (glow > 0) { g.trail.forEach((point, i) => { const k = glow * i / g.trail.length; ctx.globalAlpha = 0.9 * k; this.circle(ctx, sx(point.x), sy(point.y), 7 + i / 3, "#22d8f5"); if (i % 3 === 0) { ctx.globalAlpha = k; this.circle(ctx, sx(point.x), sy(point.y), 2 + i / 8, "#ffffff"); } }); ctx.globalAlpha = 1; }
     const x = sx(bodyX), y = sy(bodyY);
     if (D && !D.rm && g.state === "FLYING" && !g.launchCutin && !combo) this.speedLines(ctx, x, y, g.body.vx, g.body.vy, D.time);
     if (g.tempoEnabled && !visual.reducedMotion && g.state === "FLYING" && !g.launchCutin && !combo) this.windLines(ctx, g.body.vx, g.body.vy, g.realTime || 0, cam.w > 0 ? 0 : 1);
@@ -1187,6 +1189,12 @@ Hop.Graphics = {
     const p = age / 0.35; if (p >= 1) return;
     ctx.save(); ctx.globalAlpha = 0.7 * (1 - p); ctx.strokeStyle = "#fff6dc"; ctx.lineWidth = 4 * (1 - p) + 1;
     ctx.beginPath(); ctx.ellipse(x, ground - 2, 18 + 52 * p, 5 + 9 * p, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  },
+  // JUST afterglow strength 1..0 (cycle 16, display only): FLYING only, real-time age since the JUST! pop.
+  justGlow(visual, g) {
+    const at = visual?.justGlowAt, T = Hop.CONFIG.justAfterglowTime || 0;
+    if (at == null || !(T > 0) || g.state !== "FLYING") return 0;
+    const a = (g.realTime || 0) - at; return a < 0 || a >= T ? 0 : 1 - a / T;
   },
   dustPuffs(ctx, anim, x, ground, age, strength) {
     const p = anim.puff;

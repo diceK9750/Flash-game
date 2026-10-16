@@ -12,6 +12,9 @@ Hop.CONFIG = Object.freeze({
   // launch tap multiplies the launch speed by justLaunchMultiplier (shows "JUST!" + SE). justLaunchEnabled false
   // (or multiplier 1 with no pop) = the old game. Center = best average distance in the fixed-seed sim.
   justLaunchEnabled: true, justPowerMin: 0.97, justAngleCenter: 42, justAngleHalfWidth: 3, justLaunchMultiplier: 1.15,
+  // JUST afterglow (2026-10-17 cycle 16, display only): after a JUST launch the hero's trail glows JUST-cyan for
+  // justAfterglowTime real seconds from when the JUST! pop appears (the pop alone covered ~8% of a JUST flight).
+  justAfterglowTime: 2.5,
   gravity: 820, // px/s²; positive Y in physics means height above ground
   airDrag: 0.075, // exponential drag, per second
   restitution: 0.67,
