@@ -472,7 +472,7 @@ Hop.UI = class {
     const events = [];
     if (g.specialMessage && g.specialMessage !== this.notices.message) this.messageUntil = Date.now() + g.specialMessage.remaining * 1000;
     if (g.special && g.special !== this.notices.special) events.push((g.special.merchantType ? "商人 Type " + g.special.merchantType : Hop.CAST[g.special.type].name) + " SPECIAL受付開始");
-    else if (g.specialMessage && g.specialMessage !== this.notices.message && (g.specialMessage.label !== this.notices.message?.label || g.specialMessage.detail !== this.notices.message?.detail)) events.push(g.specialMessage.label + (g.specialMessage.detail ? " · " + g.specialMessage.detail : ""));
+    else if (g.specialMessage && g.specialMessage !== this.notices.message && (g.specialMessage.label !== this.notices.message?.label || g.specialMessage.detail !== this.notices.message?.detail)) { const detail = Hop.UI.specialMessageDetail(g.specialMessage); events.push(g.specialMessage.label + (detail ? " · " + detail : "")); } // MISS: same reason line as the panel (cycle 26)
     if (flying && g.guardSpecial.active !== this.notices.guard) events.push(g.guardSpecial.active ? "GUARD SPECIAL開始" : "GUARD SPECIAL終了");
     if (flying && g.downCharge >= 1 && this.notices.charge < 1) events.push("AERIAL DOWN READY");
     // RESULT edge (2026-10-17 cycle 25): screen readers hear the outcome once (text only; same values as on screen).
