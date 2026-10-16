@@ -42,6 +42,12 @@ Hop.UI = class {
     const bn = g.body?.bounces || 0;
     if (g.state === s.FLYING && bn > (this.lastBounces ?? bn)) { const vy = g.lastImpactVy || 0, k = vy >= c.landImpactHard ? "LAND_HARD" : vy >= c.landImpactSoft ? "LAND_SOFT" : null; if (k) { try { Hop.Audio?.play?.(k); } catch { /* SE is optional. */ } } }
     this.lastBounces = g.state === s.FLYING ? bn : 0;
+    // SPECIAL window open SE (2026-10-17 cycle 31, sound only): one bright "tap now!" call when a 1 s SPECIAL window
+    // (normal or merchant) opens; window, conditions and rates unchanged. MISS stays silent.
+    if (g.state === s.FLYING && g.special && g.special !== this.specialOpenSeen) {
+      try { Hop.Audio?.play?.("SPECIAL_OPEN"); } catch { /* SE is optional. */ }
+    }
+    this.specialOpenSeen = g.special || null;
     // GUARD SPECIAL end cue (2026-10-17 cycle 29, display/sound only): when 聖護結界 runs out mid-flight, a soft
     // falling shimmer + one fading ring, so the player knows STOPPER can stop them again.
     const gActive = !!g.guardSpecial?.active;
