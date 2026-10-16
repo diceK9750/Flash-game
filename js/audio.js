@@ -170,15 +170,19 @@ Hop.Audio = {
     if (!voices) return null;
     const master = ctx.createGain(), sources = [];
     master.sources = sources;
-    master.gain.setValueAtTime(Math.min(1, this.specialPeakCap / this.peakSum(voices)), at);
+    master.gain.setValueAtTime(Math.min(1, this.specialPeakCap / this.peakSum(voices)), at); // level from the whole recipe
+    // opts.from (cycle 30): resume a track part-way: only voices that start at or after `from` s are scheduled.
+    const from = opts?.from > 0 ? opts.from : 0;
     master.connect(ctx.destination);
-    let open = voices.length;
     const done = (source, nodes) => () => {
       this.active.delete(source);
       for (const node of nodes) { try { node.disconnect(); } catch {} }
       if (--open === 0) { try { master.disconnect(); } catch {} }
     };
-    for (const [type, delay, duration, peak, a, b, c, d] of voices) {
+    const play = from ? voices.filter(v => v[1] >= from - 1e-9) : voices;
+    if (!play.length) { try { master.disconnect(); } catch {} return master; }
+    let open = play.length;
+    for (const [type, delay, duration, peak, a, b, c, d] of play) {
       const start = at + delay, end = start + duration, gain = ctx.createGain();
       gain.gain.setValueAtTime(0, at); // a GainNode defaults to 1: hold it at 0 so a sub-sample early start never clicks
       let source, nodes;
@@ -215,6 +219,18 @@ Hop.Audio = {
       const ctx = this.context;
       if (!ctx || ctx.state !== "running" || !this.comboRecipes[kind]) return null;
       this.comboTrack = this.render(ctx, kind, ctx.currentTime - Math.max(0, Math.min(0.5, (offset || 0) / (rate || 1))), rate !== 1 ? { rate } : null);
+      return this.comboTrack;
+    } catch { return null; }
+  },
+  // Unmute during a combo scene (cycle 30): continue the scene SE from `offset` (seconds since the success, scene
+  // time) without replaying anything already past. Same track slot as playCombo, so skip / RETRY still stop it.
+  resumeCombo(kind, offset = 0, rate = 1) {
+    this.stopCombo();
+    if (this.muted) return null;
+    try {
+      const ctx = this.context, r = rate > 0 ? rate : 1, from = Math.max(0, (offset || 0) / r);
+      if (!ctx || ctx.state !== "running" || !this.comboRecipes[kind]) return null;
+      this.comboTrack = this.render(ctx, kind, ctx.currentTime - from, r !== 1 ? { rate: r, from } : { from });
       return this.comboTrack;
     } catch { return null; }
   },

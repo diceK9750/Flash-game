@@ -73,6 +73,11 @@ Hop.UI = class {
     // Combo scenes: the game picks the short version from this preference when a scene starts; the scene SE
     // track starts with the scene and is stopped when it is skipped (or on RETRY).
     if (g.comboShort !== !!this.visual.reducedMotion) g.comboShort = !!this.visual.reducedMotion;
+    // Unmuted mid-scene (cycle 30): the scene SE continues from where the scene is (mute had stopped the track).
+    const unmuted = this.audioWasMuted && !Hop.Audio?.muted; this.audioWasMuted = !!Hop.Audio?.muted;
+    if (unmuted && g.combo && g.combo === this.comboSeen) {
+      try { Hop.Audio?.resumeCombo?.(`COMBO_${g.combo.type === "BOOST" ? "WITCH" : "FIGHTER"}${g.combo.short ? "_SHORT" : ""}`, g.combo.elapsed, g.combo.rate || 1); } catch { /* SE is optional. */ }
+    }
     if (g.combo && g.combo !== this.comboSeen) {
       this.comboSeen = g.combo;
       Hop.Audio?.playCombo?.(`COMBO_${g.combo.type === "BOOST" ? "WITCH" : "FIGHTER"}${g.combo.short ? "_SHORT" : ""}`, g.combo.elapsed, g.combo.rate || 1);
