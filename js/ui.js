@@ -239,6 +239,8 @@ Hop.UI = class {
       try { Hop.Audio?.play?.(Hop.Game.rankStampSe(rankEl.textContent)); } catch { /* SE is optional. */ }
     }
     if (g.state === this.lastState) return;
+    // Final slide stop SE: once, when a run that slid to a halt turns into RESULT (僧侶 stops have their own SE).
+    if (g.state === s.RESULT && this.lastState === s.FLYING && g.endCause?.kind === "slide") { try { Hop.Audio?.play?.("SLIDE_STOP"); } catch { /* SE is optional. */ } }
     this.countFrom = null;
     if (rankEl) {
       const rank = g.state === s.RESULT && g.tempoEnabled ? Hop.Game.rank(g.finalDistance) : null;

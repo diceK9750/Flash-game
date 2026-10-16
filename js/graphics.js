@@ -469,6 +469,7 @@ Hop.Graphics = {
     ctx.restore();
     }
     if (!rm && ev.landAge < 0.45) this.dustPuffs(ctx, anim, sx(anim.landX), ground, ev.landAge, anim.landV);
+    if (!rm && ev.skid > 0.02) this.skidDust(ctx, x, ground, g.displayTime || 0, ev.skid);
     if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }
     if (g.successVisual?.strong && !visual.reducedMotion) {
       const age = c.stopperTrailDuration - g.successVisual.remaining;
@@ -1185,6 +1186,18 @@ Hop.Graphics = {
       Hop.Anim.dust(p, i, 6, age, strength);
       if (p.alpha <= 0) continue;
       ctx.globalAlpha = p.alpha; ctx.beginPath(); ctx.arc(x + p.x, ground + p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  },
+  // Final-slide skid dust (2026-10-16 cycle 14, display only): three puffs trailing behind the rolling hero, fading
+  // with speed (skid = vx / 600, 0..1; drawn with sqrt so a slow roll still shows). Deterministic in display time, no allocation; hero area only.
+  skidDust(ctx, x, ground, t, skid) {
+    const k = Math.sqrt(skid); // visible even at low rolling speed, fades to 0 as the hero stops
+    ctx.save(); ctx.fillStyle = "#c2a06a"; // earthy tan: reads on both sky and ground
+    for (let i = 0; i < 3; i++) {
+      const p = (t * 3 + i / 3) % 1;
+      ctx.globalAlpha = Math.min(0.85, 0.35 + 0.6 * k) * (1 - p);
+      ctx.beginPath(); ctx.arc(x - 16 - p * 56, ground - 6 - p * 16, (7 + p * 14) * (0.7 + 0.3 * k), 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   },

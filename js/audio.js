@@ -123,6 +123,8 @@ Hop.Audio = {
     JUST: [["tone", 0, 0.09, 0.05, "square", 1760, 1760, 0.002], ["tone", 0.05, 0.28, 0.05, "square", 2637, 2637, 0.002],
       ["tone", 0.05, 0.3, 0.03, "sine", 5274, 5274, 0.003], ["noise", 0.04, 0.18, 0.02, "highpass", 7000, 10000, 0.7]],
     // RESULT rank stamp: a thud + paper slap (S adds a ring)
+    // Final slide stop (2026-10-16 cycle 14): soft low thud + short scrape, quieter than RANK_STAMP.
+    SLIDE_STOP: [["tone", 0, 0.16, 0.05, "sine", 120, 60, 0.002], ["noise", 0, 0.14, 0.035, "lowpass", 1100, 250, 0.7]],
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
       ["tone", 0.06, 0.7, 0.03, "triangle", 1318.5, 1318.5, 0.004], ["tone", 0.06, 0.7, 0.02, "triangle", 1975.5, 1975.5, 0.004], ["noise", 0.08, 0.5, 0.015, "highpass", 6000, 9000, 0.7]],
