@@ -242,3 +242,21 @@ Hop.Audio = {
 };
 
 Hop.Audio.loadMute();
+
+// Hidden tab (2026-10-17 cycle 24): the game clock stops while hidden (rAF pauses, main.js skips the gap), so
+// pause the SE clock too. Suspending keeps every scheduled voice (incl. a combo scene track) in step with the
+// frozen scene; it resumes where it left off on return. If the browser refuses the resume, the next tap's
+// unlock() resumes it. Foreground playback is unchanged.
+Hop.Audio.onVisibility = function (hidden) {
+  const ctx = this.context;
+  if (!ctx) return;
+  try {
+    // Serialized: a quick hide/show must not let a pending suspend land after the resume.
+    const queue = op => { this.visibilityOp = Promise.resolve(this.visibilityOp).then(op).catch(() => {}); };
+    if (hidden) { if (ctx.state === "running" && !this.pausedByHide) { this.pausedByHide = true; queue(() => ctx.suspend()); } }
+    else if (this.pausedByHide) { this.pausedByHide = false; if (!this.muted) queue(() => ctx.resume()); }
+  } catch { /* Audio failure must never stop play. */ }
+};
+try {
+  document?.addEventListener?.("visibilitychange", () => Hop.Audio.onVisibility(!!document.hidden));
+} catch { /* Visibility handling is optional in constrained environments. */ }
