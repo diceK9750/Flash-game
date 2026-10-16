@@ -101,12 +101,16 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 
   .eyebrow { margin-bottom: 4px; font-size: 10px; }
   #overlay-detail { margin: 5px 0 8px; font-size: 14px; }
+  .overlay-next { margin: -4px 0 8px; font-size: 13px; }
   .aim-display { width: 48%; padding: 6px; top: 5%; } .aim-just { min-width: 12px; } .aim-just::after { font-size: 10px; line-height: 13px; }
   .flight-tag { font-size: 10px; }
   .result-grid { grid-template-columns: 1fr 1fr; }
   .result-stats { padding: 12px; }
 }
 
+/* RESULT near-miss line (2026-10-16 cycle 08): static text under the detail line, no animation. */
+.overlay-next { margin: -12px 0 16px; font: 800 clamp(13px, 1.5vw, 17px) system-ui, sans-serif; color: #6b4609; }
+.overlay-next b { color: #c2410c; }
 #overlay-prompt { font-weight: 800; color: #245d40; font-size: clamp(14px, 2vw, 23px); }
 .stage { cursor: pointer; user-select: none; touch-action: pan-y pinch-zoom; }
 
