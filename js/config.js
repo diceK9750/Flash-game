@@ -146,6 +146,10 @@ Hop.CONFIG = Object.freeze({
   // after a bounce) with no cut-in / combo / SPECIAL window / merchant, game time runs tailFastForward x (rolling or
   // no AERIAL UP left) or tailAirFastForward x (AERIAL UP still usable), ramped over tailRampTime s; a tap while
   // rolling finishes the run instantly (same final distance).
+  // Landing impact feel (2026-10-17 cycle 15, display/sound only): ground impact |vy| (m/s-ish units, measured p10 108,
+  // p50 418, p90 964) scales the hero's landing dust + squash; LAND_SOFT SE from landImpactSoft, LAND_HARD + a ground
+  // ring from landImpactHard. Never read by physics or scoring.
+  landImpactSoft: 250, landImpactHard: 900, landImpactFull: 1100,
   tailFastForward: 3, tailAirFastForward: 2, tailSpeed: 400, tailRampTime: 0.25, tailFinishMaxSteps: 120000,
   // Hit-stop (real-time freeze of the game step) on character contacts, scaled by the velocity change.
   hitStopMin: 0.025, hitStopMax: 0.085, hitStopRefSpeed: 1600, hitStopSpecial: 0.07,

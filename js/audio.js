@@ -124,6 +124,9 @@ Hop.Audio = {
       ["tone", 0.05, 0.3, 0.03, "sine", 5274, 5274, 0.003], ["noise", 0.04, 0.18, 0.02, "highpass", 7000, 10000, 0.7]],
     // RESULT rank stamp: a thud + paper slap (S adds a ring)
     // Final slide stop (2026-10-16 cycle 14): soft low thud + short scrape, quieter than RANK_STAMP.
+    // Landing impact (2026-10-17 cycle 15): soft dull tap / hard low thud + grit; both quieter than RANK_STAMP.
+    LAND_SOFT: [["tone", 0, 0.09, 0.03, "sine", 170, 90, 0.002], ["noise", 0, 0.06, 0.02, "lowpass", 900, 300, 0.7]],
+    LAND_HARD: [["tone", 0, 0.2, 0.06, "sine", 110, 42, 0.002], ["noise", 0, 0.14, 0.04, "lowpass", 1600, 260, 0.8]],
     SLIDE_STOP: [["tone", 0, 0.16, 0.05, "sine", 120, 60, 0.002], ["noise", 0, 0.14, 0.035, "lowpass", 1100, 250, 0.7]],
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
