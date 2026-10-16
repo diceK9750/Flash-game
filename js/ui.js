@@ -130,6 +130,8 @@ Hop.UI = class {
       const aerial = /^AERIAL (UP|DOWN)$/.exec(fresh?.label || "");
       // AERIAL DOWN dive SE (2026-10-17 cycle 17, sound only): a falling whoosh once per new dive.
       if (aerial?.[1] === "DOWN") { try { Hop.Audio?.play?.("AERIAL_DIVE"); } catch { /* SE is optional. */ } }
+      // AERIAL UP rise SE (2026-10-17 cycle 18, sound only): a rising chirp once per new AERIAL UP.
+      if (aerial?.[1] === "UP") { try { Hop.Audio?.play?.("AERIAL_RISE"); } catch { /* SE is optional. */ } }
       if (aerial && sp?.startOneShot) sp.startOneShot(v, "AERIAL_" + aerial[1], g.phaseTime);
       if (aerial && !v.flightVoicePlayed) {
         v.flightVoicePlayed = true;

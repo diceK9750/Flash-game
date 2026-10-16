@@ -428,6 +428,7 @@ Hop.Graphics = {
     if (g.effect) {
       ctx.save(); ctx.globalAlpha = g.effect.remaining / c.effectDuration;
       this.line(ctx, [[x - 28, y + 20], [x - 12, y + (g.effect.label.endsWith("UP") ? -30 : 55)]], "#277ca5", 6); ctx.restore();
+      if (g.effect.label === "AERIAL UP" && !visual.reducedMotion) this.riseBurst(ctx, x, y, 1 - g.effect.remaining / c.effectDuration);
       if (g.effect.label === "AERIAL DOWN" && !visual.reducedMotion) this.diveStreaks(ctx, x, y, g.body.vx, g.body.vy, 1 - g.effect.remaining / c.effectDuration);
     }
     // Afterimages (display only): two fading ghosts along the trail while fast or spinning after a hit.
@@ -1199,6 +1200,21 @@ Hop.Graphics = {
   },
   // AERIAL DOWN dive streaks (cycle 17, display only): four white streaks trailing the hero along its velocity,
   // fading over the effect (p 0..1). Hero area only, no allocation.
+  // AERIAL UP kick-off burst (cycle 18, display only): an air ring expanding under the hero + five short rays
+  // pushed downward, fading over the effect (p 0..1). Hero area only, no allocation.
+  riseBurst(ctx, x, y, p) {
+    if (!(p >= 0 && p < 0.6)) return;
+    const q = p / 0.6, cy = y + 26 + q * 18;
+    ctx.save(); ctx.lineCap = "round";
+    ctx.globalAlpha = 0.45 * (1 - q); ctx.strokeStyle = "#1e5f80"; ctx.lineWidth = 7 * (1 - q) + 3;
+    ctx.beginPath(); ctx.ellipse(x, cy, 16 + 40 * q, 5 + 10 * q, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.9 * (1 - q); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4 * (1 - q) + 1.5; ctx.stroke();
+    for (let i = 0; i < 5; i++) {
+      const a = Math.PI / 2 + (i - 2) * 0.38, r0 = 20 + q * 22, r1 = r0 + 18 * (1 - q) + 6;
+      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, cy - 6 + Math.sin(a) * r0 * 0.6); ctx.lineTo(x + Math.cos(a) * r1, cy - 6 + Math.sin(a) * r1 * 0.6); ctx.stroke();
+    }
+    ctx.restore();
+  },
   diveStreaks(ctx, x, y, vx, vy, p) {
     if (!(p >= 0 && p < 1)) return;
     const sp = Math.hypot(vx, vy) || 1, ux = vx / sp, uy = -vy / sp, nx = -uy, ny = ux, len = 70 * (1 - 0.4 * p);
