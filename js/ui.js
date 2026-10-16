@@ -42,6 +42,15 @@ Hop.UI = class {
     const bn = g.body?.bounces || 0;
     if (g.state === s.FLYING && bn > (this.lastBounces ?? bn)) { const vy = g.lastImpactVy || 0, k = vy >= c.landImpactHard ? "LAND_HARD" : vy >= c.landImpactSoft ? "LAND_SOFT" : null; if (k) { try { Hop.Audio?.play?.(k); } catch { /* SE is optional. */ } } }
     this.lastBounces = g.state === s.FLYING ? bn : 0;
+    // AERIAL ↓ READY cue (2026-10-17 cycle 27, display/sound only): once per recharge, at the moment a tap would
+    // really dive (same conditions as the canvas HUD "AERIAL ↓ READY"); a run's initial full charge never cues.
+    const v27 = this.visual;
+    if (g.state !== s.FLYING) { v27.downCueArmed = false; v27.downCueAt = null; }
+    else if (g.downCharge < 1) v27.downCueArmed = true;
+    else if (v27.downCueArmed && Hop.UI.downReadyNow(g)) {
+      v27.downCueArmed = false; v27.downCueAt = g.displayTime || 0;
+      try { Hop.Audio?.play?.("DOWN_READY"); } catch { /* SE is optional. */ }
+    }
     if (g.soundEvent) {
       const sound = g.soundEvent; Hop.Audio?.play(sound); g.soundEvent = null;
       if (sound === "SPECIAL_MERCHANT") {
@@ -361,6 +370,11 @@ Hop.UI = class {
     return { rank, next: up ? up[0] : null, remaining: up ? Math.max(1, Math.ceil(up[1] - d)) : 0 };
   }
   // RESULT near-miss text for a UI.nextRank result ("" for none).
+  // A tap right now would AERIAL ↓ dive (mirrors Game.aerial + the canvas HUD READY text).
+  static downReadyNow(g) {
+    return g.state === Hop.STATES.FLYING && !g.launchCutin && !g.combo && !g.special && g.merchant?.type !== "C" &&
+      g.airborne() && g.aerialMode === "DOWN" && g.downCharge >= 1;
+  }
   // SPECIAL panel detail after resolve. MISS adds why (no tap within the window) and what happened instead.
   static specialMessageDetail(m) {
     if (!m) return "";

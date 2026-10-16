@@ -131,6 +131,8 @@ Hop.Audio = {
     AERIAL_DIVE: [["noise", 0, 0.22, 0.04, "bandpass", 2600, 500, 1.4], ["tone", 0, 0.2, 0.03, "triangle", 660, 180, 0.004]],
     // AERIAL UP (2026-10-17 cycle 18): short rising chirp + airy puff, quieter than RANK_STAMP.
     AERIAL_RISE: [["tone", 0, 0.18, 0.03, "triangle", 330, 990, 0.004], ["noise", 0, 0.12, 0.025, "bandpass", 900, 2600, 1.2]],
+    // AERIAL ↓ READY (2026-10-17 cycle 27): soft two-note "pin-pon" falling a fourth, quieter than RANK_STAMP.
+    DOWN_READY: [["tone", 0, 0.1, 0.028, "triangle", 1318.5, 1318.5, 0.003], ["tone", 0.08, 0.18, 0.024, "triangle", 987.8, 987.8, 0.003]],
     SLIDE_STOP: [["tone", 0, 0.16, 0.05, "sine", 120, 60, 0.002], ["noise", 0, 0.14, 0.035, "lowpass", 1100, 250, 0.7]],
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
