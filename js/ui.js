@@ -235,6 +235,7 @@ Hop.UI = class {
     const rankEl = document.getElementById("result-rank");
     if (rankEl && g.state === s.RESULT && g.state === this.lastState && this.rankPending && overlayAlpha >= 1) {
       this.rankPending = false; rankEl.hidden = false;
+      const nextEl = document.getElementById("overlay-next"); if (nextEl) nextEl.hidden = !nextEl.innerHTML; // shown with the stamp
       try { Hop.Audio?.play?.(Hop.Game.rankStampSe(rankEl.textContent)); } catch { /* SE is optional. */ }
     }
     if (g.state === this.lastState) return;
@@ -253,6 +254,13 @@ Hop.UI = class {
     document.getElementById("overlay-label").textContent = g.state === s.RESULT ? "FINAL DISTANCE / 最終飛距離" : "ONE LAUNCH. HOW FAR?";
     document.getElementById("overlay-title").textContent = g.state === s.RESULT ? `${g.finalDistance.toFixed(1)} m` : "勇者、空の旅へ！";
     document.getElementById("overlay-detail").textContent = g.state === s.RESULT ? `${g.body.bounces} 回の地面接触 · 角度 ${g.angle.toFixed(1)}° · パワー ${Math.round(g.power * 100)}%` : "角度とパワーを決めて、飛距離に挑戦。";
+    // RESULT near-miss line: same table as the stamp (UI.nextRank). Tempo mode reveals it together with the stamp.
+    const nextEl = document.getElementById("overlay-next");
+    if (nextEl) {
+      const nr = g.state === s.RESULT && Number.isFinite(g.finalDistance) ? Hop.UI.nextRank(g.finalDistance) : null;
+      nextEl.innerHTML = Hop.UI.nearMissHtml(nr);
+      nextEl.hidden = !nr || (g.tempoEnabled && this.rankPending);
+    }
     document.getElementById("overlay-prompt").textContent = g.state === s.RESULT ? "画面をタップしてRETRY" : "画面をタップ / クリック";
     document.getElementById("result-stats").hidden = g.state !== s.RESULT;
     if (g.state === s.RESULT) {
@@ -334,6 +342,10 @@ Hop.UI = class {
     const d = Number.isFinite(meters) ? Math.max(0, meters) : 0, table = Hop.CONFIG.rankThresholds, rank = Hop.Game.rank(d);
     const i = table.findIndex(([r]) => r === rank), up = i > 0 ? table[i - 1] : null;
     return { rank, next: up ? up[0] : null, remaining: up ? Math.max(1, Math.ceil(up[1] - d)) : 0 };
+  }
+  // RESULT near-miss text for a UI.nextRank result ("" for none).
+  static nearMissHtml(nr) {
+    return !nr ? "" : nr.next ? `ランク ${nr.rank} · あと <b>${nr.remaining}m</b> で ${nr.next}` : `最高ランク <b>${nr.rank}</b> 到達！`;
   }
   static readyHudTargets(g, ready = Hop.UI.readyTargets(g)) {
     const shown = ready.filter(t => t.label === "SPECIAL"), onScreen = new Set(shown.map(t => t.object.type));
