@@ -131,6 +131,9 @@ Hop.CONFIG = Object.freeze({
   typeAUses: 5, typeAMultiplier: 2.5,
   typeBMaxCharge: 10, typeBBaseSpeed: 900, typeBChargeBonus: 160, typeBAngle: 40,
   typeCCount: 150, typeCSpeed: 1600, typeCHeight: 190,
+  // Type C tempo (2026-10-17 cycle 32): float sub-steps per physics step. The ride covers the same objects and ends at the
+  // same x (same exit BOOST), it just plays typeCTempo times faster in real time. 1 = original 56 s ride.
+  typeCTempo: 4,
   typeDBounces: 8, typeDMultiplier: 1.28, typeDMinVertical: 450,
   debugGap: 600, debugFirst: 400,
   // DEBUG filler order after the check (2026-10-16 cycle 11 fix). The old filler (objectWeights order: BOOST then

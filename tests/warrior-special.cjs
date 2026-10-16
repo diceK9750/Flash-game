@@ -14,6 +14,7 @@ function load(chance) {
     if (name === 'config' && chance !== undefined) { assert(/dashSpecialChance: [\d.]+,/.test(src)); src = src.replace(/dashSpecialChance: [\d.]+,/, `dashSpecialChance: ${chance},`); }
     // Sage condition (2026-10-13d 先見の結界, was guardSpecialChance in 2026-10-13c) off ("none") here so this test
     // isolates the warrior draw (see sage-special.cjs); "none" is identical to the old guardSpecialChance 0.
+    if (name === 'config') src = src.replace(/typeCTempo: \d+,/, 'typeCTempo: 1,'); // historical wall-frame fingerprint: x1 Type C ride (cycle 32; x4 proven distance-identical in merchant-c-tempo.cjs)
     if (name === 'config') { assert(/sageCondition: "foresight",/.test(src)); src = src.replace(/sageCondition: "foresight",/, 'sageCondition: "none",'); }
     // The historical 160-play fingerprints count wall frames including the display-only combo scene; the fighter
     // scene was 2.65 s until the 2026-10-13 upper rework (3.2 s now; distances checked in tests/fighter-upper.cjs).

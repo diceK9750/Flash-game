@@ -20,7 +20,7 @@ function load(jsDir) {
   const store = {};
   const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {}, localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } } };
   scope.window = scope; vm.createContext(scope);
-  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), name), scope, { filename: name });
+  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), name).replace(/typeCTempo: \d+,/, 'typeCTempo: 1,'), scope, { filename: name }); // baseline counts the x1 Type C ride (cycle 32)
   scope.Hop.Graphics.smooth = false;
   return scope.Hop;
 }

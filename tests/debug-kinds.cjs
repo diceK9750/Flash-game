@@ -232,12 +232,13 @@ test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEB
     let draws = 0; const base = random(seed * 31 + 7);
     const g = new Game(() => { draws++; return base(); });
     g.act(); g.angle = 15 + (seed * 7) % 55; g.act(); g.power = 0.4 + (seed % 7) * 0.1; g.act();
-    let f = 0;
+    // q: play clock without the Type C ride, so the scripted taps land at the same game moments (cycle 32).
+    let f = 0, q = 0;
     while (g.state === 'FLYING' && f < 120 * 300) {
       if (g.special && (seed % 3 !== 0)) g.act();
       else if (g.combo && seed % 2) g.act();
-      else if (!g.special && !g.combo && f % (97 + seed) === 0 && seed % 4 === 1) g.act();
-      g.update(c.physicsStep); f++;
+      else if (!g.special && !g.combo && q % (97 + seed) === 0 && seed % 4 === 1) g.act();
+      g.update(c.physicsStep); f++; if (g.merchant?.type !== 'C') q++;
     }
     assert(g.objects.every(o => !o.debugSetup && !o.debugForce && !o.debugBoundary)); assert.equal(g.debugKind, null);
     return [g.state, g.finalDistance.toFixed(3), g.maxHeight.toFixed(3), g.maxSpeed.toFixed(3), g.body.bounces, g.history.map(e => e.label).join(','), g.specialCount, g.specialSuccesses, JSON.stringify(g.merchantStats), draws, f].join('|');
@@ -252,7 +253,9 @@ test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEB
   // Updated 2026-10-13 (fighter upper): the fighter combo scene is 0.55 s longer (display only, game step frozen), so the
   // frame count f of the 13 plays that watch it grows; every other field (distances, contacts, draws) is byte-identical
   // to 0cb33fb (whose hash was 7f377a47...); distances are also checked against 0cb33fb in tests/fighter-upper.cjs.
-  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), '785246634874e0aba2db2732ab2e8071b343b249f1765bf89d960fb65fbcf1ae');
+  // Updated 2026-10-17 (cycle 32, Type C ride typeCTempo x4): taps keyed to q; with q every field except f of the 2
+  // Type C plays is byte-identical between the x1 ride (pre-change main) and the x4 ride; only their frame count f shrinks.
+  assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), '1ff04e963951e771e1f352cba8a839c17de01293ab768212b0d8796e35ab8017');
 });
 
 test('reducedMotion still respected in DEBUG kinds (combo short version)', () => {

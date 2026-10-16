@@ -341,7 +341,7 @@ Hop.UI = class {
   // (aged on the real-time clock, so fast-forward does not rush them). Reset on RETRY.
   updateFx() {
     const g = this.game, v = this.visual, now = g.realTime || 0;
-    if (g.state !== Hop.STATES.FLYING) { if (g.state !== Hop.STATES.RESULT) { v.fx = []; v.kick = null; } v.justGlowAt = null; g.fxEvents.length = 0; return; }
+    if (g.state !== Hop.STATES.FLYING) { if (g.state !== Hop.STATES.RESULT) { v.fx = []; v.kick = null; v.mileSeAt = null; } v.justGlowAt = null; g.fxEvents.length = 0; return; }
     v.fx = (v.fx || []).filter(f => now - f.at < 1.6);
     const held = [];
     for (const e of g.fxEvents.splice(0)) {
@@ -350,7 +350,13 @@ Hop.UI = class {
       if (e.kind === "JUST") { if (g.launchCutin) { held.push(e); continue; } v.fx.push({ ...e, at: now }); v.justGlowAt = now; continue; }
       if (e.kind === "IMPACT") { v.kick = { at: now, k: e.k }; continue; }
       if (e.kind === "CHAIN") { v.fx = v.fx.filter(f => f.kind !== "CHAIN"); }
+      // Fast Type C ride (cycle 32): a newer milestone pop replaces the older one of the same kind instead of stacking,
+      // and small-milestone SEs are at least 0.25 s apart (normal flight never passes 100 m that fast).
+      const mile = e.kind === "MILESTONE" || e.kind === "MILESTONE_BIG";
+      if (mile) v.fx = v.fx.filter(f => f.kind !== e.kind);
       v.fx.push({ ...e, at: now });
+      if (e.kind === "MILESTONE" && now - (v.mileSeAt ?? -1) < 0.25) continue;
+      if (mile) v.mileSeAt = now;
       try {
         if (e.kind === "CHAIN") Hop.Audio?.play?.("CHAIN", { pitch: Hop.Audio.chainPitch(e.n) });
         else Hop.Audio?.play?.(e.kind);

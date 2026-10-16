@@ -12,6 +12,7 @@ function load(gateOff) {
     let src = fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8');
     if (gateOff) src = adjacentGateOff(src, name);
     // JUST! launch (2026-10-15, tests/just-launch.cjs) off so the fingerprint isolates the BOOST/BOUNCE gate.
+    if (name === 'config') src = src.replace(/typeCTempo: \d+,/, 'typeCTempo: 1,'); // historical wall-frame fingerprint: x1 Type C ride (cycle 32; x4 proven distance-identical in merchant-c-tempo.cjs)
     if (name === 'config') src = src.replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,');
     // Merchant 2026-10-16 (tests/merchant-grand.cjs) pinned to the old values so the fingerprint isolates the gate.
     if (name === 'config' && !gateOff) src = adjacentGateOff.merchantOld(src);
