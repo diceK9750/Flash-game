@@ -475,7 +475,7 @@ Hop.Graphics = {
     if (!rm && ev.landAge < 0.45) this.dustPuffs(ctx, anim, sx(anim.landX), ground, ev.landAge, anim.landV);
     if (!rm && anim.landHard && ev.landAge < 0.35) this.landRing(ctx, sx(anim.landX), ground, ev.landAge);
     if (!rm && ev.skid > 0.02) this.skidDust(ctx, x, ground, g.displayTime || 0, ev.skid);
-    if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }
+    if (g.normalGuard || g.guardSpecial.active) this.guardCue(ctx, x, y, g.guardSpecial.active);
     if (g.successVisual?.strong && !visual.reducedMotion) {
       const age = c.stopperTrailDuration - g.successVisual.remaining;
       ctx.save(); ctx.globalAlpha = g.successVisual.remaining / c.stopperTrailDuration;
@@ -1227,6 +1227,19 @@ Hop.Graphics = {
       ctx.strokeStyle = "#ffffff"; ctx.lineWidth -= 3; ctx.globalAlpha = 0.9 * (1 - p); ctx.stroke();
     }
     ctx.restore();
+  },
+  // Hero guard ring (display only). Accessibility (2026-10-17 cycle 21): the two guard states were told apart mainly by
+  // colour (purple GUARD vs gold 聖護結界). Now also by shape and text: GUARD = one solid ring + "GUARD" tag;
+  // 聖護結界 = solid ring + inner dashed ring + "聖護結界" tag. Static (no added motion). Returns the tag text (tests).
+  guardCue(ctx, x, y, special) {
+    const r = special ? 48 : 39, label = special ? "聖護結界" : "GUARD";
+    ctx.save(); ctx.strokeStyle = special ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(x, y - 12, r, 0, Math.PI * 2); ctx.stroke();
+    if (special) { ctx.lineWidth = 3; ctx.setLineDash([7, 6]); ctx.beginPath(); ctx.arc(x, y - 12, r - 9, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.font = "bold 15px system-ui"; ctx.textAlign = "center"; const w = special ? 76 : 62, ty = y - 12 - r - 14;
+    ctx.globalAlpha = 0.85; ctx.fillStyle = special ? "#6b4e0e" : "#4b2d73"; ctx.fillRect(x - w / 2, ty - 12, w, 22);
+    ctx.globalAlpha = 1; ctx.fillStyle = "#fffdf2"; ctx.fillText(label, x, ty + 4);
+    ctx.restore(); return label;
   },
   dustPuffs(ctx, anim, x, ground, age, strength) {
     const p = anim.puff;
