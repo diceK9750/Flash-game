@@ -1363,9 +1363,13 @@ Hop.Graphics = {
     // Fast-forward badge (the hint line says the same in DOM text).
     if (g.state === "FLYING" && g.timeScale > 1.05) {
       ctx.save(); ctx.globalAlpha = Math.min(1, (g.timeScale - 1) * 2); ctx.fillStyle = "#1a0f08cc";
-      const tap = g.body.grounded, w = tap ? 300 : 210; ctx.fillRect(c.width - w - 24, 24, w, tap ? 78 : 48);
-      ctx.font = "900 30px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillStyle = "#ffffff";
-      ctx.fillText(`スキップ ▶▶ ×${Math.round(g.timeScale)}`, c.width - w - 8, 49);
+      // "タップで結果へ" only when a tap really finishes the run; the box fits its text (×N was clipped in the air) (cycle 28).
+      const tap = g.tapFinishesRun ? g.tapFinishesRun() : g.body.grounded, label = `スキップ ▶▶ ×${Math.round(g.timeScale)}`;
+      ctx.font = "900 30px system-ui, sans-serif";
+      const tw = ctx.measureText?.(label)?.width, w = Math.max(tap ? 300 : 210, Number.isFinite(tw) ? Math.ceil(tw) + 32 : 0);
+      ctx.fillRect(c.width - w - 24, 24, w, tap ? 78 : 48);
+      ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillStyle = "#ffffff";
+      ctx.fillText(label, c.width - w - 8, 49);
       if (tap) { ctx.font = "bold 22px system-ui, sans-serif"; ctx.fillStyle = "#ffe066"; ctx.fillText("タップで結果へ", c.width - w - 8, 84); }
       ctx.restore();
     }

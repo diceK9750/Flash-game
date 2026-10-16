@@ -234,7 +234,7 @@ Hop.UI = class {
     const labels = { READY: "画面をタップ / クリック / Space", AIM_ANGLE: "タップで角度決定", AIM_POWER: "タップで発射", RESULT: "画面をタップ（Space）してRETRY" };
     const mode = g.aerialMode;
     const flightHint = g.combo ? "TAP → SKIP" : g.special ? "TAP → SPECIAL!" : floating ? "FLOAT / 浮遊中" : !airborne ? "AERIAL / 空中で使用可能" : mode === "DOWN" ? `AERIAL ↓ ${chargeText}` : `AERIAL ↑ ×${g.upRemaining}`;
-    const fastHint = g.timeScale > 1.05 ? `スキップ ▶▶ ×${Math.round(g.timeScale)}${g.body.grounded ? " · タップで結果へ" : ""}` : null;
+    const fastHint = g.timeScale > 1.05 ? `スキップ ▶▶ ×${Math.round(g.timeScale)}${g.tapFinishesRun() ? " · タップで結果へ" : ""}` : null;
     set("hint", labels[g.state] || fastHint || flightHint);
     // Display only: let a playing STOP_RESULT show through, then fade the overlay in. Runs every
     // update (before the state-change early return). The overlay stays un-hidden with the same
