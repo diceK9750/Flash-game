@@ -103,7 +103,8 @@ for (let x = 0; x < 4200; x += 600) {
   debug.body.x = x; debug.generateObjects();
   for (const object of debug.objects) if (!sequence.some(entry => entry.x === object.x)) sequence.push({ ...object });
 }
-assert.deepEqual(sequence.slice(0, 7).map(o => o.type), Object.keys(c.objectWeights));
+// 2026-10-16: DEBUG filler follows config.debugFillOrder (partners apart, see tests/debug-ends.cjs); null = old order.
+assert.deepEqual(sequence.slice(0, 7).map(o => o.type), [...(c.debugFillOrder || Object.keys(c.objectWeights))]);
 for (let i = 1; i < sequence.length; i++) assert.equal(sequence[i].x - sequence[i - 1].x, c.debugGap);
 debug.toggleDebug(); assert.equal(debug.debug, false); assert(debug.debugUsed);
 debug.body.x = 80000; debug.finish(); assert.equal(writes, beforeWrites); assert.equal(debug.newRecords.length, 0);

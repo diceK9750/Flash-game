@@ -130,6 +130,11 @@ Hop.CONFIG = Object.freeze({
   typeCCount: 150, typeCSpeed: 1600, typeCHeight: 190,
   typeDBounces: 8, typeDMultiplier: 1.28, typeDMinVertical: 450,
   debugGap: 600, debugFirst: 400,
+  // DEBUG filler order after the check (2026-10-16 cycle 11 fix). The old filler (objectWeights order: BOOST then
+  // BOUNCE every 7 objects, 600px apart) resonated with the BOOST SPECIAL arc: hero landed on the next BOOST with its
+  // partner adjacent every cycle -> endless BOOST SPECIAL chain, the run never reached RESULT (~70% of debug runs).
+  // Partners are never adjacent here (also across the wrap). null = old order. DEBUG plays only.
+  debugFillOrder: Object.freeze(["BOOST", "BRAKE", "BOUNCE", "ANGLE", "DASH", "GUARD", "STOPPER"]),
   // DEBUG kinds (Hop.DEBUG_KINDS in game.js): the check's character(s) stand debugSetupAhead px ahead of the hero
   // before launch (every 10–70° / 30–100% launch touches it during the first ascent, before any ground bounce),
   // an adjacent partner debugPartnerGap px further on (= objectGapMin). Chosen in flight: debugFirst ahead.

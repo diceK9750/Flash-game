@@ -213,7 +213,8 @@ Hop.Game = class {
     while (this.nextObjectX < this.body.x + c.objectAhead) {
       const nearestBoundary = Math.max(1, Math.round(this.nextObjectX / boundary)) * boundary;
       if (this.debug || Math.abs(this.nextObjectX - nearestBoundary) >= c.boundaryClearance) {
-        const type = this.debug ? entries[this.debugIndex++ % entries.length][0] : pickType(this.nextObjectX);
+        const fill = c.debugFillOrder || entries.map(([t]) => t);
+        const type = this.debug ? fill[this.debugIndex++ % fill.length] : pickType(this.nextObjectX);
         this.objects.push({ x: this.nextObjectX, type, used: false });
       }
       this.nextObjectX += Math.max(1, this.debug ? c.debugGap : this.randomBetween(c.objectGapMin, c.objectGapMax));

@@ -23,7 +23,10 @@ const adjacentGateOff = function adjacentGateOff(src, name) {
   // The gate itself was abolished 2026-10-16 (no key, no draw): pinning it is a no-op on current sources.
   // 2026-10-15 JUST! launch also predates the baselines: disabled here (tests/just-launch.cjs covers it).
   assert(/justLaunchEnabled: true,/.test(src), 'justLaunchEnabled present');
-  return placementOld(merchantOld(src)).replace(RE, 'boostSpecialChance: 1, bounceSpecialChance: 1,').replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,');
+  assert(/debugFillOrder: Object\.freeze\(\[/.test(src), 'debugFillOrder present');
+  return placementOld(merchantOld(src)).replace(RE, 'boostSpecialChance: 1, bounceSpecialChance: 1,').replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,')
+    // 2026-10-16 DEBUG filler order fix (debugFillOrder) postdates the DEBUG baselines: old order here (debug-ends.cjs covers it).
+    .replace(/debugFillOrder: Object\.freeze\(\[[^\]]*\]\),/, 'debugFillOrder: null,');
 };
 adjacentGateOff.merchantOld = merchantOld; adjacentGateOff.placementOld = placementOld; adjacentGateOff.MERCHANT_OLD = MERCHANT_OLD;
 module.exports = adjacentGateOff;

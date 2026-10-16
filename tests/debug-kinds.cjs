@@ -168,7 +168,7 @@ test('aerial kind: no characters at all; all kind = the original fixed-order DEB
   assert.deepEqual(local(seq(a)), local(seq(b)));
   const fresh = new Game(random(3)); fresh.debug = true; fresh.reset(); fresh.body.x = 5000; fresh.generateObjects();
   assert.deepEqual(local(seq(a)), local(fresh.objects.map(o => `${o.x}:${o.type}:${Object.keys(o).join()}`)));
-  const order = Object.keys(c.castPickWeights);
+  const order = [...(c.debugFillOrder || Object.keys(c.castPickWeights))]; // 2026-10-16: partners apart (debug-ends.cjs)
   fresh.objects.forEach(o => { assert.equal((o.x - c.debugFirst) % c.debugGap, 0); assert.equal(o.type, order[((o.x - c.debugFirst) / c.debugGap) % order.length]); });
 });
 
