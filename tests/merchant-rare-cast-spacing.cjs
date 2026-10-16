@@ -118,8 +118,9 @@ test('all types nearby -> the type whose nearest copy is farthest (always decide
 test('debug placement order unchanged', () => {
   const g = new Game(random(3)); g.debug = true; g.reset(); g.body.x = 5000; g.generateObjects();
   const seq = g.objects.slice().sort((a, b) => a.x - b.x).map(o => o.type);
-  const start = types.indexOf(seq[0]);
-  assert(seq.length >= 3); assert.deepEqual(seq, seq.map((_, i) => types[(start + i) % types.length]));
+  const order = [...(c.debugFillOrder || types)]; // 2026-10-16: DEBUG filler order is config.debugFillOrder (debug-ends.cjs)
+  const start = order.indexOf(seq[0]);
+  assert(seq.length >= 3); assert.deepEqual(seq, seq.map((_, i) => order[(start + i) % order.length]));
 });
 
 console.log(JSON.stringify({ merchantRareCastSpacing: 'PASS', cases, playsPerMerchant: test.rate }));
