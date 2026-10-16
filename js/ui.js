@@ -475,10 +475,17 @@ Hop.UI = class {
     else if (g.specialMessage && g.specialMessage !== this.notices.message && (g.specialMessage.label !== this.notices.message?.label || g.specialMessage.detail !== this.notices.message?.detail)) events.push(g.specialMessage.label + (g.specialMessage.detail ? " · " + g.specialMessage.detail : ""));
     if (flying && g.guardSpecial.active !== this.notices.guard) events.push(g.guardSpecial.active ? "GUARD SPECIAL開始" : "GUARD SPECIAL終了");
     if (flying && g.downCharge >= 1 && this.notices.charge < 1) events.push("AERIAL DOWN READY");
+    // RESULT edge (2026-10-17 cycle 25): screen readers hear the outcome once (text only; same values as on screen).
+    const result = g.state === Hop.STATES.RESULT;
+    if (result && !this.notices.result && Number.isFinite(g.finalDistance)) {
+      const rank = g.tempoEnabled ? Hop.Game.rank(g.finalDistance) : null;
+      events.push(["RESULT " + g.finalDistance.toFixed(1) + " m", rank && "ランク " + rank,
+        g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : null].filter(Boolean).join(" · "));
+    }
     const notice = events.join(" · "), live = el("announcements");
     if (notice && live.textContent !== notice) live.textContent = notice;
     else if (!notice && ((this.notices.charge >= 1 && g.downCharge < 1) || (!flying && g.state !== Hop.STATES.RESULT)) && live.textContent) live.textContent = "";
-    this.notices = { special: g.special, message: g.specialMessage, charge: g.downCharge, guard: g.guardSpecial.active };
+    this.notices = { special: g.special, message: g.specialMessage, charge: g.downCharge, guard: g.guardSpecial.active, result };
   }
   // DEBUG menu (development only). Opened by the D key or the DEBUG button; items are rendered only when it
   // opens (so the hidden merchant never sits in the page in normal play). While open, game time is paused (main.js).
