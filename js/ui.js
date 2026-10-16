@@ -36,6 +36,10 @@ Hop.UI = class {
   update() {
     const g = this.game, c = Hop.CONFIG, s = Hop.STATES;
     this.updateQuality();
+    // Landing impact SE (cycle 15): once per display frame with new ground impacts, tier from the impact speed.
+    const bn = g.body?.bounces || 0;
+    if (g.state === s.FLYING && bn > (this.lastBounces ?? bn)) { const vy = g.lastImpactVy || 0, k = vy >= c.landImpactHard ? "LAND_HARD" : vy >= c.landImpactSoft ? "LAND_SOFT" : null; if (k) { try { Hop.Audio?.play?.(k); } catch { /* SE is optional. */ } } }
+    this.lastBounces = g.state === s.FLYING ? bn : 0;
     if (g.soundEvent) {
       const sound = g.soundEvent; Hop.Audio?.play(sound); g.soundEvent = null;
       if (sound === "SPECIAL_MERCHANT") {

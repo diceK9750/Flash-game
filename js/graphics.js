@@ -469,6 +469,7 @@ Hop.Graphics = {
     ctx.restore();
     }
     if (!rm && ev.landAge < 0.45) this.dustPuffs(ctx, anim, sx(anim.landX), ground, ev.landAge, anim.landV);
+    if (!rm && anim.landHard && ev.landAge < 0.35) this.landRing(ctx, sx(anim.landX), ground, ev.landAge);
     if (!rm && ev.skid > 0.02) this.skidDust(ctx, x, ground, g.displayTime || 0, ev.skid);
     if (g.normalGuard || g.guardSpecial.active) { ctx.strokeStyle = g.guardSpecial.active ? "#e8b936" : "#9970cc"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y - 12, g.guardSpecial.active ? 48 : 39, 0, Math.PI * 2); ctx.stroke(); }
     if (g.successVisual?.strong && !visual.reducedMotion) {
@@ -1179,6 +1180,14 @@ Hop.Graphics = {
     }
   },
   // Landing / launch dust (display only): six deterministic puffs, no allocation.
+  // Landing impact 0..1 from ground impact speed (cycle 15, display only).
+  landK(vy) { const c = Hop.CONFIG; return Math.max(0, Math.min(1, ((vy || 0) - 100) / ((c.landImpactFull || 1100) - 100))); },
+  // Hard-landing ground ring (cycle 15): a flat ellipse expanding at the hero's feet, hero area only.
+  landRing(ctx, x, ground, age) {
+    const p = age / 0.35; if (p >= 1) return;
+    ctx.save(); ctx.globalAlpha = 0.7 * (1 - p); ctx.strokeStyle = "#fff6dc"; ctx.lineWidth = 4 * (1 - p) + 1;
+    ctx.beginPath(); ctx.ellipse(x, ground - 2, 18 + 52 * p, 5 + 9 * p, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  },
   dustPuffs(ctx, anim, x, ground, age, strength) {
     const p = anim.puff;
     ctx.save(); ctx.fillStyle = "#e9dcb8";
@@ -1365,7 +1374,7 @@ Hop.Anim = {
       }
       if (ev.effAge < 0.5) this.heroEffect(out, ev.effKind, ev.effAge / 0.5, amp, rm); // AERIAL UP / DOWN, BOOST, DASH, BOUNCE poses
       if (ev.skid > 0 && !rm) { out.rot += -0.16 * ev.skid + 0.05 * ev.skid * Math.sin(t * 40); out.dy += 1.5 * ev.skid * Math.abs(Math.sin(t * 31)); } // ground skid / tumble
-      if (ev.landAge < 0.5) { const q = this.settle(ev.landAge) * amp; out.sy = 1 - 0.08 * q; out.sx = 1 + 0.07 * q; } // squash, overshoot, settle
+      if (ev.landAge < 0.5) { const q = this.settle(ev.landAge) * amp * (0.6 + 0.8 * (ev.landK ?? 0.5)); out.sy = 1 - 0.08 * q; out.sx = 1 + 0.07 * q; } // squash scales with impact (cycle 15) // squash, overshoot, settle
       if (ev.specialAge < 0.6) { const s = 1 + 0.08 * Math.sin(Math.PI * ev.specialAge / 0.6) * amp; out.sx *= s; out.sy *= s; }
     } else if (state === "RESULT") {
       const b = Math.sin(TAU * t / 2.4) * amp;
@@ -1517,7 +1526,7 @@ Hop.Anim = {
       else if (g.state !== "FLYING") { a.landAt = -Infinity; a.hitAt = -Infinity; a.specialAt = -Infinity; }
       a.state = g.state; a.bounces = b.bounces; a.specials = g.specialSuccesses;
     }
-    if (b.bounces > a.bounces) { a.landAt = t; a.landX = b.x; a.landV = Math.min(1.4, 0.6 + Math.abs(b.vy) / 900); }
+    if (b.bounces > a.bounces) { const k = Hop.Graphics.landK(g.lastImpactVy ?? Math.abs(b.vy) / (Hop.CONFIG.restitution || 0.5)); a.landAt = t; a.landX = b.x; a.landV = 0.45 + 1.05 * k; a.landK = k; a.landHard = (g.lastImpactVy || 0) >= Hop.CONFIG.landImpactHard; }
     a.bounces = b.bounces;
     if (g.contact && g.contact !== a.contact) { a.hitAt = t; a.hitDir = b.vy > 0 ? -1 : 1; }
     if (g.specialSuccesses > a.specials) { a.specialAt = t; a.specialX = b.x; }
@@ -1530,7 +1539,7 @@ Hop.Anim = {
     const ev = a.ev;
     ev.launchAge = Math.max(0, t - visual.launchAt); ev.hitAge = Math.max(0, t - a.hitAt); ev.hitDir = a.hitDir;
     a.contact = g.contact;
-    ev.landAge = Math.max(0, t - a.landAt); ev.specialAge = Math.max(0, t - a.specialAt);
+    ev.landAge = Math.max(0, t - a.landAt); ev.landK = a.landK ?? 0.5; ev.specialAge = Math.max(0, t - a.specialAt);
     ev.effAge = Math.max(0, t - a.effAt); ev.effKind = a.effKind; ev.hitType = a.hitType;
     ev.skid = g.state === "FLYING" && b.grounded && !b.stopped && b.vx > 0 ? Math.min(1, b.vx / 600) : 0;
     const m = g.finalDistance ?? 0; ev.tier = m >= 400 ? 2 : m >= 150 ? 1 : 0;

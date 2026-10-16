@@ -382,6 +382,8 @@ Hop.Game = class {
     return true;
   }
   groundImpact(impact) {
+    // Display-only impact speed for landing feedback (cycle 15); non-enumerable so game state / fingerprints are unchanged.
+    Object.defineProperty(this, "lastImpactVy", { value: -impact.vy, writable: true, configurable: true, enumerable: false });
     this.hype.chain = 0; // touching the ground ends the hit chain
     this.clearAerialDownLock();
     // READY truth (2026-10-16): a contact within armedGroundGraceSteps physics steps of this touch still uses the
