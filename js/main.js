@@ -2,6 +2,7 @@
 (() => {
   const game = new Hop.Game();
   game.launchCutinEnabled = true; // launch cut-in in the browser game (display only; see Game.startLaunchCutin)
+  game.grandSpecialEnabled = true; // grand solo SPECIAL scenes (cycle 34; display only, see Game.startCombo)
   game.tempoEnabled = true; // tempo & feedback in the browser game (display / UX only; see config "Tempo & feedback")
   Hop.Graphics.smooth = true; // smooth display: render interpolation, spring camera, cross-fades (display only)
   const ui = new Hop.UI(game, document.getElementById("canvas"));

@@ -337,14 +337,18 @@ Hop.Graphics = {
     // Combo scene (display only): one state per frame; screen shake wraps the world, not the cut-in.
     const combo = this.comboState(g);
     if (combo && this.smooth) { const sub = this.subStep(g, g.combo?.rate || 1); if (combo.after === null) combo.t = Math.min(combo.end, combo.t + sub); else combo.after = Math.min(combo.afterTotal, combo.after + sub); }
-    const impact = this.comboImpact(combo, !!visual?.reducedMotion);
+    // Grand solo SPECIAL scene (cycle 34): same clock rules as the combo scene.
+    const grand = this.grandState(g);
+    if (grand && this.smooth) { const sub = this.subStep(g, g.combo?.rate || 1); if (grand.after === null) grand.t = Math.min(grand.end, grand.t + sub); else grand.after = Math.min(grand.afterTotal, grand.after + sub); }
+    const scene = combo || grand;
+    const impact = grand ? this.grandImpact(grand, !!visual?.reducedMotion) : this.comboImpact(combo, !!visual?.reducedMotion);
     ctx.fillStyle = "#bce9f3"; ctx.fillRect(0, 0, c.width, c.height);
     // Tempo feedback shake (speed + hit kick, capped; none in reduced motion or while a scene / cut-in plays).
-    const shake = combo || g.launchCutin ? { x: 0, y: 0 } : this.tempoShake(g, visual);
+    const shake = scene || g.launchCutin ? { x: 0, y: 0 } : this.tempoShake(g, visual);
     ctx.save(); ctx.translate(impact.x + shake.x, impact.y + shake.y);
     // Combo camera (display only): zoom toward the scene actors; identity when cam.w = 0.
-    let cam = this.comboCamera(combo, !!visual?.reducedMotion, sx, sy, ground, sx(bodyX), sy(bodyY));
-    if (D) cam = this.camSpring(D, cam, combo); // 2026-10-15: spring-follow of the combo camera (display only)
+    let cam = grand ? this.grandCamera(grand, !!visual?.reducedMotion, sx, sy, sx(bodyX), sy(bodyY)) : this.comboCamera(combo, !!visual?.reducedMotion, sx, sy, ground, sx(bodyX), sy(bodyY));
+    if (D) cam = this.camSpring(D, cam, scene); // 2026-10-15: spring-follow of the combo camera (display only)
     ctx.save();
     if (cam.w > 0) { ctx.translate(cam.ax, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.fx, -cam.fy); }
     this.circle(ctx, 1080, 115, 49, "#fff1ad");
@@ -390,9 +394,9 @@ Hop.Graphics = {
     for (const object of g.objects) {
       const ox = sx(object.x); if (ox < -120 || ox > c.width + 120) continue;
       // Combo actors are drawn by comboBack; they fade back in place during the afterglow.
-      const actor = combo && (object === combo.source || object === combo.partner);
-      if (actor && combo.after === null) continue;
-      ctx.save(); ctx.globalAlpha = (object.used ? 0.35 : 1) * (actor ? Math.min(1, combo.after / combo.afterTotal) : 1);
+      const actor = scene && (object === scene.source || object === scene.partner);
+      if (actor && scene.after === null) continue;
+      ctx.save(); ctx.globalAlpha = (object.used ? 0.35 : 1) * (actor ? Math.min(1, scene.after / scene.afterTotal) : 1);
       // Phase C: CAST sprite when loaded, else the Canvas figure (same feet point; alpha above applies).
       const ready = visual.readyTargets?.find(target => target.object === object);
       A.cast(pose, object.type, g.phaseTime, !!ready && !object.used, A.usedAge(anim, object, g.phaseTime), rm, D && !object.used ? Hop.Smooth.near(bodyX - object.x, bodyY) : 0,
@@ -420,9 +424,10 @@ Hop.Graphics = {
     const glow = this.justGlow(visual, g); // JUST afterglow (cycle 16): cyan halo over the hero trail, fading out
     if (glow > 0) { g.trail.forEach((point, i) => { const k = glow * i / g.trail.length; ctx.globalAlpha = 0.9 * k; this.circle(ctx, sx(point.x), sy(point.y), 7 + i / 3, "#22d8f5"); if (i % 3 === 0) { ctx.globalAlpha = k; this.circle(ctx, sx(point.x), sy(point.y), 2 + i / 8, "#ffffff"); } }); ctx.globalAlpha = 1; }
     const x = sx(bodyX), y = sy(bodyY);
-    if (D && !D.rm && g.state === "FLYING" && !g.launchCutin && !combo) this.speedLines(ctx, x, y, g.body.vx, g.body.vy, D.time);
-    if (g.tempoEnabled && !visual.reducedMotion && g.state === "FLYING" && !g.launchCutin && !combo) this.windLines(ctx, g.body.vx, g.body.vy, g.realTime || 0, cam.w > 0 ? 0 : 1);
+    if (D && !D.rm && g.state === "FLYING" && !g.launchCutin && !scene) this.speedLines(ctx, x, y, g.body.vx, g.body.vy, D.time);
+    if (g.tempoEnabled && !visual.reducedMotion && g.state === "FLYING" && !g.launchCutin && !scene) this.windLines(ctx, g.body.vx, g.body.vy, g.realTime || 0, cam.w > 0 ? 0 : 1);
     if (combo) this.comboBack(ctx, combo, sx, sy, ground);
+    if (grand) this.grandBack(ctx, grand, sx, sy, ground);
     const comboHero = combo && combo.after === null ? this.comboActors(combo).hero : null;
     if (g.contact && !visual.reducedMotion) this.contactEffect(ctx, g.contact.label.split(" ")[0], x, y, g.phaseTime - visual.contactAt);
     if (g.effect) {
@@ -432,7 +437,7 @@ Hop.Graphics = {
       if (g.effect.label === "AERIAL DOWN" && !visual.reducedMotion) this.diveStreaks(ctx, x, y, g.body.vx, g.body.vy, 1 - g.effect.remaining / c.effectDuration);
     }
     // AERIAL ↓ READY cue (cycle 27): a ring closing in on the hero + a down chevron, 0.5 s (sound only under reduced motion); gone as soon as the charge is used.
-    if (visual.downCueAt != null && !visual.reducedMotion && g.state === "FLYING" && !combo && g.downCharge >= 1) this.downReadyCue(ctx, x, y, (g.displayTime || 0) - visual.downCueAt);
+    if (visual.downCueAt != null && !visual.reducedMotion && g.state === "FLYING" && !scene && g.downCharge >= 1) this.downReadyCue(ctx, x, y, (g.displayTime || 0) - visual.downCueAt);
     // Afterimages (display only): two fading ghosts along the trail while fast or spinning after a hit.
     const ev = anim.ev, speed = Math.hypot(g.body.vx, g.body.vy);
     const ghosts = g.state === "FLYING" && !rm && !comboHero && g.trail.length > 8 && (speed > 950 || ev.hitAge < 0.4);
@@ -512,7 +517,7 @@ Hop.Graphics = {
       ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - launchAge / 0.18)})`; ctx.fillRect(0, 0, c.width, c.height);
       this.contactEffect(ctx, "BOOST", sx(0), sy(0), launchAge);
     }
-    const overlay = combo ? this.comboFront(ctx, combo, sx, sy, ground) : null;
+    const overlay = combo ? this.comboFront(ctx, combo, sx, sy, ground) : grand ? this.grandFront(ctx, grand, sx, sy, ground) : null;
     ctx.restore(); // combo camera
     if (overlay) this.comboOverlay(ctx, overlay, cam);
     ctx.restore(); // screen shake
@@ -975,6 +980,240 @@ Hop.Graphics = {
   spark(ctx, x, y, r, color, rot = 0) {
     const pts = Array.from({ length: 16 }, (_, i) => { const a = rot + i * Math.PI / 8, rr = i % 2 ? r * 0.38 : r; return [x + Math.cos(a) * rr, y + Math.sin(a) * rr]; });
     this.polygon(ctx, pts, color);
+  },
+  // ---- Grand solo SPECIAL scenes (2026-10-17 cycle 34, display only; never mutates game) -------------------------
+  // 戦士 DASH 戦陣突破 / 僧侶 STOPPER 聖光反転 / 盗賊 BRAKE 影すり抜け / 遊び人 ANGLE 水平曲芸 / 賢者 GUARD 聖護結界. The record is
+  // g.combo / g.comboAfter with solo: true (frozen game step, tap skip, repeat rate, reducedMotion short still).
+  GRAND: { DASH: { color: "#ff5a36", glow: "#ffd2a0", stroke: "#4a1208" }, STOPPER: { color: "#ffe9a0", glow: "#fffbe6", stroke: "#5b4210" },
+    BRAKE: { color: "#b06bff", glow: "#e6d0ff", stroke: "#1e0d33" }, ANGLE: { color: "#ffdf3a", glow: "#ff8fd0", stroke: "#6a1b5a" },
+    GUARD: { color: "#5fe0ff", glow: "#d8fbff", stroke: "#0d3550" } },
+  grandState(g) {
+    const live = g?.combo, after = live ? null : g?.comboAfter, k = live || after;
+    if (!k || !k.solo || !this.GRAND[k.type]) return null;
+    const c = Hop.CONFIG, S = this.comboSceneStart(k.short), full = k.short ? c.comboReducedDuration : c.grandDurations[k.type], end = full - S;
+    const afterAge = after ? Math.max(0, after.total - after.remaining) : null;
+    return { type: k.type, short: !!k.short, t: live ? live.elapsed - S : end, end, after: afterAge, afterTotal: after ? after.total : 0,
+      heroWX: k.heroX, heroY: k.heroY, source: k.source, skipped: !!k.skipped, grand: true, climax: c.grandClimax[k.type] };
+  },
+  // Scene clock for drawing: the short (reducedMotion) version is a still tableau just after the climax.
+  grandT(st) { return st.short ? st.climax + 0.45 : st.t + (st.after || 0); },
+  grandImpact(st, reducedMotion) {
+    if (!st || st.short || reducedMotion) return { x: 0, y: 0, flash: 0 };
+    const c = Hop.CONFIG, t = this.grandT(st), b = t - st.climax;
+    let amp = 0, flash = 0;
+    if (b >= 0) { amp = c.grandShakePx[st.type] * Math.max(0, 1 - b / 0.6); flash = Math.max(0, c.grandFlash[st.type] - b * 2.4); }
+    else if (st.type === "DASH" && t > 0.1) amp = 1 + 2.5 * Math.min(1, t / st.climax);       // charge rumble
+    else if (st.type === "GUARD" && t > 0.15) amp = 0.8;
+    else if (st.type === "STOPPER" && t > 0.3) amp = 0.6 + 1.6 * Math.min(1, (t - 0.3) / 0.85);
+    return { x: (Math.sin(t * 67) * 0.7 + Math.sin(t * 109 + 2.1) * 0.3) * amp, y: (Math.cos(t * 83) * 0.7 + Math.cos(t * 127 + 0.7) * 0.3) * amp * 0.7, flash };
+  },
+  // Hero centre on screen (the hero is frozen at the success point; the scene plays around it).
+  grandHero(st, sx, sy) { return { x: sx(st.heroWX), y: sy(st.heroY) - 40 }; },
+  grandCamera(st, reducedMotion, sx, sy, heroScreenX, heroScreenY) {
+    const c = Hop.CONFIG, none = { w: 0, z: 1, fx: c.width / 2, fy: c.height / 2, ax: c.width / 2, ay: c.height / 2 };
+    if (!st || st.short || st.skipped || reducedMotion) return none;
+    const h = this.grandHero(st, sx, sy), l = h.x - 205, r = h.x + 205, top = h.y - 175, bot = h.y + 130;
+    let z = Math.max(1, Math.min(c.comboZoomMax, c.width * c.comboZoomFill / (r - l), c.height * c.comboZoomFill / (bot - top)));
+    let fx = h.x, fy = (top + bot) / 2, w;
+    const t = this.grandT(st), b = t - st.climax;
+    if (st.after === null) w = this.smoother(st.t / c.comboZoomIn);
+    else { w = 1 - this.smoother(st.after / c.comboZoomOut); const u = this.ease(st.after / (c.comboZoomOut * 0.5)); fx += (heroScreenX - fx) * u; fy += (heroScreenY - 30 - fy) * u; }
+    if (!(w > 0)) return none;
+    z *= 1 + 0.07 * Math.exp(-Math.abs(b) * 9); // punch-in at the climax (continuous)
+    const hx = c.width / 2 / z, hy = c.height / 2 / z;
+    fx = Math.max(hx, Math.min(c.width - hx, fx)); fy = Math.max(hy, Math.min(c.height - hy, fy));
+    const zoom = 1 + (z - 1) * w;
+    return { w, z: zoom, full: z, fx, fy, ax: fx + (c.width / 2 - fx) * w, ay: fy + (c.height / 2 - fy) * w };
+  },
+  // The SPECIAL's own character: leaps from its roadside spot to the hero's height (same 5-head sprite, uniform scale).
+  // Side the SPECIAL's character comes from: +1 = the hero's left (normal), -1 = the right when the hero is in the left
+  // half of the screen (the zoomed camera cannot look past the stage edge).
+  grandBack1(st, sx) { return sx(st.heroWX) < Hop.CONFIG.width * 0.5 ? -1 : 1; },
+  grandActor(st, sx, sy, ground) {
+    const c = Hop.CONFIG, t = this.grandT(st), H = st.heroWX, h = this.grandHero(st, sx, sy), feet = h.y + 40 + c.playerRadius;
+    const src = st.source?.x ?? H - 300, S = c.grandActorScale, cl = u => Math.max(0, Math.min(1, u));
+    const leap = (x0, x1, u) => { u = this.glide(u); return { x: x0 + (x1 - x0) * u, dy: (feet - ground) * u - Math.sin(Math.PI * u) * 90 }; };
+    const bk = this.grandBack1(st, sx), fr = bk > 0 ? "right" : "left";
+    const a = { pose: "IDLE", scale: S, face: fr, rotate: 0, alpha: 1, ghosts: [] };
+    if (st.type === "DASH") {
+      const p = t < 0.55 ? leap(src, H - bk * 170, t / 0.55) : { x: H - bk * 170, dy: feet - ground };
+      if (t >= 0.55 && t < 0.75) { p.dy += 8 * Math.sin(Math.PI * (t - 0.55) / 0.2); a.rotate = -bk * 0.12 * Math.sin(Math.PI * cl((t - 0.55) / 0.2)); }
+      if (t >= 0.75) { const u = this.ease(cl((t - 0.75) / 0.2)); p.x = H - bk * 170 + bk * 130 * u; a.rotate = bk * 0.16 * (1 - cl((t - 0.95) / 0.3)); a.pose = "USED";
+        if (t < 1.25) for (let k = 1; k <= 3; k++) { const uk = this.ease(cl((t - 0.03 * k - 0.75) / 0.2)); a.ghosts.push({ x: H - bk * 170 + bk * 130 * uk, dy: p.dy, alpha: (0.45 - k * 0.12) * (1 - cl((t - 0.95) / 0.3)) }); } }
+      Object.assign(a, p);
+    } else if (st.type === "STOPPER") {
+      Object.assign(a, t < 0.4 ? leap(src, H - bk * 150, t / 0.4) : { x: H - bk * 150, dy: feet - ground - 6 * Math.sin(t * 3) });
+      a.pose = t > 0.3 ? "USED" : "IDLE"; a.rotate = -bk * 0.05 * cl((t - 0.3) / 0.3);
+    } else if (st.type === "BRAKE") {
+      // vanishes into the shadow, the clones cross the hero, then reappears behind the hero
+      if (t < 0.2) { Object.assign(a, { x: src, dy: 0, alpha: 1 - t / 0.2 }); }
+      else if (t < 1.1) Object.assign(a, { x: src, dy: 0, alpha: 0 });
+      else { Object.assign(a, { x: H - bk * 140, dy: feet - ground, alpha: cl((t - 1.1) / 0.12), face: fr, pose: "USED" }); }
+      for (let k = 0; k < 6; k++) {
+        const t0 = 0.18 + k * 0.15, u = (t - t0) / 0.24; if (u < 0 || u > 1.6) continue;
+        const dir = k % 2 ? -1 : 1, uu = this.glide(cl(u)), x = H - dir * 300 + dir * 600 * uu, dy = feet - ground + [-60, 40, -20, 70, -45, 15][k];
+        a.ghosts.push({ x, dy, alpha: 0.6 * (1 - cl((u - 1) / 0.6)) * cl(u * 6), face: dir > 0 ? "right" : "left", rotate: dir * 0.25, pose: "USED", clone: true });
+      }
+    } else if (st.type === "ANGLE") {
+      if (t < 0.3) Object.assign(a, leap(src, H - bk * 120, t / 0.3));
+      else if (t < 1.2) {
+        const u = this.smoother((t - 0.3) / 0.9), th = (bk > 0 ? Math.PI : 0) + u * Math.PI * 5, cx = H, cy = feet - ground - 60 * S;
+        const rx = 130 * Math.cos(th), ry = 85 * Math.sin(th), rot = u * Math.PI * 4;
+        // rotate about the body centre: feet = centre + R(rot) * (0, 60 S)
+        a.x = cx + rx - Math.sin(rot) * 60 * S; a.dy = cy + ry + Math.cos(rot) * 60 * S; a.rotate = rot; a.pose = Math.floor(u * 10) % 2 ? "USED" : "IDLE";
+        a.face = Math.cos(th) < 0 ? "right" : "left";
+      } else { const u = this.ease(cl((t - 1.2) / 0.25)); Object.assign(a, { x: H - bk * 130, dy: feet - ground - 30 * Math.sin(Math.PI * u), pose: "USED", face: fr }); }
+    } else { // GUARD
+      Object.assign(a, t < 0.4 ? leap(src, H - bk * 160, t / 0.4) : { x: H - bk * 160, dy: feet - ground - 10 - 6 * Math.sin(t * 2.6) });
+      a.rotate = -bk * 0.06 * cl((t - 0.4) / 0.4);
+    }
+    return a;
+  },
+  grandRand(i, k = 0) { return this.lcRand(i * 7.31 + k * 13.7 + 1.9); },
+  // Behind the hero: darkness, aura, pillar, magic circle, actor + afterimages / clones.
+  grandBack(ctx, st, sx, sy, ground) {
+    const c = Hop.CONFIG, T = this.GRAND[st.type], t = this.grandT(st), b = t - st.climax, h = this.grandHero(st, sx, sy), rm = st.short;
+    const fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal), cl = u => Math.max(0, Math.min(1, u));
+    const A = this.grandActor(st, sx, sy, ground), ax = sx(A.x), afeet = ground + A.dy;
+    ctx.save(); ctx.globalAlpha = fade;
+    // themed screen tint (inside the camera: oversized rect)
+    const tint = { DASH: "rgba(80,10,0,", STOPPER: "rgba(255,240,190,", BRAKE: "rgba(20,0,40,", ANGLE: "rgba(255,120,200,", GUARD: "rgba(0,40,70," }[st.type];
+    const tk = st.type === "BRAKE" ? 0.5 * cl(t / 0.3) * (1 - cl((t - 1.4) / 0.6)) : 0.22 * cl(t / 0.3);
+    if (tk > 0) { ctx.fillStyle = tint + tk + ")"; ctx.fillRect(-2000, -2000, c.width + 4000, c.height + 4000); }
+    if (st.type === "DASH") {
+      const k = cl(t / st.climax), pul = 1 + 0.08 * Math.sin(t * 30);
+      if (b < 0.4) { ctx.save(); ctx.globalAlpha *= (b < 0 ? 0.35 + 0.45 * k : 0.8 * (1 - b / 0.4)); ctx.fillStyle = T.color;
+        ctx.beginPath(); ctx.ellipse(ax, afeet - 60, (60 + 40 * k) * pul, (85 + 40 * k) * pul, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      for (let i = 0; i < 14; i++) { // rising embers
+        const life = (t * 1.3 + this.grandRand(i)) % 1, ex = ax + (this.grandRand(i, 1) - 0.5) * 120, ey = afeet - life * 170;
+        ctx.globalAlpha = fade * (1 - life) * (b < 0.8 ? 1 : 0); this.circle(ctx, ex, ey, 3 + 3 * this.grandRand(i, 2), i % 3 ? "#ffb347" : "#fff2c0");
+      }
+      ctx.globalAlpha = fade;
+      if (t > 0.1 && b < 0.9) { ctx.strokeStyle = "rgba(60,20,10,0.75)"; ctx.lineWidth = 4; // ground cracks at the take-off point
+        for (let i = 0; i < 6; i++) { const L = 70 * cl((t - 0.1) / 0.5), an = Math.PI + (i - 2.5) * 0.35, bk = this.grandBack1(st, sx); ctx.beginPath(); ctx.moveTo(ax, afeet); ctx.lineTo(ax + bk * Math.cos(an) * L * 0.6, afeet + 6 + i % 2 * 4); ctx.lineTo(ax + bk * Math.cos(an) * L, afeet + 10); ctx.stroke(); } }
+      if (t >= 0.72 && b < 0.35) { ctx.save(); ctx.globalAlpha = fade * (b < 0 ? 1 : 1 - b / 0.35); // dash streaks
+        const bk = this.grandBack1(st, sx); for (let i = 0; i < 9; i++) { const y = h.y - 90 + i * 22, len = 300 + 200 * this.grandRand(i, 3); this.line(ctx, [[h.x - bk * len, y], [h.x + bk * 40, y]], i % 2 ? "#ffffff" : T.color, 3 + (i % 3)); } ctx.restore(); }
+    } else if (st.type === "STOPPER") {
+      // halo behind the priest
+      ctx.save(); ctx.globalAlpha = fade * 0.7 * cl(t / 0.4); ctx.strokeStyle = "#fff3b0"; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.arc(ax, afeet - 135, 26 + 4 * Math.sin(t * 6), 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+      // holy pillar: descends 0.3..0.85, holds, then reverses upward at the climax
+      const desc = cl((t - 0.3) / 0.55), wid = 120 * this.ease(cl((t - 0.3) / 0.3)) * (b < 0 ? 1 : 1 + 0.6 * cl(b / 0.2)) * (1 - cl((b - 0.6) / 0.5));
+      if (wid > 1) {
+        const topY = -400, front = topY + (afeet + 60 - topY) * this.ease(desc), up = b >= 0 ? (afeet + 60 - topY) * this.ease(cl(b / 0.45)) : 0;
+        const y0 = b >= 0 ? topY : topY, y1 = b >= 0 ? afeet + 60 - up : front;
+        const gr = ctx.createLinearGradient(h.x - wid, 0, h.x + wid, 0); gr.addColorStop(0, "rgba(255,230,140,0)"); gr.addColorStop(0.35, "rgba(255,240,170,0.75)"); gr.addColorStop(0.5, "rgba(255,255,250,0.95)"); gr.addColorStop(0.65, "rgba(255,240,170,0.75)"); gr.addColorStop(1, "rgba(255,230,140,0)");
+        ctx.fillStyle = gr; ctx.fillRect(h.x - wid, y0, wid * 2, Math.max(0, y1 - y0));
+        for (let i = 0; i < 34; i++) { const life = (t * (b >= 0 ? 2.4 : 0.9) + this.grandRand(i)) % 1, mx = h.x + (this.grandRand(i, 1) - 0.5) * wid * 1.6, my = afeet + 40 - life * 620;
+          if (my < y0 || my > y1) continue; ctx.globalAlpha = fade * (1 - life); this.spark(ctx, mx, my, 5 + 5 * this.grandRand(i, 2), "#ffffff", t * 3 + i); }
+        ctx.globalAlpha = fade;
+      }
+    } else if (st.type === "GUARD") {
+      // magic circle behind the hero: rings + hexagram + runes drawn progressively, counter-rotating
+      const draw = this.ease(cl((t - 0.12) / 0.8)), R = 125 * (1 + 0.05 * Math.sin(t * 4)) * (b > 0.9 ? 1 + 0.3 * cl((b - 0.9) / 0.4) : 1);
+      ctx.save(); ctx.globalAlpha = fade * (b > 0.9 ? 1 - cl((b - 0.9) / 0.4) : 1); ctx.translate(h.x, h.y); ctx.strokeStyle = T.color; ctx.lineWidth = 5; ctx.shadowColor = T.color; ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * draw); ctx.stroke();
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, R * 0.8, Math.PI / 2, Math.PI / 2 - Math.PI * 2 * draw, true); ctx.stroke();
+      ctx.rotate(t * 0.9);
+      for (let tri = 0; tri < 2; tri++) { const u = cl(draw * 2 - tri * 0.6); if (u <= 0) continue; ctx.beginPath();
+        for (let i = 0; i <= 3 * u; i++) { const an = tri * Math.PI / 3 + i * Math.PI * 2 / 3 - Math.PI / 2; const px = Math.cos(an) * R * 0.8, py = Math.sin(an) * R * 0.8; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
+      ctx.rotate(-t * 1.8); ctx.lineWidth = 2;
+      for (let i = 0; i < 12; i++) { if (i / 12 > draw) break; const an = i * Math.PI / 6, rx = Math.cos(an) * R * 0.9, ry = Math.sin(an) * R * 0.9;
+        ctx.save(); ctx.translate(rx, ry); ctx.rotate(an); ctx.beginPath(); ctx.moveTo(-5, -6); ctx.lineTo(5, -6); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.moveTo(-4, 3); ctx.lineTo(4, 3); ctx.stroke(); ctx.restore(); }
+      ctx.restore();
+      // ground circle under the sage
+      ctx.save(); ctx.globalAlpha = fade * 0.8 * cl(t / 0.4); ctx.strokeStyle = T.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(ax, afeet, 60, 14, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    } else if (st.type === "ANGLE" && t > 0.3) {
+      // rainbow ribbon along the jester's last 0.35 s of path
+      const hues = ["#ff4d6d", "#ffb340", "#ffe066", "#5fd35f", "#4dc3ff", "#a46bff"];
+      for (let k = 0; k < 18; k++) { const tk2 = t - k * 0.02; if (tk2 < 0.3) break;
+        const p = this.grandActor({ ...st, t: tk2, after: null, short: false }, sx, sy, ground), px = sx(p.x) + Math.sin(p.rotate) * 60 * c.grandActorScale, py = ground + p.dy - Math.cos(p.rotate) * 60 * c.grandActorScale;
+        ctx.globalAlpha = fade * (1 - k / 18) * (b < 0.4 ? 1 : 1 - cl((b - 0.4) / 0.4)); this.circle(ctx, px, py, 14 - k * 0.5, hues[k % 6]); }
+      ctx.globalAlpha = fade;
+    }
+    if (st.type === "BRAKE" && t > 0.1 && b < 1.0) for (let i = 0; i < 32; i++) { // drifting shadow wisps around the hero
+      const life = (t * 0.8 + this.grandRand(i, 13)) % 1, an = this.grandRand(i, 14) * Math.PI * 2, r = 60 + 150 * life;
+      ctx.globalAlpha = fade * 0.55 * (1 - life) * (b < 0.6 ? 1 : 1 - (b - 0.6) / 0.4); this.circle(ctx, h.x + Math.cos(an) * r, h.y + Math.sin(an) * r * 0.6, 10 + 14 * life, i % 3 ? "#3a1760" : "#7d4bc0"); }
+    ctx.globalAlpha = fade;
+    // actor afterimages / shadow clones, then the actor
+    const id = st.type;
+    for (const gh of A.ghosts) {
+      if (gh.clone) { ctx.save(); ctx.globalAlpha = fade * gh.alpha * 0.8; ctx.fillStyle = "#2a0b45"; ctx.beginPath(); ctx.ellipse(sx(gh.x), ground + gh.dy - 60, 50, 75, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      this.comboCast(ctx, id, { x: gh.x, dy: gh.dy, pose: gh.pose || A.pose, scale: A.scale, face: gh.face || A.face, rotate: gh.rotate ?? A.rotate }, sx, ground, fade * gh.alpha);
+      if (gh.clone && !rm) { ctx.save(); ctx.globalAlpha = fade * gh.alpha; this.line(ctx, [[sx(gh.x) - 160 * Math.sign(gh.rotate), ground + gh.dy - 70], [sx(gh.x), ground + gh.dy - 60]], "#d9b8ff", 3); ctx.restore(); }
+    }
+    // smear afterimages of the actor while it leaps / dashes / spins (same sprite, earlier placements)
+    if (!rm && st.after === null && A.alpha > 0.5) for (let k = 2; k >= 1; k--) {
+      const p = this.grandActor({ ...st, t: st.t - 0.035 * k }, sx, sy, ground);
+      if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * (k === 1 ? 0.32 : 0.16));
+    }
+    if (A.alpha > 0.01) this.comboCast(ctx, id, A, sx, ground, fade * A.alpha);
+    ctx.restore();
+  },
+  // In front of the hero: shockwaves, slashes, confetti, barrier dome, label (returned as overlay items).
+  grandFront(ctx, st, sx, sy, ground) {
+    const c = Hop.CONFIG, T = this.GRAND[st.type], t = this.grandT(st), b = t - st.climax, h = this.grandHero(st, sx, sy), cl = u => Math.max(0, Math.min(1, u));
+    const fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal), overlay = [];
+    ctx.save(); ctx.globalAlpha = fade;
+    if (b >= 0) {
+      // common climax burst: double shockwave + radial spikes
+      for (let k = 0; k < 2; k++) { const u = cl((b - k * 0.08) / 0.55); if (u <= 0 || u >= 1) continue;
+        ctx.save(); ctx.globalAlpha = fade * (1 - u); ctx.strokeStyle = k ? "#ffffff" : T.color; ctx.lineWidth = 14 * (1 - u) + 2;
+        ctx.beginPath(); ctx.ellipse(h.x, h.y, 40 + 300 * this.ease(u), (40 + 300 * this.ease(u)) * (st.type === "DASH" ? 0.55 : 0.9), 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      if (b < 0.35) { ctx.save(); ctx.globalAlpha = fade * (1 - b / 0.35); this.spark(ctx, h.x, h.y, 90 + 160 * this.ease(b / 0.35), T.glow, b * 2); this.spark(ctx, h.x, h.y, 50 + 90 * this.ease(b / 0.35), "#ffffff", 0.4 - b); ctx.restore(); }
+    }
+    if (st.type === "DASH" && b >= 0) {
+      for (let i = 0; i < 12; i++) { // debris rocks with gravity
+        const an = -Math.PI * (0.1 + 0.8 * this.grandRand(i, 4)), v = 380 + 300 * this.grandRand(i, 5), u = Math.min(b, 1.2);
+        const px = h.x + this.grandBack1(st, sx) * Math.cos(an) * v * u, py = h.y + 30 + Math.sin(an) * v * u + 600 * u * u, s = 5 + 6 * this.grandRand(i, 6);
+        ctx.globalAlpha = fade * (1 - cl((b - 0.7) / 0.5)); this.polygon(ctx, [[px - s, py], [px, py - s], [px + s, py + s * 0.4]], i % 2 ? "#7a4a2a" : "#b07040"); }
+      ctx.globalAlpha = fade;
+      if (b < 0.25) { ctx.save(); ctx.globalAlpha = fade * (1 - b / 0.25); const bk = this.grandBack1(st, sx); for (let i = 0; i < 8; i++) this.line(ctx, [[h.x + bk * 20, h.y - 70 + i * 20], [h.x + bk * (380 + i * 25), h.y - 70 + i * 20]], i % 2 ? "#ffffff" : "#ffcf70", 5); ctx.restore(); }
+    } else if (st.type === "STOPPER") {
+      if (t > 0.6 && b < 0.6) { const k = b < 0 ? cl((t - 0.6) / 0.4) : 1 - b / 0.6; ctx.save(); ctx.globalAlpha = fade * k; // cross glint on the hero
+        this.line(ctx, [[h.x, h.y - 70 * k - 30], [h.x, h.y + 70 * k + 30]], "#ffffff", 6); this.line(ctx, [[h.x - 45 * k - 20, h.y - 10], [h.x + 45 * k + 20, h.y - 10]], "#ffffff", 6); ctx.restore(); }
+      if (b >= 0) for (let i = 0; i < 12; i++) { // feathers drifting down
+        const u = Math.min(b, 1.3), px = h.x + (this.grandRand(i, 7) - 0.5) * 380 + Math.sin(b * 3 + i) * 20, py = h.y - 200 + 160 * this.grandRand(i, 8) + 110 * u;
+        ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.8) / 0.5)); ctx.translate(px, py); ctx.rotate(Math.sin(b * 4 + i) * 0.6); ctx.fillStyle = "#fffdf0"; ctx.beginPath(); ctx.ellipse(0, 0, 4, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    } else if (st.type === "BRAKE") {
+      for (let k = 0; k < 6; k++) { const t0 = 0.18 + k * 0.15 + 0.1, u = (t - t0) / 0.4; if (u < 0 || u > 1) continue; // clone slash across the hero
+        const dir = k % 2 ? -1 : 1, yy = h.y + [-30, 20, -5, 35, -20, 10][k]; ctx.save(); ctx.globalAlpha = fade * (1 - u); this.line(ctx, [[h.x - 150 * dir, yy - 40 * dir], [h.x + 150 * dir, yy + 40 * dir]], k % 2 ? "#ffffff" : T.color, 7 * (1 - u) + 2); ctx.restore(); }
+      if (b >= 0 && b < 0.7) { const u = this.ease(cl(b / 0.12)), a = 1 - cl((b - 0.3) / 0.4); ctx.save(); ctx.globalAlpha = fade * a; // final cross slash
+        this.line(ctx, [[h.x - 130 * u, h.y - 110 * u], [h.x + 130 * u, h.y + 110 * u]], "#ffffff", 10); this.line(ctx, [[h.x + 130 * u, h.y - 110 * u], [h.x - 130 * u, h.y + 110 * u]], T.color, 10); ctx.restore(); }
+      if (t > 1.1 && t < 1.7) { const u = cl((t - 1.1) / 0.6); ctx.save(); ctx.globalAlpha = fade * (1 - u) * 0.8; // smoke puff where the thief reappears
+        for (let i = 0; i < 7; i++) this.circle(ctx, h.x - this.grandBack1(st, sx) * 140 + Math.cos(i) * 50 * (0.5 + u), h.y + 30 + Math.sin(i * 1.7) * 30 * (0.5 + u), 18 + 16 * u, "#5a4a70"); ctx.restore(); }
+    } else if (st.type === "ANGLE") {
+      if (t > 0.3 && t < 1.25) for (let i = 0; i < 6; i++) { const an = t * 6 + i * Math.PI / 3; ctx.globalAlpha = fade * 0.9; this.spark(ctx, h.x + Math.cos(an) * 170, h.y + Math.sin(an) * 110, 9, ["#ffe066", "#ff8fd0", "#7df9ff"][i % 3], an); }
+      ctx.globalAlpha = fade;
+      if (b >= 0) {
+        const cols = ["#ff4d6d", "#ffb340", "#ffe066", "#5fd35f", "#4dc3ff", "#a46bff", "#ffffff"];
+        for (let i = 0; i < 72; i++) { // confetti burst with gravity + flutter
+          const an = -Math.PI * this.grandRand(i, 9), v = 300 + 420 * this.grandRand(i, 10), u = Math.min(b, 1.4);
+          const px = h.x + Math.cos(an) * v * u + Math.sin(b * 8 + i) * 8, py = h.y + Math.sin(an) * v * u + 520 * u * u;
+          ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.9) / 0.5)); ctx.translate(px, py); ctx.rotate(b * 9 + i); ctx.fillStyle = cols[i % 7]; ctx.fillRect(-5, -3, 10, 6); ctx.restore(); }
+        if (b < 0.6) { const u = this.ease(cl(b / 0.45)), ax = h.x - 420 + 840 * u; ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.35) / 0.25)); // horizontal rainbow arrow sweep
+          cols.slice(0, 6).forEach((col, i) => this.line(ctx, [[ax - 300, h.y - 25 + i * 9], [ax, h.y - 25 + i * 9]], col, 8));
+          this.polygon(ctx, [[ax, h.y - 45], [ax + 60, h.y + 2], [ax, h.y + 50]], "#ffffff"); ctx.restore(); }
+      }
+    } else if (st.type === "GUARD" && b >= 0) {
+      // barrier dome: hex lattice inside a growing sphere, then a shimmer pulse
+      const R = 108 * this.ease(cl(b / 0.3)) * (1 + 0.03 * Math.sin(b * 12)), a = 0.85 - 0.45 * cl((b - 0.3) / 0.8);
+      if (R > 2) { ctx.save(); ctx.globalAlpha = fade * a; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2);
+        const gr = ctx.createRadialGradient(h.x, h.y, R * 0.2, h.x, h.y, R); gr.addColorStop(0, "rgba(120,230,255,0.08)"); gr.addColorStop(1, "rgba(120,230,255,0.45)"); ctx.fillStyle = gr; ctx.fill();
+        ctx.clip(); ctx.strokeStyle = "rgba(220,250,255,0.85)"; ctx.lineWidth = 2;
+        for (let gx = -4; gx <= 4; gx++) for (let gy = -4; gy <= 4; gy++) { const cx = h.x + gx * 36 + (gy % 2 ? 18 : 0), cy = h.y + gy * 31; ctx.beginPath();
+          for (let i = 0; i <= 6; i++) { const an = i * Math.PI / 3 + Math.PI / 6; const px = cx + Math.cos(an) * 20, py = cy + Math.sin(an) * 20; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
+        ctx.restore(); ctx.save(); ctx.globalAlpha = fade * a; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      for (let i = 0; i < 14; i++) { const life = (b * 0.9 + this.grandRand(i, 11)) % 1, px = h.x + (this.grandRand(i, 12) - 0.5) * 220, py = h.y + 90 - life * 260;
+        ctx.globalAlpha = fade * (1 - life) * (1 - cl((b - 1.0) / 0.4)); this.spark(ctx, px, py, 6, "#e8fdff", i + b * 2); }
+      ctx.globalAlpha = fade;
+    }
+    ctx.restore();
+    // skill name label (pops at the climax) + skip hint
+    const name = c.specials[st.type].name, life = st.short ? { a: 1, s: 1 } : this.labelLife(t, st.climax, st.end + 0.6);
+    if (st.short || b >= 0) overlay.push({ kind: "label", text: `${name}!!`, x: h.x, y: h.y - 120, dx: 0, dy: 0, size: 64, color: T.color, stroke: T.stroke, alpha: fade * life.a, scale: life.s });
+    if (st.after === null && !st.short) overlay.push({ kind: "hint", text: "タップでスキップ ▶▶" });
+    return overlay;
   },
   // Behind the hero: magic circle, actors, afterimages, aura / rings.
   comboBack(ctx, st, sx, sy, ground) {

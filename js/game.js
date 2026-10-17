@@ -9,6 +9,8 @@ Hop.Game = class {
     // callers keep the original immediate flight. launchCutinReduced mirrors reduced motion (UI); views counts
     // plays per session (kept across RETRY) so later launches use the shorter repeat version.
     this.launchCutinEnabled = false; this.launchCutinReduced = false; this.launchCutinViews = 0;
+    // Grand solo SPECIAL scenes (cycle 34, display only): switched on by main.js; headless suites keep the old timeline.
+    this.grandSpecialEnabled = false;
     // Tempo & feedback (display / UX only; see config "Tempo & feedback"). tempoEnabled is switched on by main.js;
     // headless callers keep the original wall-clock behaviour. comboViews counts combo scenes per type per session.
     this.tempoEnabled = false; this.comboViews = { BOOST: 0, BOUNCE: 0 };
@@ -466,6 +468,8 @@ Hop.Game = class {
       this.soundEvent = pending.merchantType ? "SPECIAL_MERCHANT" : `SPECIAL_${pending.type}`;
       this.contact = { label: pending.type, remaining: c.contactDuration };
       if (!pending.merchantType && this.comboEnabled && pending.partner && (pending.type === "BOOST" || pending.type === "BOUNCE")) this.startCombo(pending);
+      // Grand solo scene (cycle 34): same frozen, skippable scene record (solo: true); the effect above is already applied.
+      else if (!pending.merchantType && this.comboEnabled && this.grandSpecialEnabled && c.grandDurations?.[pending.type]) this.startCombo(pending, true);
     } else {
       this.normalContact(pending.type, pending.entry, pending.guardAtContact);
       if (this.endCause?.kind === "stopper" && this.body.stopped) this.setEndCause({ kind: "stopper", miss: true });
@@ -485,12 +489,13 @@ Hop.Game = class {
   }
   // Combo SPECIAL scene (display only). The launch vector was already applied by resolveSpecial; while
   // this.combo exists the game step is frozen (see update), so the flight result is unchanged.
-  startCombo(pending) {
+  startCombo(pending, solo = false) {
     const c = Hop.CONFIG, short = !!this.comboShort;
     this.combo = {
       type: pending.type, source: pending.source || null, partner: pending.partner,
       heroX: this.body.x, heroY: this.body.y, elapsed: 0, short, skipped: false,
-      total: short ? c.comboReducedDuration : pending.type === "BOOST" ? c.comboWitchDuration : c.comboFighterDuration,
+      total: short ? c.comboReducedDuration : solo ? c.grandDurations[pending.type] : pending.type === "BOOST" ? c.comboWitchDuration : c.comboFighterDuration,
+      solo,
       // Repeat view of this combo type in the session (tempo mode): the scene clock runs comboRepeatRate x.
       rate: this.tempoEnabled && !short && this.comboViews[pending.type] > 0 ? c.comboRepeatRate : 1
     };

@@ -81,17 +81,21 @@ Hop.UI = class {
     if (g.comboShort !== !!this.visual.reducedMotion) g.comboShort = !!this.visual.reducedMotion;
     // Unmuted mid-scene (cycle 30): the scene SE continues from where the scene is (mute had stopped the track).
     const unmuted = this.audioWasMuted && !Hop.Audio?.muted; this.audioWasMuted = !!Hop.Audio?.muted;
+    // Scene SE track: combo (witch / fighter) or grand solo (cycle 34: GRAND_<type>, short = GRAND_SHORT; no voice).
+    const sceneTrack = k => k.solo ? (k.short ? "GRAND_SHORT" : `GRAND_${k.type}`) : `COMBO_${k.type === "BOOST" ? "WITCH" : "FIGHTER"}${k.short ? "_SHORT" : ""}`;
     if (unmuted && g.combo && g.combo === this.comboSeen) {
-      try { Hop.Audio?.resumeCombo?.(`COMBO_${g.combo.type === "BOOST" ? "WITCH" : "FIGHTER"}${g.combo.short ? "_SHORT" : ""}`, g.combo.elapsed, g.combo.rate || 1); } catch { /* SE is optional. */ }
+      try { Hop.Audio?.resumeCombo?.(sceneTrack(g.combo), g.combo.elapsed, g.combo.rate || 1); } catch { /* SE is optional. */ }
     }
     if (g.combo && g.combo !== this.comboSeen) {
       this.comboSeen = g.combo;
-      Hop.Audio?.playCombo?.(`COMBO_${g.combo.type === "BOOST" ? "WITCH" : "FIGHTER"}${g.combo.short ? "_SHORT" : ""}`, g.combo.elapsed, g.combo.rate || 1);
-      this.comboFinishVoicePlayed = false;
+      Hop.Audio?.playCombo?.(sceneTrack(g.combo), g.combo.elapsed, g.combo.rate || 1);
+      this.comboFinishVoicePlayed = !!g.combo.solo;
       const kind = g.combo.type === "BOOST" ? "witch" : "fighter";
+      if (!g.combo.solo) {
       const id = g.combo.short ? `combo_${kind}_short` : `combo_${kind}_call`;
       const event = g.combo.short ? `COMBO_${kind.toUpperCase()}_REDUCED_MOTION` : `COMBO_${kind.toUpperCase()}_START`;
       Hop.Voice?.play?.(id, g.debug, event);
+      }
     } else if (!g.combo && this.comboSeen) {
       if (this.comboSeen.skipped || g.state !== s.FLYING) {
         Hop.Audio?.stopCombo?.();
@@ -100,7 +104,7 @@ Hop.UI = class {
       this.comboSeen = null;
       this.comboFinishVoicePlayed = false;
     }
-    if (g.combo && !g.combo.short && !this.comboFinishVoicePlayed) {
+    if (g.combo && !g.combo.short && !g.combo.solo && !this.comboFinishVoicePlayed) {
       const witch = g.combo.type === "BOOST", threshold = witch ? c.comboWitchTimes.blast : c.comboFighterTimes.upper;
       if (g.combo.elapsed >= threshold) {
         this.comboFinishVoicePlayed = true;

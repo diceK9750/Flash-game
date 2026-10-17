@@ -89,8 +89,41 @@ Hop.Audio = {
         ["tone", S + 1.90, 0.85, 0.12, "sine", 110, 26, 0.003], ["noise", S + 1.90, 0.9, 0.1, "lowpass", 3000, 100, 0.8], // massive impact
         ["noise", S + 1.90, 0.08, 0.06, "highpass", 2500, 2500, 0.7], ["tone", S + 1.90, 0.3, 0.04, "sawtooth", 70, 40, 0.003],
         ["noise", S + 2.02, 0.35, 0.045, "bandpass", 500, 3000, 1.0]]);                                     // hero launched up
+    // Grand solo SPECIAL scenes (2026-10-17 cycle 34): times from the success, scene from S; climax = config grandClimax.
+    const boom = (t, k = 1) => [["tone", t, 0.8 * k, 0.11, "sine", 105, 28, 0.003], ["noise", t, 0.85 * k, 0.1, "lowpass", 3000, 110, 0.8], ["noise", t, 0.09, 0.05, "highpass", 2600, 2600, 0.7]];
+    const chime = (t, fs, gap = 0.08, g = 0.02) => fs.map((f, i) => ["tone", t + i * gap, 0.35, g, "sine", f, f, 0.004]);
+    const grand = {
+      // 戦士: rumbling charge -> dash whoosh -> shockwave impact -> debris rattle
+      DASH: [["noise", S, 0.55, 0.04, "lowpass", 160, 420, 0.9], ["tone", S, 0.7, 0.04, "sawtooth", 60, 140, 0.2], ["tone", S + 0.1, 0.6, 0.02, "triangle", 180, 520, 0.2],
+        ["noise", S + 0.72, 0.25, 0.07, "bandpass", 500, 4200, 1.2]].concat(boom(S + 0.95, 1.1),
+        [["tone", S + 0.95, 0.35, 0.05, "sawtooth", 90, 45, 0.003]], [0, 1, 2, 3, 4].map(i => ["noise", S + 1.05 + i * 0.07, 0.06, 0.03, "bandpass", 1800 - i * 200, 900, 1.4])),
+      // 僧侶: choir pad -> descending shimmer (pillar) -> reversal bell + upward whoosh
+      STOPPER: [["tone", S, 1.2, 0.025, "triangle", 392, 392, 0.3], ["tone", S, 1.2, 0.02, "triangle", 493.9, 493.9, 0.3], ["tone", S, 1.2, 0.018, "triangle", 587.3, 587.3, 0.3],
+        ["noise", S + 0.3, 0.75, 0.025, "highpass", 9000, 4000, 0.7]].concat(chime(S + 0.35, [3136, 2637, 2349, 1976, 1568], 0.12, 0.015), boom(S + 1.15, 0.9),
+        [["noise", S + 1.15, 0.45, 0.06, "bandpass", 400, 5000, 1.0], ["tone", S + 1.15, 1.1, 0.04, "sine", 1046.5, 1046.5, 0.005], ["tone", S + 1.15, 1.1, 0.025, "sine", 1568, 1568, 0.005]],
+        chime(S + 1.3, [1568, 2093, 2637, 3136], 0.07, 0.016)),
+      // 盗賊: dark swell -> four shadow swishes -> final cross slash + vanish puff
+      BRAKE: [["tone", S, 0.9, 0.03, "sine", 70, 55, 0.2], ["noise", S, 0.4, 0.02, "lowpass", 300, 200, 0.9]]
+        .concat([0, 1, 2, 3].map(i => ["noise", S + 0.2 + i * 0.2, 0.18, 0.05, "bandpass", 3000 - i * 300, 900, 1.3]),
+          [["noise", S + 1.2, 0.08, 0.07, "highpass", 4000, 4000, 0.8], ["noise", S + 1.27, 0.08, 0.06, "highpass", 5000, 5000, 0.8], ["tone", S + 1.2, 0.4, 0.04, "sawtooth", 880, 220, 0.003]],
+          boom(S + 1.2, 0.7), [["noise", S + 1.35, 0.5, 0.025, "lowpass", 1200, 300, 0.8]]),
+      // 遊び人: comic pipe run while spinning -> pop + confetti crackle + whistle
+      ANGLE: [0, 1, 2, 3, 4, 5, 6, 7].map(i => ["tone", S + 0.3 + i * 0.11, 0.1, 0.022, "square", [523.3, 659.3, 784, 1046.5, 784, 659.3, 784, 1046.5][i], [523.3, 659.3, 784, 1046.5, 784, 659.3, 784, 1046.5][i], 0.003])
+        .concat([["tone", S + 0.3, 0.9, 0.02, "triangle", 300, 900, 0.05]], boom(S + 1.2, 0.6),
+          [["tone", S + 1.2, 0.5, 0.03, "sine", 1400, 2800, 0.01]], Array.from({ length: 10 }, (_, i) => ["noise", S + 1.25 + i * 0.05, 0.04, 0.02, "highpass", 6000 + i * 300, 6000, 0.7])),
+      // 賢者: magic circle arpeggio -> barrier hum -> crystal impact
+      GUARD: [["tone", S + 0.1, 1.0, 0.025, "sine", 220, 220, 0.3], ["tone", S + 0.1, 1.0, 0.018, "sine", 330, 330, 0.3]]
+        .concat(chime(S + 0.15, [880, 1108.7, 1318.5, 1760, 2217.5, 2637], 0.13, 0.016), boom(S + 1.0, 0.8),
+          [["tone", S + 1.0, 1.2, 0.035, "triangle", 440, 446, 0.02], ["tone", S + 1.0, 1.2, 0.025, "sine", 1760, 1772, 0.01]], chime(S + 1.05, [3520, 2960, 4186], 0.06, 0.014))
+    };
+    // afterglow tail (rings out through the end of the scene, like the combo explosions)
+    const tail = (t, f) => [["tone", t, 1.7, 0.016, "sine", f, f * 1.01, 0.08], ["noise", t, 1.2, 0.012, "lowpass", 1400, 200, 0.7]];
+    grand.DASH.push(...tail(S + 1.45, 196)); grand.STOPPER.push(...tail(S + 1.65, 784)); grand.BRAKE.push(...tail(S + 1.7, 147));
+    grand.ANGLE.push(...tail(S + 1.7, 523.3)); grand.GUARD.push(...tail(S + 1.5, 659.3));
     const R = 0.4; // reducedMotion short version: scene from the still cut-in end
     return {
+      GRAND_DASH: grand.DASH, GRAND_STOPPER: grand.STOPPER, GRAND_BRAKE: grand.BRAKE, GRAND_ANGLE: grand.ANGLE, GRAND_GUARD: grand.GUARD,
+      GRAND_SHORT: [["tone", R, 0.4, 0.03, "triangle", 330, 660, 0.03], ["noise", R + 0.05, 0.4, 0.05, "lowpass", 2400, 160, 0.8]],
       COMBO_WITCH: witch, COMBO_FIGHTER: fighter,
       COMBO_WITCH_SHORT: [["tone", R, 0.3, 0.025, "sine", 220, 330, 0.08]].concat(hit(R + 0.05)).concat([["noise", R + 0.3, 0.45, 0.06, "lowpass", 2000, 160, 0.8]]),
       COMBO_FIGHTER_SHORT: [["tone", R, 0.25, 0.03, "triangle", 300, 900, 0.03], ["tone", R + 0.3, 0.4, 0.07, "sine", 105, 34, 0.003], ["noise", R + 0.3, 0.4, 0.06, "lowpass", 2200, 120, 0.8]]

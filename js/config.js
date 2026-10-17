@@ -96,6 +96,15 @@ Hop.CONFIG = Object.freeze({
   comboFighterTimes: Object.freeze({ arrive: 0.40, buffEnd: 0.85, crouch: 1.05, gone: 1.25, rise: 1.72, upper: 1.90, hitstop: 0.10 }),
   comboFighterScale: 3.4, comboFighterLiftPx: 260, comboFighterFollowPx: 110,
   comboShakePx: 9,
+  // Grand solo SPECIAL scenes (2026-10-17 cycle 34, display only) for 戦士 DASH / 僧侶 STOPPER / 盗賊 BRAKE / 遊び人 ANGLE /
+  // 賢者 GUARD successes: same freeze / skip / repeat-rate / reducedMotion-short rules as the combo scenes (the SPECIAL
+  // effect is applied at success exactly as before; only wall time is added). Browser game only (game.grandSpecialEnabled,
+  // set by main.js). Durations count from the success (cut-in included); climax = scene-relative time of the big hit.
+  grandDurations: Object.freeze({ DASH: 3.2, STOPPER: 3.2, BRAKE: 3.2, ANGLE: 3.2, GUARD: 3.2 }),
+  grandClimax: Object.freeze({ DASH: 0.95, STOPPER: 1.15, BRAKE: 1.2, ANGLE: 1.2, GUARD: 1.0 }),
+  grandShakePx: Object.freeze({ DASH: 13, STOPPER: 11, BRAKE: 10, ANGLE: 10, GUARD: 10 }),
+  grandFlash: Object.freeze({ DASH: 0.8, STOPPER: 0.9, BRAKE: 0.7, ANGLE: 0.7, GUARD: 0.75 }),
+  grandActorScale: 1.15,
   // Combo camera (display only): max zoom, part of the canvas the actors' box may fill, box margin (px), zoom-in / back times (s).
   comboLabelMaxW: 0.5, comboZoomMax: 2.4, comboZoomFill: 0.82, comboZoomMargin: 26, comboZoomIn: 0.3, comboZoomOut: 0.5,
   // State-based conditions; success sets a launch vector (px/s, degrees).
