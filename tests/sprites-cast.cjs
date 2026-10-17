@@ -34,6 +34,22 @@ const COMBO_POSE = {
   'BOUNCE.PUNCH': { dir: 'assets/sprites/cast/bounce_fighter_combo_v1/', w: 384, pivot: { x: 192, y: 264 }, facing: 'right', ratio: 'standing' },
   'BOUNCE.UPPER': { dir: 'assets/sprites/cast/bounce_fighter_combo_v1/', w: 288, pivot: { x: 144, y: 264 }, facing: 'right', ratio: 'value' }
 };
+// Grand-scene poses (cycle 36, drawn only by the solo SPECIAL scenes; adopted art in *_special_v1/): cell, feet / palm
+// pivot, stored facing, adoption mirror (flip) and the effect hotspot. 頭身 4.75..5.25, deferred load (grandPose).
+const GRAND_POSE = {
+  'DASH.WINDUP': { dir: 'assets/sprites/cast/dash_warrior_special_v1/', w: 384, h: 288, pivot: { x: 192, y: 264 }, facing: 'left', flip: false },
+  'DASH.THRUST': { dir: 'assets/sprites/cast/dash_warrior_special_v1/', w: 384, h: 288, pivot: { x: 192, y: 264 }, facing: 'left', flip: true },
+  'DASH.FINISH': { dir: 'assets/sprites/cast/dash_warrior_special_v1/', w: 384, h: 384, pivot: { x: 192, y: 380 }, facing: 'left', flip: true },
+  'STOPPER.PRAY': { dir: 'assets/sprites/cast/stopper_cleric_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'left', flip: false },
+  'STOPPER.RELEASE': { dir: 'assets/sprites/cast/stopper_cleric_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'left', flip: true },
+  'BRAKE.SHADOW': { dir: 'assets/sprites/cast/brake_thief_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'left', flip: false },
+  'BRAKE.SLASH': { dir: 'assets/sprites/cast/brake_thief_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'left', flip: false },
+  'ANGLE.HANDSTAND': { dir: 'assets/sprites/cast/angle_jester_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'left', flip: false },
+  'ANGLE.TADA': { dir: 'assets/sprites/cast/angle_jester_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'right', flip: true },
+  'GUARD.CHANT': { dir: 'assets/sprites/cast/guard_sage_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'left', flip: true },
+  'GUARD.BARRIER': { dir: 'assets/sprites/cast/guard_sage_special_v1/', w: 288, h: 288, pivot: { x: 144, y: 264 }, facing: 'left', flip: true }
+};
+const GRAND_KEYS = { DASH: ['WINDUP', 'THRUST', 'FINISH'], STOPPER: ['PRAY', 'RELEASE'], BRAKE: ['SHADOW', 'SLASH'], ANGLE: ['HANDSTAND', 'TADA'], GUARD: ['CHANT', 'BARRIER'] };
 const USED_POSE = { BOUNCE: 'KICK', BOOST: 'USED', BRAKE: 'USED', ANGLE: 'USED' }; // shipped pose-1 (used / post-contact) slots
 // Minimal PNG decoder (8-bit RGBA, non-interlaced) -> alpha channel; test-only.
 function pngAlpha(buf) {
@@ -106,7 +122,7 @@ if (process.argv.includes('--loader')) {
   assert.deepEqual(Object.keys(C), IDS);
   for (const id of IDS) {
     assert(H.CAST[id], id + ' is a CAST id');
-    const expectedKeys = id === 'BOUNCE' ? ['IDLE', 'KICK', 'PUNCH', 'UPPER', 'CUTIN_FACE'] : id === 'BOOST' ? ['IDLE', 'USED', 'CAST', 'CUTIN_FACE'] : USED_POSE[id] ? ['IDLE', USED_POSE[id], 'CUTIN_FACE'] : ['IDLE', 'CUTIN_FACE'];
+    const expectedKeys = id === 'BOUNCE' ? ['IDLE', 'KICK', 'PUNCH', 'UPPER', 'CUTIN_FACE'] : id === 'BOOST' ? ['IDLE', 'USED', 'CAST', 'CUTIN_FACE'] : [...(USED_POSE[id] ? ['IDLE', USED_POSE[id]] : ['IDLE']), ...(GRAND_KEYS[id] || []), 'CUTIN_FACE'];
     assert.deepEqual(Object.keys(C[id]), expectedKeys);
     // Generic used (post-contact) pose: at most one pose: 1 slot per character, never IDLE.
     assert(Object.values(C[id]).filter(d => d.pose === 1).length <= 1, id + ': one pose-1 slot at most');
@@ -117,7 +133,7 @@ if (process.argv.includes('--loader')) {
         assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, 'CUTIN_FACE', 1, 1, false, false]);
         assert.equal(def.scale, 1);
       } else {
-        assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, id === 'DASH' || id === 'GUARD']); // mirrored: the warrior (sword right, shield left) and the redesigned sage (staff right, book left), like the Canvas figures; the redesigned fighter kick, thief and jester already face the Canvas way
+        assert.deepEqual([def.id, def.animation, def.frames, def.fps, def.loop, def.flip], [id, name, 1, 1, false, GRAND_POSE[id + '.' + name] ? GRAND_POSE[id + '.' + name].flip : id === 'DASH' || id === 'GUARD']); // grand poses: the adoption mirror; mirrored: the warrior (sword right, shield left) and the redesigned sage (staff right, book left), like the Canvas figures; the redesigned fighter kick, thief and jester already face the Canvas way
         assert.equal(def.scale, id === 'SPECIAL_ONLY' ? 1.25 * 1.25 / 1.365 : 1.25);
       }
       for (const ref of [def.src, def.metadata]) {
@@ -135,7 +151,24 @@ if (process.argv.includes('--loader')) {
       if (present) {
         const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
         const hd = HD_CAST[id + '.' + name], png = fs.readFileSync(path.join(root, def.src)), combo = COMBO_POSE[id + '.' + name];
-        if (combo) {
+        const grand = GRAND_POSE[id + '.' + name];
+        if (grand) {
+          // Grand-scene pose: own *_special_v1 folder, scene-only (comboPose + grandPose, no pose: 1), JSON = slot, feet pivot.
+          assert(def.comboPose === true && def.grandPose === true && def.pose === undefined && def.enabled !== false, id + '.' + name + ' grand-only slot');
+          assert(def.src.startsWith(grand.dir) && def.metadata.startsWith(grand.dir), id + '.' + name + ' grand dir');
+          assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: m.pivot, smoothing: m.smoothing },
+            { id, animation: name, w: grand.w, h: grand.h, frames: 1, fps: 1, loop: false, pivot: grand.pivot, smoothing: true });
+          assert(s.normalizeCell({ ...m }), id + '.' + name + ' cell contract'); assert.equal(m.displayScale, def.scale); assert.equal(s.normalizeCell({ ...m }).unit, grand.h / 96);
+          assert.equal(m.facing, grand.facing); assert.equal(def.facing, grand.facing); assert.equal(m.mirrorInScene, grand.flip);
+          assert.deepEqual([m.hotspot.x, m.hotspot.y], [def.hotspot.x, def.hotspot.y]); assert(def.hotspot.x >= 0 && def.hotspot.x < grand.w && def.hotspot.y >= 0 && def.hotspot.y < grand.h);
+          const ratio = m.heightRatio.value; assert(ratio >= 4.75 && ratio <= 5.25 && /頭身/.test(m.notes), `${id}.${name} 頭身 ${ratio}`); assert.deepEqual(m.heightRatio.pass, [4.75, 5.25]);
+          assert.equal(png.readUInt32BE(16), grand.w); assert.equal(png.readUInt32BE(20), grand.h); assert.equal(png[25], 6, 'RGBA PNG');
+          const { w: pw, h: ph, alpha } = pngAlpha(png); let lowest = -1, top = ph, edge = false;
+          for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) if (alpha[y * pw + x] > 128) { lowest = y; top = Math.min(top, y); if (x === 0 || x === pw - 1 || y === 0) edge = true; }
+          assert(Math.abs(lowest + 1 - grand.pivot.y) <= 1, `${id}.${name} sole on pivot y (${lowest + 1} vs ${grand.pivot.y})`);
+          assert(!edge && top > 0, id + '.' + name + ' not clipped');
+          assert(alpha[def.hotspot.y * pw + def.hotspot.x] > 0 || alpha[(def.hotspot.y + 2) * pw + def.hotspot.x] > 0 || alpha[def.hotspot.y * pw + def.hotspot.x + 2] > 0, id + '.' + name + ' hotspot on the figure');
+        } else if (combo) {
           // Combo pose: own folder, never a roadside pose (no pose: 1), facing recorded, 頭身 in range, feet pivot.
           assert(def.comboPose === true && def.pose === undefined && def.enabled !== false, id + '.' + name + ' combo-only slot');
           assert(def.src.startsWith(combo.dir) && def.metadata.startsWith(combo.dir), id + '.' + name + ' combo dir');

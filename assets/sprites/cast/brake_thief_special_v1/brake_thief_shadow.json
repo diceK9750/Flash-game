@@ -1,0 +1,32 @@
+{
+  "id": "BRAKE",
+  "animation": "SHADOW",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_thief_dash_r1b.jpg",
+  "facing": "left",
+  "mirrorInScene": false,
+  "hotspot": {
+    "x": 26,
+    "y": 155,
+    "what": "dagger tip"
+  },
+  "heightRatio": {
+    "value": 5.1,
+    "beforeWarp": 5.1,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Grand-scene pose 影すり抜け beat 1 (shadow dash): running stride, dagger forward in the viewer-left hand, hook behind like the idle. Skin recoloured to the idle tan (skinfix). No head warp needed, grid 9.39. 頭身 ~5.1. Not mirrored. Soft-alpha cyan cutout; feet (or palm) on the pivot; on-screen head = HD idle head. Drawn only in the grand SPECIAL scene (comboPose + grandPose, never roadside). No light / effects in the art: the scene draws them. Display only."
+}

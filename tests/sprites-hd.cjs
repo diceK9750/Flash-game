@@ -122,6 +122,7 @@ const close = (a, b, label) => { for (const k of ['x0', 'x1', 'y0', 'y1']) asser
         assert.equal(a.data.unit, 320 / 96, id + '.' + name);
         assert.equal(a.data.smooth, true, id + '.' + name);
       } else {
+        if (s.definitions.CAST[id][name].grandPose) { assert.equal(a.data.unit, a.data.frameHeight / 96, id + '.' + name); assert.equal(a.data.smooth, true, id + '.' + name); continue; } // cycle 36 grand poses (288 cells, DASH.FINISH 384)
         const hd = HD_CAST.includes(id + '.' + name); assert.equal(a.data.unit, hd ? 3 : 1, id + '.' + name); assert.equal(a.data.smooth, hd, id + '.' + name);
       }
     }

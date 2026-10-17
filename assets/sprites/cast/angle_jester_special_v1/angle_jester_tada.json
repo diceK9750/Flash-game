@@ -1,0 +1,32 @@
+{
+  "id": "ANGLE",
+  "animation": "TADA",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_jester_tada_r1a.jpg",
+  "facing": "right",
+  "mirrorInScene": true,
+  "hotspot": {
+    "x": 55,
+    "y": 10,
+    "what": "cane top"
+  },
+  "heightRatio": {
+    "value": 5.01,
+    "beforeWarp": 3.8,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Grand-scene pose 水平曲芸 beat 2 (ta-da!): front-facing, arms in a V, cane raised. Head and hat only x0.70 (warp_head_poly_clean.py), grid 8.17. 頭身 ~5.01 (~3.8 before). Stored with the cane in the viewer-left hand; mirrored in the scene (flip) so the cane is on the viewer's right like the idle (front-facing, so facing is a label for the mirror parity only). Soft-alpha cyan cutout; feet (or palm) on the pivot; on-screen head = HD idle head. Drawn only in the grand SPECIAL scene (comboPose + grandPose, never roadside). No light / effects in the art: the scene draws them. Display only."
+}

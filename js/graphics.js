@@ -1042,6 +1042,9 @@ Hop.Graphics = {
   easeOutBack(u, s = 1.70158) { u = Math.max(0, Math.min(1, u)) - 1; return 1 + (s + 1) * u * u * u + s * u * u; },
   osc(a, f = 18, d = 7) { return a <= 0 ? 0 : Math.exp(-d * a) * Math.sin(f * a); },
   GRAND_HITSTOP: 0.08,
+  // Adopted grand-scene poses (cycle 36): idle -> pose 1 -> pose 2 [-> pose 3]; the key pose faces the hero.
+  GRAND_POSES: { DASH: ["IDLE", "WINDUP", "THRUST", "FINISH"], STOPPER: ["IDLE", "PRAY", "RELEASE"], BRAKE: ["IDLE", "SHADOW", "SLASH"], ANGLE: ["IDLE", "HANDSTAND", "TADA"], GUARD: ["IDLE", "CHANT", "BARRIER"] },
+  GRAND_KEY_POSE: { DASH: "THRUST", STOPPER: "PRAY", BRAKE: "SLASH", ANGLE: "HANDSTAND", GUARD: "CHANT" },
   grandWarp(st, t) { const cl = st.climax, h = this.GRAND_HITSTOP; return t < cl ? t : t < cl + h ? cl : t - h; },
   grandActor(st, sx, sy, ground) {
     const c = Hop.CONFIG, t = this.grandT(st), H = st.heroWX, h = this.grandHero(st, sx, sy), feet = h.y + 40 + c.playerRadius, fd = feet - ground;
@@ -1055,36 +1058,36 @@ Hop.Graphics = {
       const X0 = H - bk * 190;
       if (t < 0.14) crouch(t / 0.14, src);
       else if (t < 0.5) { const u = (t - 0.14) / 0.36; Object.assign(a, arc(src, X0, 10, fd, u, 110), { rotate: bk * Math.PI * 2 * this.smoother(u), scale: S * (0.95 + 0.1 * Math.sin(Math.PI * u)), beat: "leap" }); }
-      else if (t < 0.75) { const u = (t - 0.5) / 0.25; a.rotate = -bk * 0.3 * this.ease(u); land(t - 0.5, X0 - bk * 30 * this.ease(u), fd); a.beat = "windup"; }
-      else if (t < CL) { const u = (t - 0.75) / (CL - 0.75), e = u * u * u; Object.assign(a, { x: X0 - bk * 30 + bk * 175 * e, dy: fd - 8 * Math.sin(Math.PI * u), rotate: -bk * 0.3 + bk * 0.62 * this.ease(u), beat: "dash" });
+      else if (t < 0.75) { const u = (t - 0.5) / 0.25; a.rotate = -bk * 0.3 * this.ease(u); land(t - 0.5, X0 - bk * 30 * this.ease(u), fd); a.pose = "WINDUP"; a.beat = "windup"; }
+      else if (t < CL) { const u = (t - 0.75) / (CL - 0.75), e = u * u * u; Object.assign(a, { x: X0 - bk * 30 + bk * 175 * e, dy: fd - 8 * Math.sin(Math.PI * u), rotate: -bk * 0.3 + bk * 0.62 * this.ease(u), pose: "THRUST", beat: "dash" });
         for (let k = 1; k <= 4; k++) { const uk = cl(u - 0.07 * k), ek = uk * uk * uk; a.ghosts.push({ x: X0 - bk * 30 + bk * 175 * ek, dy: fd, alpha: 0.5 - k * 0.1, rotate: a.rotate }); } }
       else { // impact -> follow-through slide -> turn back (scale pulse) -> finishing pose with breath
         const xF = X0 + bk * 145 + bk * 75 * this.ease(cl(b / 0.35));
-        Object.assign(a, { x: xF, dy: fd, pose: "USED", rotate: bk * 0.32 * (1 - this.ease(cl(b / 0.5))) + bk * 0.12 * this.osc(b, 14, 5), scale: S * (1 + 0.09 * this.osc(b, 22, 8)), beat: b < 0.6 ? "follow" : "pose" });
-        if (b > 0.65) { const v = cl((b - 0.65) / 0.3); a.dy -= 28 * Math.sin(Math.PI * v); if (v > 0.5) a.face = fl; a.scale *= 1 + 0.06 * this.osc(b - 0.8, 24, 9); a.dy += 2 * Math.sin(t * 5); }
+        Object.assign(a, { x: xF, dy: fd, pose: b < 0.72 ? "THRUST" : "FINISH", rotate: bk * 0.32 * (1 - this.ease(cl(b / 0.5))) + bk * 0.12 * this.osc(b, 14, 5), scale: S * (1 + 0.09 * this.osc(b, 22, 8)), beat: b < 0.6 ? "follow" : "pose" });
+        if (b > 0.65) { const v = cl((b - 0.65) / 0.3); a.dy -= 28 * Math.sin(Math.PI * v); a.scale *= 1 + 0.06 * this.osc(b - 0.8, 24, 9); a.dy += 2 * Math.sin(t * 5); }
       }
     } else if (st.type === "STOPPER") {
       const X0 = H - bk * 150;
       if (t < 0.12) crouch(t / 0.12, src);
       else if (t < 0.45) { const u = (t - 0.12) / 0.33; Object.assign(a, arc(src, X0, 10, fd, u, 140), { rotate: bk * 0.3 * Math.sin(Math.PI * u), scale: S * (0.96 + 0.08 * Math.sin(Math.PI * u)), beat: "leap" }); }
-      else if (t < 0.8) { const u = (t - 0.45) / 0.35; a.rotate = -bk * 0.15 * this.easeOutBack(u); land(t - 0.45, X0, fd); a.scale *= 1 + 0.04 * this.easeOutBack(u); a.pose = t > 0.5 ? "USED" : "IDLE"; a.beat = "pray"; }
-      else if (t < CL) { const u = (t - 0.8) / (CL - 0.8); Object.assign(a, { x: X0, dy: fd - 22 * this.ease(u) + 3 * Math.sin(t * 40) * u, rotate: -bk * 0.15 + bk * 0.22 * this.ease(u), pose: "USED", scale: S * 1.04, beat: "channel" }); }
+      else if (t < 0.8) { const u = (t - 0.45) / 0.35; a.rotate = -bk * 0.15 * this.easeOutBack(u); land(t - 0.45, X0, fd); a.scale *= 1 + 0.04 * this.easeOutBack(u); a.pose = t > 0.5 ? "PRAY" : "IDLE"; a.beat = "pray"; }
+      else if (t < CL) { const u = (t - 0.8) / (CL - 0.8); Object.assign(a, { x: X0, dy: fd - 22 * this.ease(u) + 3 * Math.sin(t * 40) * u, rotate: -bk * 0.15 + bk * 0.22 * this.ease(u), pose: "PRAY", scale: S * 1.04, beat: "channel" }); }
       else { const pop = -38 * this.ease(cl(b / 0.12)) * (1 - this.ease(cl((b - 0.12) / 0.55)));
-        Object.assign(a, { x: X0, dy: fd - 22 * (1 - this.smoother(cl((b - 0.5) / 0.6))) + pop, pose: "USED", scale: S * (1.04 + 0.12 * this.osc(b, 20, 6)), rotate: -bk * 0.22 * (1 - this.ease(cl(b / 0.3))) + bk * 0.06 * this.osc(b, 12, 5), beat: b < 0.6 ? "reverse" : "bow" });
+        Object.assign(a, { x: X0, dy: fd - 22 * (1 - this.smoother(cl((b - 0.5) / 0.6))) + pop, pose: b < 0.75 ? "RELEASE" : "IDLE", scale: S * (1.04 + 0.12 * this.osc(b, 20, 6)), rotate: -bk * 0.22 * (1 - this.ease(cl(b / 0.3))) + bk * 0.06 * this.osc(b, 12, 5), beat: b < 0.6 ? "reverse" : "bow" });
         if (b > 0.6) a.rotate += bk * 0.24 * Math.sin(Math.PI * cl((b - 0.6) / 0.6)); }
     } else if (st.type === "BRAKE") {
       const X1 = H - bk * 150, X2 = H - bk * 205;
       if (t < 0.12) crouch(t / 0.12, src);
-      else if (t < 0.26) { const u = (t - 0.12) / 0.14; Object.assign(a, { x: src, dy: 10 - 24 * this.ease(u), alpha: 1 - u, scale: S * (1 - 0.45 * u * u), rotate: bk * 0.9 * u, beat: "vanish" }); }
-      else if (t < 1.05) Object.assign(a, { x: src, dy: 0, alpha: 0, beat: "shadow" });
-      else if (t < CL) { const u = (t - 1.05) / (CL - 1.05); Object.assign(a, { x: X1, dy: fd, alpha: cl(u * 2), scale: S * (0.6 + 0.4 * this.easeOutBack(u, 2.4)), rotate: -bk * 0.6 * (1 - this.easeOutBack(u)), face: fr, pose: "USED", beat: "reappear" }); }
-      else if (b < 0.3) { const u = this.ease(cl(b / 0.12)); Object.assign(a, { x: X1 + bk * 75 * u, dy: fd, pose: "USED", face: fr, rotate: bk * 0.22 * u, scale: S * (1 + 0.08 * this.osc(b, 22, 8)), beat: "lunge" }); }
-      else { const u = cl((b - 0.3) / 0.45); Object.assign(a, arc(X1 + bk * 75, X2, fd, fd, u, 110), { pose: u < 1 ? "USED" : "IDLE", face: fr, rotate: -bk * Math.PI * 2 * this.smoother(u), beat: u < 1 ? "backflip" : "land" });
+      else if (t < 0.26) { const u = (t - 0.12) / 0.14; Object.assign(a, { x: src, dy: 10 - 24 * this.ease(u), alpha: 1 - u, scale: S * (1 - 0.45 * u * u), rotate: bk * 0.9 * u, pose: "SHADOW", beat: "vanish" }); }
+      else if (t < 1.05) Object.assign(a, { x: src, dy: 0, alpha: 0, pose: "SHADOW", beat: "shadow" });
+      else if (t < CL) { const u = (t - 1.05) / (CL - 1.05); Object.assign(a, { x: X1, dy: fd, alpha: cl(u * 2), scale: S * (0.6 + 0.4 * this.easeOutBack(u, 2.4)), rotate: -bk * 0.6 * (1 - this.easeOutBack(u)), face: fr, pose: "SHADOW", beat: "reappear" }); }
+      else if (b < 0.3) { const u = this.ease(cl(b / 0.12)); Object.assign(a, { x: X1 + bk * 75 * u, dy: fd, pose: "SLASH", face: fr, rotate: bk * 0.22 * u, scale: S * (1 + 0.08 * this.osc(b, 22, 8)), beat: "lunge" }); }
+      else { const u = cl((b - 0.3) / 0.45); Object.assign(a, arc(X1 + bk * 75, X2, fd, fd, u, 110), { pose: u < 1 ? "SLASH" : "IDLE", face: fr, rotate: -bk * Math.PI * 2 * this.smoother(u), beat: u < 1 ? "backflip" : "land" });
         if (u >= 1) land(b - 0.75, X2, fd); }
       for (let k = 0; k < 6; k++) { // shadow clones: each an arc with a spin and an overshoot at the far side
         const t0 = 0.18 + k * 0.15, u = (t - t0) / 0.24; if (u < 0 || u > 1.6) continue;
         const dir = k % 2 ? -1 : 1, uu = this.easeOutBack(cl(u), 1.2), x = H - dir * 300 + dir * 600 * uu, dy = fd + [-60, 40, -20, 70, -45, 15][k] - 45 * Math.sin(Math.PI * cl(u));
-        a.ghosts.push({ x, dy, alpha: 0.6 * (1 - cl((u - 1) / 0.6)) * cl(u * 6), face: dir > 0 ? "right" : "left", rotate: dir * (0.25 + 0.5 * Math.sin(Math.PI * cl(u))), pose: "USED", clone: true });
+        a.ghosts.push({ x, dy, alpha: 0.6 * (1 - cl((u - 1) / 0.6)) * cl(u * 6), face: dir > 0 ? "right" : "left", rotate: dir * (0.25 + 0.5 * Math.sin(Math.PI * cl(u))), pose: "SHADOW", clone: true });
       }
     } else if (st.type === "ANGLE") {
       const X1 = H - bk * 130, cy = fd - 60 * S;
@@ -1092,18 +1095,26 @@ Hop.Graphics = {
       else if (t < 0.35) { const u = (t - 0.12) / 0.23; Object.assign(a, arc(src, H - bk * 130, 10, cy + 60 * S, u, 120), { rotate: bk * Math.PI * 2 * this.smoother(u), beat: "leap" }); }
       else if (t < 1.1) {
         const u = this.smoother((t - 0.35) / 0.75), th = (bk > 0 ? Math.PI : 0) + u * Math.PI * 2, rx = 130 * Math.cos(th), ry = 85 * Math.sin(th) - 14 * Math.sin(th * 2), rot = bk * u * Math.PI * 4;
-        Object.assign(a, { x: H + rx - Math.sin(rot) * 60 * S, dy: cy + ry + Math.cos(rot) * 60 * S, rotate: rot, pose: Math.floor(u * 10) % 2 ? "USED" : "IDLE", face: Math.cos(th) < 0 ? "right" : "left", scale: S * (1 + 0.05 * Math.sin(u * Math.PI * 10)), beat: "cartwheel" });
-      } else if (t < CL) { const u = (t - 1.1) / (CL - 1.1); Object.assign(a, arc(X1, X1, cy + 60 * S, fd, u, 40), { rotate: 0, pose: "USED", beat: "land" }); }
-      else { Object.assign(a, { x: X1, dy: fd - 44 * Math.sin(Math.PI * cl(b / 0.35)), pose: "USED", face: fr, scale: S * (1 + 0.14 * this.osc(b, 18, 6)), rotate: bk * 0.4 * this.osc(b, 12, 5), beat: b < 0.7 ? "ta-da" : "bow" });
-        if (b > 0.7) { const v = cl((b - 0.7) / 0.5); a.rotate += bk * 0.32 * Math.sin(Math.PI * v); a.pose = v > 0.2 && v < 0.8 ? "IDLE" : "USED"; } }
+        Object.assign(a, { x: H + rx - Math.sin(rot) * 60 * S, dy: cy + ry + Math.cos(rot) * 60 * S, rotate: rot, pose: "HANDSTAND", scale: S * (1 + 0.05 * Math.sin(u * Math.PI * 10)), beat: "cartwheel" });
+      } else if (t < CL) { const u = (t - 1.1) / (CL - 1.1); Object.assign(a, arc(X1, X1, cy + 60 * S, fd, u, 40), { rotate: 0, pose: "HANDSTAND", beat: "land" }); }
+      else { Object.assign(a, { x: X1, dy: fd - 44 * Math.sin(Math.PI * cl(b / 0.35)), pose: b < 0.85 ? "TADA" : "IDLE", face: fr, scale: S * (1 + 0.14 * this.osc(b, 18, 6)), rotate: bk * 0.4 * this.osc(b, 12, 5), beat: b < 0.7 ? "ta-da" : "bow" });
+        if (b > 0.7) { const v = cl((b - 0.7) / 0.5); a.rotate += bk * 0.32 * Math.sin(Math.PI * v); } }
     } else { // GUARD
       const X0 = H - bk * 160;
       if (t < 0.12) crouch(t / 0.12, src);
       else if (t < 0.4) { const u = (t - 0.12) / 0.28; Object.assign(a, arc(src, X0, 10, fd, u, 120), { rotate: bk * 0.5 * Math.sin(Math.PI * u), beat: "leap" }); }
       else if (t < 0.55) { land(t - 0.4, X0, fd); a.beat = "land"; }
-      else if (t < CL) { const u = (t - 0.55) / (CL - 0.55); Object.assign(a, { x: X0, dy: fd - 30 * this.ease(u) - 4 * Math.sin(t * 7), rotate: -bk * 0.08 * Math.sin(t * 6) - bk * 0.1 * u, scale: S * (1 + 0.03 * Math.sin(t * 8)), pose: u > 0.3 ? "USED" : "IDLE", beat: "chant" }); }
+      else if (t < CL) { const u = (t - 0.55) / (CL - 0.55); Object.assign(a, { x: X0, dy: fd - 30 * this.ease(u) - 4 * Math.sin(t * 7), rotate: -bk * 0.08 * Math.sin(t * 6) - bk * 0.1 * u, scale: S * (1 + 0.03 * Math.sin(t * 8)), pose: u > 0.15 ? "CHANT" : "IDLE", beat: "chant" }); }
       else { const pop = -22 * this.ease(cl(b / 0.1)) * (1 - this.ease(cl((b - 0.1) / 0.4)));
-        Object.assign(a, { x: X0, dy: fd - 30 + pop + 30 * this.easeOutBack(cl((b - 0.8) / 0.5), 2.2), rotate: bk * 0.18 * this.osc(b, 10, 4), scale: S * (1 + 0.12 * this.osc(b, 20, 6)), pose: "USED", beat: b < 0.8 ? "seal" : "descend" }); }
+        Object.assign(a, { x: X0, dy: fd - 30 + pop + 30 * this.easeOutBack(cl((b - 0.8) / 0.5), 2.2), rotate: bk * 0.18 * this.osc(b, 10, 4), scale: S * (1 + 0.12 * this.osc(b, 20, 6)), pose: b < 1.05 ? "BARRIER" : "IDLE", beat: b < 0.8 ? "seal" : "descend" }); }
+    }
+    // Facing (cycle 36): one mirror parity per scene so every pose keeps the adopted weapon / staff hand; the key pose
+    // faces the hero, the others show their adopted direction (the warrior's wind-up coils away, the priest's release
+    // is cast skyward). Shadow clones keep their own direction.
+    const gf = Hop.Sprites?.grandFace?.bind(Hop.Sprites);
+    if (gf) {
+      const par = gf(st.type, this.GRAND_KEY_POSE[st.type]) !== fr, face = p => { const d = gf(st.type, p); return par ? (d === "left" ? "right" : "left") : d; };
+      a.face = face(a.pose); for (const g of a.ghosts) if (!g.clone) g.face = face(g.pose || a.pose);
     }
     return a;
   },
@@ -1166,6 +1177,171 @@ Hop.Graphics = {
     const end = st.end; return r * (1 - this.smoother(cl((t - (end - 0.25)) / 0.25)));
   },
   grandRand(i, k = 0) { return this.lcRand(i * 7.31 + k * 13.7 + 1.9); },
+  // ---- Grand-scene poses (2026-10-18 cycle 36, display only) ----
+  // Pose in-between for the grand scenes: for POSE_FADE s after the pose changes the previous still fades out over the
+  // new one at the same placement, plus a 2-frame white smear silhouette of the new pose (anime smear frame). Same
+  // uniform scale; nothing in the short version / reduced motion / after a skip.
+  grandPoseChange(st, A, sx, sy, ground) {
+    if (st.short || st.after !== null || st.skipped) return null;
+    for (let back = 1 / 120; back <= this.POSE_FADE + 1e-9; back += 1 / 120) {
+      const p = this.grandActor({ ...st, t: st.t - back }, sx, sy, ground);
+      if (p.pose !== A.pose) return Math.abs(p.x - A.x) > 60 || Math.abs((p.dy || 0) - (A.dy || 0)) > 60 ? null : { back, pose: p.pose, face: p.face };
+    }
+    return null;
+  },
+  grandCastBlend(ctx, id, st, A, sx, sy, ground, alpha) {
+    this.comboCast(ctx, id, A, sx, ground, alpha);
+    const ch = this.grandPoseChange(st, A, sx, sy, ground); if (!ch) return null;
+    const u = Math.max(0, Math.min(1, (ch.back - 1 / 240) / this.POSE_FADE)), k = u * u * (3 - 2 * u);
+    this.comboCast(ctx, id, { ...A, pose: ch.pose, face: ch.face }, sx, ground, alpha * (1 - k) * 0.85);
+    if (ch.back < 0.05) { ctx.save(); ctx.filter = "brightness(0) invert(1)"; this.comboCast(ctx, id, A, sx, ground, alpha * 0.6 * (1 - ch.back / 0.05)); ctx.filter = "none"; ctx.restore(); }
+    return ch;
+  },
+  // Screen point of the drawn pose's hotspot (sword / dagger tip, staff orb, cane top); a body estimate before the
+  // pose sprites are loaded so the effects still play.
+  grandTip(st, A, sx, ground) {
+    const x = sx(A.x), feet = ground + (A.dy || 0);
+    const p = Hop.Sprites?.castPoint?.(st.type, x, feet, A.pose, A.scale, { face: A.face, rotate: A.rotate });
+    if (p) return p;
+    const s = A.scale || 1, dx = (A.face === "right" ? 1 : -1) * 45 * s, dy = -100 * s, r = A.rotate || 0;
+    return { x: x + dx * Math.cos(r) - dy * Math.sin(r), y: feet + dx * Math.sin(r) + dy * Math.cos(r) };
+  },
+  // Additive radial glow (col = "r,g,b").
+  grandGlow(ctx, x, y, r, col, a) {
+    if (!(r > 1) || !(a > 0.01)) return;
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.min(1, a);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, "rgba(255,255,255,0.85)"); g.addColorStop(0.2, `rgba(${col},0.7)`); g.addColorStop(1, `rgba(${col},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  },
+  // Hotspot trail (sword / dagger / cane swing): the tip positions over the last n * dt s while the actor holds one of
+  // `poses`, drawn as a tapered additive ribbon with a white core. cols: one colour or a list (rainbow).
+  grandTrail(ctx, st, sx, sy, ground, poses, n, dt, cols, width, a) {
+    const pts = [];
+    for (let k = 0; k < n; k++) { const p = this.grandActor({ ...st, t: st.t - k * dt }, sx, sy, ground); if (!poses.includes(p.pose) || p.alpha < 0.05) break; pts.push(this.grandTip(st, p, sx, ground)); }
+    if (pts.length < 2 || !(a > 0.01)) return pts.length;
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+    for (const core of [false, true]) for (let k = pts.length - 1; k > 0; k--) {
+      const u = k / pts.length; ctx.globalAlpha = a * (1 - u) * (core ? 0.9 : 0.75);
+      ctx.strokeStyle = core ? "#ffffff" : Array.isArray(cols) ? cols[k % cols.length] : cols; ctx.lineWidth = (core ? 0.35 : 1) * width * (1 - u * 0.8) + 1;
+      ctx.beginPath(); ctx.moveTo(pts[k].x, pts[k].y); ctx.lineTo(pts[k - 1].x, pts[k - 1].y); ctx.stroke();
+    }
+    ctx.restore(); return pts.length;
+  },
+  // Light / particle effects that follow each adopted pose (the art carries none). Drawn over the actor, behind the hero.
+  grandPoseFx(ctx, st, A, sx, sy, ground, fade, back = false) { // back: the part drawn behind the actor (rays, pillars, decals)
+    if (!(A.alpha > 0.05) || !(fade > 0.01)) return;
+    const t = this.grandT(st), b = t - st.climax, cl = u => Math.max(0, Math.min(1, u)), tip = this.grandTip(st, A, sx, ground), ax = sx(A.x), afeet = ground + (A.dy || 0);
+    const dir = A.face === "right" ? 1 : -1, S = A.scale || 1, R = (i, k) => this.grandRand(i, k);
+    ctx.save();
+    if (st.type === "DASH") {
+      if (A.pose === "WINDUP") { const u = cl((t - 0.5) / 0.25); // power gathering at the sword tip
+      if (!back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+        for (let i = 0; i < 12; i++) { const an = i * Math.PI / 6 + t * 2.5, r0 = 30 + 150 * (1 - ((t * 3 + R(i, 20)) % 1));
+          ctx.globalAlpha = fade * 0.8 * u; ctx.strokeStyle = i % 2 ? "#ffd27a" : "#ff6a2a"; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(tip.x + Math.cos(an) * r0, tip.y + Math.sin(an) * r0); ctx.lineTo(tip.x + Math.cos(an) * r0 * 0.55, tip.y + Math.sin(an) * r0 * 0.55); ctx.stroke(); }
+        ctx.restore();
+        this.grandGlow(ctx, tip.x, tip.y, 26 + 46 * u + 6 * Math.sin(t * 40), "255,140,50", fade * (0.5 + 0.5 * u));
+        ctx.globalAlpha = fade * u; this.spark(ctx, tip.x, tip.y, 14 + 22 * u, "#fff6d8", t * 9); }
+      if (back) { ctx.globalAlpha = fade * 0.7 * u; ctx.strokeStyle = "#ff8a3a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(ax, afeet, 40 + 40 * u, 10 + 6 * u, 0, 0, Math.PI * 2); ctx.stroke(); }
+      } else if (A.pose === "THRUST") { // blazing thrust: tip comet trail, wind rings, flame glow
+      const a = fade * (b < 0 ? 1 : 1 - cl((b - 0.35) / 0.35));
+      if (!back) { this.grandTrail(ctx, st, sx, sy, ground, ["THRUST"], 12, 0.014, ["#ff5a20", "#ff9a40", "#ffd060"], 30, a);
+        this.grandGlow(ctx, tip.x, tip.y, 55 + 10 * Math.sin(t * 50), "255,170,70", a);
+        ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 26 + 8 * Math.sin(t * 30), "#ffffff", t * 12);
+        ctx.strokeStyle = "rgba(255,240,210,0.9)"; ctx.lineWidth = 3;
+        for (let k = 0; k < 3; k++) { const ph = (t * 6 + k / 3) % 1; ctx.globalAlpha = a * (1 - ph) * 0.8; ctx.beginPath(); ctx.ellipse(ax - dir * (20 + 120 * ph), afeet - 62 * S, 10 + 8 * ph, 44 + 24 * ph, 0, 0, Math.PI * 2); ctx.stroke(); } }
+      if (back) { this.grandGlow(ctx, ax, afeet - 60 * S, 90, "255,90,30", a * 0.45); }
+      } else if (A.pose === "FINISH") { const v = cl((b - 0.72) / 0.2), e = 1 - cl((b - 1.6) / 0.6), a = fade * v * e; // sword raised: light pillar + star glint
+      if (back) { const w = 16 * (1 + 0.25 * Math.sin(t * 34)) * (0.4 + 0.6 * v);
+        ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a * 0.85;
+        const g = ctx.createLinearGradient(tip.x - w * 2, 0, tip.x + w * 2, 0); g.addColorStop(0, "rgba(255,150,60,0)"); g.addColorStop(0.5, "rgba(255,245,220,0.95)"); g.addColorStop(1, "rgba(255,150,60,0)");
+        ctx.fillStyle = g; ctx.fillRect(tip.x - w * 2, -1200, w * 4, tip.y + 1200); ctx.restore(); }
+      if (!back) { this.grandGlow(ctx, tip.x, tip.y, 60 + 30 * v, "255,200,120", a);
+        ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 34 + 14 * Math.sin(t * 9), "#ffffff", t * 2); this.spark(ctx, tip.x, tip.y, 20, "#ffd27a", -t * 3 + 0.4); }
+      if (back) { for (let i = 0; i < 16; i++) { const life = (t * 1.1 + R(i, 21)) % 1; ctx.globalAlpha = a * (1 - life); this.circle(ctx, ax + (R(i, 22) - 0.5) * 140, afeet - life * 220, 2 + 3 * R(i, 23), i % 3 ? "#ff9a40" : "#fff2c0"); }
+        ctx.globalAlpha = a * 0.8; ctx.strokeStyle = "#ff7a30"; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(ax, afeet, 60 + 20 * v, 13, 0, 0, Math.PI * 2); ctx.stroke(); }
+      }
+    } else if (st.type === "STOPPER") {
+      if (A.pose === "PRAY") { const u = cl((t - 0.5) / 0.35); // prayer: god rays, holy sigil, rising motes, glowing staff
+      if (back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(ax, afeet - 70 * S); ctx.rotate(t * 0.5);
+        for (let i = 0; i < 10; i++) { ctx.rotate(Math.PI / 5); ctx.globalAlpha = fade * 0.22 * u; ctx.fillStyle = "#fff4c0"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(220, -16); ctx.lineTo(220, 16); ctx.closePath(); ctx.fill(); }
+        ctx.restore();
+        ctx.save(); ctx.globalAlpha = fade * 0.85 * u; ctx.strokeStyle = "#ffe98a"; ctx.lineWidth = 3; ctx.shadowColor = "#fff3b0"; ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.ellipse(ax, afeet, 74, 17, 0, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.ellipse(ax, afeet, 52, 12, 0, 0, Math.PI * 2); ctx.stroke();
+        for (let i = 0; i < 8; i++) { const an = t * 1.6 + i * Math.PI / 4; this.circle(ctx, ax + Math.cos(an) * 63, afeet + Math.sin(an) * 14.5, 3, "#fffbe6"); }
+        ctx.beginPath(); ctx.moveTo(ax - 24, afeet); ctx.lineTo(ax + 24, afeet); ctx.moveTo(ax, afeet - 6); ctx.lineTo(ax, afeet + 6); ctx.stroke(); ctx.restore(); }
+      if (!back) { for (let i = 0; i < 18; i++) { const life = (t * 0.9 + R(i, 24)) % 1; ctx.globalAlpha = fade * u * (1 - life); this.spark(ctx, ax + (R(i, 25) - 0.5) * 150 + Math.sin(t * 3 + i) * 8, afeet - 10 - life * 230, 4 + 4 * R(i, 26), "#fffbe6", t * 2 + i); }
+        this.grandGlow(ctx, tip.x, tip.y, 30 + 8 * Math.sin(t * 12) + 20 * u, "255,236,150", fade * (0.4 + 0.6 * u)); }
+      } else if (A.pose === "RELEASE") { const a = fade * (1 - cl((b - 0.6) / 0.25)), v = this.ease(cl(b / 0.15)); // release: beam from the staff, rotating rays, burst rings
+      if (back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; const w = 26 * (1 + 0.2 * Math.sin(t * 40));
+        const g = ctx.createLinearGradient(tip.x - w * 2, 0, tip.x + w * 2, 0); g.addColorStop(0, "rgba(255,230,140,0)"); g.addColorStop(0.5, "rgba(255,255,245,1)"); g.addColorStop(1, "rgba(255,230,140,0)");
+        ctx.globalAlpha = a * 0.9; ctx.fillStyle = g; ctx.fillRect(tip.x - w * 2, -1200, w * 4, (tip.y + 1200) * v);
+        ctx.translate(tip.x, tip.y); ctx.rotate(t * 1.5);
+        for (let i = 0; i < 12; i++) { ctx.rotate(Math.PI / 6); ctx.globalAlpha = a * 0.3; ctx.fillStyle = i % 2 ? "#fff3b0" : "#ffffff"; ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(180 * v, -9); ctx.lineTo(180 * v, 9); ctx.closePath(); ctx.fill(); }
+        ctx.restore(); }
+      if (!back) { for (let k = 0; k < 3; k++) { const u = cl((b - k * 0.1) / 0.45); if (u <= 0 || u >= 1) continue; ctx.globalAlpha = a * (1 - u); ctx.strokeStyle = k % 2 ? "#ffffff" : "#ffe98a"; ctx.lineWidth = 8 * (1 - u) + 1; ctx.beginPath(); ctx.arc(tip.x, tip.y, 20 + 170 * this.ease(u), 0, Math.PI * 2); ctx.stroke(); }
+        this.grandGlow(ctx, tip.x, tip.y, 44 + 10 * Math.sin(t * 20), "255,240,170", a * 0.8);
+        ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 30, "#ffffff", t * 4); }
+      }
+    } else if (st.type === "BRAKE") {
+      if (A.pose === "SHADOW") { const a = fade * A.alpha; // shadow dash: smoke wake + violet dagger trail
+      if (back) { for (let i = 0; i < 12; i++) { const life = (t * 2.2 + R(i, 27)) % 1; ctx.globalAlpha = a * 0.5 * (1 - life); this.circle(ctx, ax - dir * (20 + 140 * life), afeet - 20 - 110 * R(i, 28) * S, 10 + 18 * life, i % 3 ? "#2a0b45" : "#5b2a90"); } }
+      if (!back) { this.grandTrail(ctx, st, sx, sy, ground, ["SHADOW"], 9, 0.016, "#9a5cff", 14, a);
+        this.grandGlow(ctx, tip.x, tip.y, 28, "170,110,255", a * 0.8); }
+      } else if (A.pose === "SLASH") { const a = fade * (1 - cl((b - 0.55) / 0.25)); // slash through: crescent, dagger trail, glint
+      if (!back) { this.grandTrail(ctx, st, sx, sy, ground, ["SLASH"], 14, 0.012, ["#b06bff", "#d9b8ff", "#7d4bc0"], 32, a);
+        if (b < 0.35) { const u = this.ease(cl(b / 0.14)), cx = ax, cy = afeet - 70 * S, a0 = dir > 0 ? -Math.PI * 0.75 : -Math.PI * 0.25;
+          ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+          for (let k = 0; k < 3; k++) { ctx.globalAlpha = a * (1 - cl((b - 0.12) / 0.23)) * (0.5 + k * 0.25); ctx.strokeStyle = k === 2 ? "#ffffff" : k ? "#d9b8ff" : "#7d4bc0"; ctx.lineWidth = 22 - k * 7;
+            ctx.beginPath(); ctx.arc(cx, cy, 120 + k * 4, a0, a0 + dir * Math.PI * 1.1 * u, dir < 0); ctx.stroke(); }
+          ctx.restore(); }
+        this.grandGlow(ctx, tip.x, tip.y, 40 + 10 * Math.sin(t * 40), "190,120,255", a);
+        ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 22, "#ffffff", t * 10); }
+      }
+    } else if (st.type === "ANGLE") {
+      const hues = ["#ff4d6d", "#ffb340", "#ffe066", "#5fd35f", "#4dc3ff", "#a46bff"];
+      if (A.pose === "HANDSTAND") { const a = fade; // cartwheel: rainbow cane trail, star sprinkles from the cane
+      if (!back) { this.grandTrail(ctx, st, sx, sy, ground, ["HANDSTAND"], 16, 0.014, hues, 22, a);
+        for (let i = 0; i < 8; i++) { const life = (t * 3 + R(i, 29)) % 1, an = R(i, 30) * Math.PI * 2; ctx.globalAlpha = a * (1 - life); this.spark(ctx, tip.x + Math.cos(an) * 60 * life, tip.y + Math.sin(an) * 60 * life + 40 * life * life, 7 * (1 - life) + 3, hues[i % 6], t * 8 + i); }
+        this.grandGlow(ctx, tip.x, tip.y, 30, "255,230,120", a * 0.9); }
+      } else if (A.pose === "TADA") { const a = fade * (1 - cl((b - 0.75) / 0.15)); // ta-da: spotlight, fireworks, cane star
+      if (back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a * 0.28;
+        const g = ctx.createLinearGradient(0, afeet - 600, 0, afeet); g.addColorStop(0, "rgba(255,250,200,0)"); g.addColorStop(1, "rgba(255,240,170,0.8)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(ax - 30, afeet - 600); ctx.lineTo(ax + 30, afeet - 600); ctx.lineTo(ax + 110, afeet); ctx.lineTo(ax - 110, afeet); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(ax, afeet, 110, 20, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      if (!back) { for (let f = 0; f < 3; f++) { const u = cl((b - 0.04 - f * 0.16) / 0.5); if (u <= 0 || u >= 1) continue; // three fireworks
+          const fx = ax + [-1, 1, 0][f] * 130 + dir * 40, fy = afeet - [230, 200, 290][f] * S, r = 110 * this.ease(u);
+          for (let i = 0; i < 20; i++) { const an = i * Math.PI / 10 + f, px = fx + Math.cos(an) * r, py = fy + Math.sin(an) * r + 40 * u * u; ctx.globalAlpha = a * (1 - u);
+            this.line(ctx, [[fx + Math.cos(an) * r * 0.6, fy + Math.sin(an) * r * 0.6 + 40 * u * u], [px, py]], hues[(i + f * 2) % 6], 3); this.circle(ctx, px, py, 6 * (1 - u) + 2, hues[(i + f * 2) % 6]); }
+          this.grandGlow(ctx, fx, fy, 40 * (1 - u), "255,230,180", a * (1 - u)); }
+        this.grandGlow(ctx, tip.x, tip.y, 36 + 8 * Math.sin(t * 16), "255,225,120", a);
+        ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 26, "#ffffff", t * 5); }
+      }
+    } else if (st.type === "GUARD") {
+      if (A.pose === "CHANT") { const u = cl((t - 0.6) / 0.3); // chant: pulsing orb, mana stream to the hero, orbiting glyphs
+        const h = this.grandHero(st, sx, sy);
+      if (!back) { for (let i = 0; i < 14; i++) { const q = (t * 1.4 + i / 14) % 1, wob = Math.sin(q * Math.PI * 3 + i) * 14 * Math.sin(Math.PI * q);
+          ctx.globalAlpha = fade * u * Math.sin(Math.PI * q); this.spark(ctx, tip.x + (h.x - tip.x) * q, tip.y + (h.y - tip.y) * q + wob, 5, i % 2 ? "#e8fdff" : "#7df9ff", t * 4 + i); } }
+        ctx.save(); ctx.strokeStyle = "#9df3ff"; ctx.lineWidth = 2; ctx.shadowColor = "#7df9ff"; ctx.shadowBlur = 10;
+        for (let i = 0; i < 8; i++) { const an = t * 2 + i * Math.PI / 4, gx = ax + Math.cos(an) * 75, gy = afeet - 80 * S + Math.sin(an) * 22; if ((Math.sin(an) < 0) !== back) continue; ctx.globalAlpha = fade * u * (0.55 + 0.45 * Math.sin(an));
+          ctx.beginPath(); ctx.moveTo(gx - 6, gy - 7); ctx.lineTo(gx + 6, gy - 7); ctx.moveTo(gx, gy - 7); ctx.lineTo(gx, gy + 7); ctx.moveTo(gx - 5, gy + 3); ctx.lineTo(gx + 5, gy + 3); ctx.stroke(); }
+        ctx.restore();
+      if (!back) { this.grandGlow(ctx, tip.x, tip.y, 22 + 10 * Math.abs(Math.sin(t * 9)) + 12 * u, "110,220,255", fade * (0.45 + 0.4 * u)); }
+      } else if (A.pose === "BARRIER") { const a = fade * (1 - cl((b - 0.85) / 0.2)), v = this.ease(cl(b / 0.12)); // barrier: orb flash, rays, hex shards
+      if (back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(tip.x, tip.y); ctx.rotate(-t * 0.8);
+        for (let i = 0; i < 16; i++) { ctx.rotate(Math.PI / 8); ctx.globalAlpha = a * 0.3; ctx.fillStyle = i % 2 ? "#bff8ff" : "#ffffff"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(210 * v, -7); ctx.lineTo(210 * v, 7); ctx.closePath(); ctx.fill(); }
+        ctx.restore(); }
+      if (!back) { const h = this.grandHero(st, sx, sy);
+        ctx.save(); ctx.strokeStyle = "#e8fdff"; ctx.lineWidth = 2;
+        for (let i = 0; i < 12; i++) { const an = i * Math.PI / 6 + R(i, 31), r = 40 + 230 * this.ease(cl(b / 0.7)), px = h.x + Math.cos(an) * r, py = h.y + Math.sin(an) * r * 0.8;
+          ctx.globalAlpha = a * (1 - cl(b / 0.8)); ctx.beginPath(); for (let j = 0; j <= 6; j++) { const q = j * Math.PI / 3 + b * 6 + i; const qx = px + Math.cos(q) * 9, qy = py + Math.sin(q) * 9; j ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.stroke(); }
+        ctx.restore();
+        this.grandGlow(ctx, tip.x, tip.y, 30 + 40 * (1 - cl(b / 0.5)), "150,235,255", a * 0.8);
+        ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 24, "#ffffff", t * 3); }
+      }
+    }
+    ctx.restore();
+  },
   // Behind the hero: darkness, aura, pillar, magic circle, actor + afterimages / clones.
   grandBack(ctx, st, sx, sy, ground) {
     const c = Hop.CONFIG, T = this.GRAND[st.type], t = this.grandT(st), b = t - st.climax, h = this.grandHero(st, sx, sy), rm = st.short;
@@ -1243,7 +1419,7 @@ Hop.Graphics = {
       const p = this.grandActor({ ...st, t: st.t - 0.03 * k }, sx, sy, ground);
       if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * [0, 0.34, 0.2, 0.1][k] * (p.alpha ?? 1));
     }
-    if (A.alpha > 0.01) this.comboCast(ctx, id, A, sx, ground, fade * A.alpha);
+    if (A.alpha > 0.01) { this.grandPoseFx(ctx, st, A, sx, sy, ground, fade, true); this.grandCastBlend(ctx, id, st, A, sx, sy, ground, fade * A.alpha); this.grandPoseFx(ctx, st, A, sx, sy, ground, fade); }
     ctx.restore();
   },
   // In front of the hero: shockwaves, slashes, confetti, barrier dome, label (returned as overlay items).
@@ -1265,6 +1441,11 @@ Hop.Graphics = {
         ctx.globalAlpha = fade * (1 - cl((b - 0.7) / 0.5)); this.polygon(ctx, [[px - s, py], [px, py - s], [px + s, py + s * 0.4]], i % 2 ? "#7a4a2a" : "#b07040"); }
       ctx.globalAlpha = fade;
       if (b < 0.25) { ctx.save(); ctx.globalAlpha = fade * (1 - b / 0.25); const bk = this.grandBack1(st, sx); for (let i = 0; i < 8; i++) this.line(ctx, [[h.x + bk * 20, h.y - 70 + i * 20], [h.x + bk * (380 + i * 25), h.y - 70 + i * 20]], i % 2 ? "#ffffff" : "#ffcf70", 5); ctx.restore(); }
+      if (b < 0.4) { const bk = this.grandBack1(st, sx), u = this.ease(cl(b / 0.1)), cx = h.x - bk * 70, a0 = bk > 0 ? -1.05 : Math.PI + 1.05; // cycle 36: blazing crescent of the thrust
+        ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+        for (let k = 0; k < 3; k++) { ctx.globalAlpha = fade * (1 - cl((b - 0.12) / 0.28)) * (0.5 + k * 0.25); ctx.strokeStyle = k === 2 ? "#ffffff" : k ? "#ffcf70" : "#ff5a36"; ctx.lineWidth = 26 - k * 8;
+          ctx.beginPath(); ctx.arc(cx, h.y - 10, 175, a0, a0 + bk * 2.1 * u, bk < 0); ctx.stroke(); }
+        ctx.restore(); }
     } else if (st.type === "STOPPER") {
       if (t > 0.6 && b < 0.6) { const k = b < 0 ? cl((t - 0.6) / 0.4) : 1 - b / 0.6; ctx.save(); ctx.globalAlpha = fade * k; // cross glint on the hero
         this.line(ctx, [[h.x, h.y - 70 * k - 30], [h.x, h.y + 70 * k + 30]], "#ffffff", 6); this.line(ctx, [[h.x - 45 * k - 20, h.y - 10], [h.x + 45 * k + 20, h.y - 10]], "#ffffff", 6); ctx.restore(); }

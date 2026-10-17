@@ -1,0 +1,32 @@
+{
+  "id": "DASH",
+  "animation": "FINISH",
+  "cellW": 384,
+  "cellH": 384,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 192,
+    "y": 380
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_warrior_finish_r1a.jpg",
+  "facing": "left",
+  "mirrorInScene": true,
+  "hotspot": {
+    "x": 129,
+    "y": 6,
+    "what": "sword tip"
+  },
+  "heightRatio": {
+    "value": 5.0,
+    "beforeWarp": 5.86,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Grand-scene pose 戦陣突破 beat 3 (finishing pose): sword raised high. 384x384 cell, feet pivot (192,380) so the raised sword fits; unit = cellH/96 = 4 so the on-screen head equals the other poses. Head only x1.215 about the chin, grid 7.48. 頭身 5.00 (5.86 before the warp). Mirrored in the scene (flip) to keep the sword hand. Soft-alpha cyan cutout; feet (or palm) on the pivot; on-screen head = HD idle head. Drawn only in the grand SPECIAL scene (comboPose + grandPose, never roadside). No light / effects in the art: the scene draws them. Display only."
+}

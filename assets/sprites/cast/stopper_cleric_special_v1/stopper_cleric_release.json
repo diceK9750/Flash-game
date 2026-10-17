@@ -1,0 +1,32 @@
+{
+  "id": "STOPPER",
+  "animation": "RELEASE",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_priest_release_r1a.jpg",
+  "facing": "left",
+  "mirrorInScene": true,
+  "hotspot": {
+    "x": 115,
+    "y": 12,
+    "what": "staff top"
+  },
+  "heightRatio": {
+    "value": 5.0,
+    "beforeWarp": 5.5,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Grand-scene pose 聖光反転 beat 2 (release): staff raised high with both hands, shouting. Head only x1.125 about the chin, grid 8.40. 頭身 ~5.0 (~5.5 before the warp). Stored with the staff in the viewer-left hands; mirrored in the scene (flip) so the staff side matches the idle / prayer. Soft-alpha cyan cutout; feet (or palm) on the pivot; on-screen head = HD idle head. Drawn only in the grand SPECIAL scene (comboPose + grandPose, never roadside). No light / effects in the art: the scene draws them. Display only."
+}
