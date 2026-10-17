@@ -116,6 +116,10 @@ Hop.Audio = {
         .concat(chime(S + 0.15, [880, 1108.7, 1318.5, 1760, 2217.5, 2637], 0.13, 0.016), boom(S + 1.0, 0.8),
           [["tone", S + 1.0, 1.2, 0.035, "triangle", 440, 446, 0.02], ["tone", S + 1.0, 1.2, 0.025, "sine", 1760, 1772, 0.01]], chime(S + 1.05, [3520, 2960, 4186], 0.06, 0.014))
     };
+    // afterglow tail (rings out through the end of the scene, like the combo explosions)
+    const tail = (t, f) => [["tone", t, 1.7, 0.016, "sine", f, f * 1.01, 0.08], ["noise", t, 1.2, 0.012, "lowpass", 1400, 200, 0.7]];
+    grand.DASH.push(...tail(S + 1.45, 196)); grand.STOPPER.push(...tail(S + 1.65, 784)); grand.BRAKE.push(...tail(S + 1.7, 147));
+    grand.ANGLE.push(...tail(S + 1.7, 523.3)); grand.GUARD.push(...tail(S + 1.5, 659.3));
     const R = 0.4; // reducedMotion short version: scene from the still cut-in end
     return {
       GRAND_DASH: grand.DASH, GRAND_STOPPER: grand.STOPPER, GRAND_BRAKE: grand.BRAKE, GRAND_ANGLE: grand.ANGLE, GRAND_GUARD: grand.GUARD,

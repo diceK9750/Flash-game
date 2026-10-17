@@ -1131,7 +1131,7 @@ Hop.Graphics = {
         ctx.globalAlpha = fade * (1 - k / 18) * (b < 0.4 ? 1 : 1 - cl((b - 0.4) / 0.4)); this.circle(ctx, px, py, 14 - k * 0.5, hues[k % 6]); }
       ctx.globalAlpha = fade;
     }
-    if (st.type === "BRAKE" && t > 0.1 && b < 1.0) for (let i = 0; i < 18; i++) { // drifting shadow wisps around the hero
+    if (st.type === "BRAKE" && t > 0.1 && b < 1.0) for (let i = 0; i < 32; i++) { // drifting shadow wisps around the hero
       const life = (t * 0.8 + this.grandRand(i, 13)) % 1, an = this.grandRand(i, 14) * Math.PI * 2, r = 60 + 150 * life;
       ctx.globalAlpha = fade * 0.55 * (1 - life) * (b < 0.6 ? 1 : 1 - (b - 0.6) / 0.4); this.circle(ctx, h.x + Math.cos(an) * r, h.y + Math.sin(an) * r * 0.6, 10 + 14 * life, i % 3 ? "#3a1760" : "#7d4bc0"); }
     ctx.globalAlpha = fade;
@@ -1141,6 +1141,11 @@ Hop.Graphics = {
       if (gh.clone) { ctx.save(); ctx.globalAlpha = fade * gh.alpha * 0.8; ctx.fillStyle = "#2a0b45"; ctx.beginPath(); ctx.ellipse(sx(gh.x), ground + gh.dy - 60, 50, 75, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
       this.comboCast(ctx, id, { x: gh.x, dy: gh.dy, pose: gh.pose || A.pose, scale: A.scale, face: gh.face || A.face, rotate: gh.rotate ?? A.rotate }, sx, ground, fade * gh.alpha);
       if (gh.clone && !rm) { ctx.save(); ctx.globalAlpha = fade * gh.alpha; this.line(ctx, [[sx(gh.x) - 160 * Math.sign(gh.rotate), ground + gh.dy - 70], [sx(gh.x), ground + gh.dy - 60]], "#d9b8ff", 3); ctx.restore(); }
+    }
+    // smear afterimages of the actor while it leaps / dashes / spins (same sprite, earlier placements)
+    if (!rm && st.after === null && A.alpha > 0.5) for (let k = 2; k >= 1; k--) {
+      const p = this.grandActor({ ...st, t: st.t - 0.035 * k }, sx, sy, ground);
+      if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * (k === 1 ? 0.32 : 0.16));
     }
     if (A.alpha > 0.01) this.comboCast(ctx, id, A, sx, ground, fade * A.alpha);
     ctx.restore();
