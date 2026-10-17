@@ -18,7 +18,11 @@ function load(patch = s => s) {
   }
   return scope.Hop;
 }
-const H = load(), c = H.CONFIG, OLD = load(src => gate.merchantOld(src)).CONFIG;
+// 2026-10-17 A-D balance (cycle 33) retuned A-D again (tests/merchant-balance.cjs): this suite keeps checking the
+// 2026-10-16 grand values by pinning them; the flourish / SE / draw parts are unchanged.
+const GRAND16 = { typeAUses: '5', typeAMultiplier: '2.5', typeAKickSpeed: '0', typeBStartCharge: '0', typeBRevives: '1', typeBBaseSpeed: '900', typeBChargeBonus: '160', typeCCount: '150', typeDBounces: '8', typeDMultiplier: '1.28' };
+const grand16 = src => { for (const [k, v] of Object.entries(GRAND16)) { const re = new RegExp('\\b' + k + ': [\\d.]+'); assert(re.test(src), k); src = src.replace(re, k + ': ' + v); } return src; };
+const H = load(grand16), c = H.CONFIG, OLD = load(src => gate.merchantOld(src)).CONFIG;
 // 1) Config: rarer draw, stronger effects, other SPECIAL / JUST knobs unchanged.
 assert.equal(c.merchantChance, 0.10); assert.equal(OLD.merchantChance, 0.20);
 assert.equal(c.typeAUses, 5); assert.equal(c.typeAMultiplier, 2.5); assert.equal(c.typeBBaseSpeed, 900); assert.equal(c.typeBChargeBonus, 160);

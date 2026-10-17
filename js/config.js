@@ -128,13 +128,16 @@ Hop.CONFIG = Object.freeze({
   merchantNames: Object.freeze({ A: "倍化の秘薬", B: "蓄光の護符", C: "浮遊の絨毯", D: "弾跳の靴" }),
   // 2026-10-16 grander (merchantChance halved): A 3 -> 5 uses, x2 -> x2.5; B base 650 -> 900, +115 -> +160 / charge;
   // C 100 -> 150 objects; D 5 -> 8 bounces, x1.2 -> x1.28. Tuned with the fixed-seed sim (S reach ~unchanged, SSS < 0.5%).
-  typeAUses: 5, typeAMultiplier: 2.5,
-  typeBMaxCharge: 10, typeBBaseSpeed: 900, typeBChargeBonus: 160, typeBAngle: 40,
-  typeCCount: 150, typeCSpeed: 1600, typeCHeight: 190,
+  // 2026-10-17 balance (cycle 33, same-seed tap-vs-MISS gain sim, 12000 seeds): mean gain A 1262/B 879/C 9546/D 2195 m ->
+  // A 4107/B 4669/C 5196/D 4822 m (all within ±13% of the mean). A: first potion lifts right away (kick); B: starts at
+  // charge 4 and restarts twice; C: 72 objects (also a shorter ride); D: 17 bounces x1.38. Draw and trigger unchanged.
+  typeAUses: 12, typeAMultiplier: 3.2, typeAKickSpeed: 1800, typeAKickAngle: 35,
+  typeBStartCharge: 4, typeBRevives: 2, typeBMaxCharge: 10, typeBBaseSpeed: 1400, typeBChargeBonus: 200, typeBAngle: 40,
+  typeCCount: 72, typeCSpeed: 1600, typeCHeight: 190,
   // Type C tempo (2026-10-17 cycle 32): float sub-steps per physics step. The ride covers the same objects and ends at the
   // same x (same exit BOOST), it just plays typeCTempo times faster in real time. 1 = original 56 s ride.
   typeCTempo: 4,
-  typeDBounces: 8, typeDMultiplier: 1.28, typeDMinVertical: 450,
+  typeDBounces: 17, typeDMultiplier: 1.38, typeDMinVertical: 450,
   debugGap: 600, debugFirst: 400,
   // DEBUG filler order after the check (2026-10-16 cycle 11 fix). The old filler (objectWeights order: BOOST then
   // BOUNCE every 7 objects, 600px apart) resonated with the BOOST SPECIAL arc: hero landed on the next BOOST with its

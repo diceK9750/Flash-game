@@ -365,9 +365,11 @@ Hop.Game = class {
   acquireMerchant(type) {
     const c = Hop.CONFIG;
     // A single object ensures replacement discards every previous counter.
-    this.merchant = type === "A" ? { type, remaining: c.typeAUses } : type === "B" ? { type, charge: 0 } :
+    this.merchant = type === "A" ? { type, remaining: c.typeAUses } : type === "B" ? { type, charge: c.typeBStartCharge, revives: c.typeBRevives } :
       type === "C" ? { type, remaining: c.typeCCount, height: c.typeCHeight } : { type, remaining: c.typeDBounces };
     this.merchantStats.lastType = type;
+    // Balance (cycle 33): Type A's first potion lifts the hero right away (A used to give nothing when no contact followed).
+    if (type === "A" && c.typeAKickSpeed > 0) { this.launchVector(c.typeAKickSpeed, c.typeAKickAngle); this.limitSpeed(); }
     if (type === "C") {
       Object.assign(this.body, { y: c.typeCHeight, vx: c.typeCSpeed, vy: 0, grounded: false, stopped: false });
       this.limitSpeed(); this.maxHeight = Math.max(this.maxHeight, this.body.y);
@@ -376,7 +378,9 @@ Hop.Game = class {
   revive() {
     if (this.merchant?.type !== "B" || this.merchant.charge < 1) return false;
     const c = Hop.CONFIG, charge = this.merchant.charge;
-    this.merchant = null; this.merchantStats.revives++; this.setEndCause(null); // run goes on
+    // Balance (cycle 33): Type B can restart typeBRevives times; each restart begins again from typeBStartCharge.
+    if (--this.merchant.revives > 0) this.merchant.charge = c.typeBStartCharge; else this.merchant = null;
+    this.merchantStats.revives++; this.setEndCause(null); // run goes on
     this.launchVector(c.typeBBaseSpeed + charge * c.typeBChargeBonus, c.typeBAngle); this.limitSpeed();
     this.specialMessage = { label: "TYPE B / 再出発！", remaining: c.specialMessageDuration };
     return true;

@@ -6,7 +6,9 @@ const assert = require('node:assert/strict');
 const RE = /boostSpecialChance: [\d.]+, bounceSpecialChance: [\d.]+,/;
 // 2026-10-16 merchant "rarer but grander" also predates the baselines: pin the old draw and type A-D strengths here
 // (tests/merchant-grand.cjs covers the shipped values). Also the 2026-10-16 old cast placement (castPartnerAdjacentFactor 1). The merchant flourish is display only (no pin needed).
-const MERCHANT_OLD = { merchantChance: '0.20', typeAUses: '3', typeAMultiplier: '2', typeBBaseSpeed: '650', typeBChargeBonus: '115', typeCCount: '100', typeDBounces: '5', typeDMultiplier: '1.2' };
+const MERCHANT_OLD = { merchantChance: '0.20', typeAUses: '3', typeAMultiplier: '2', typeBBaseSpeed: '650', typeBChargeBonus: '115', typeCCount: '100', typeDBounces: '5', typeDMultiplier: '1.2',
+  // 2026-10-17 A-D balance (cycle 33): A kick / B start charge + restarts pinned off (tests/merchant-balance.cjs covers them).
+  typeAKickSpeed: '0', typeBStartCharge: '0', typeBRevives: '1' };
 // 2026-10-16 READY-truth fix: old cast placement (castPartnerAdjacentFactor 1/1) and no ground-touch grace for the
 // armed STOPPER / BRAKE (armedGroundGraceSteps 0). tests/special-indicator-truth.cjs covers the shipped values.
 function placementOld(src) {
