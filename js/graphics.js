@@ -429,6 +429,8 @@ Hop.Graphics = {
     if (combo) this.comboBack(ctx, combo, sx, sy, ground);
     if (grand) this.grandBack(ctx, grand, sx, sy, ground);
     const comboHero = combo && combo.after === null ? this.comboActors(combo).hero : null;
+    // Sakuga hero reaction (cycle 35): grand scenes move / spin the hero; combos add a spin to their own hero motion.
+    const sceneHero = grand ? this.grandHeroOff(grand, sx, sy, ground) : comboHero ? { dx: 0, dy: 0, rot: this.comboHeroRot(combo), hit: false } : null;
     if (g.contact && !visual.reducedMotion) this.contactEffect(ctx, g.contact.label.split(" ")[0], x, y, g.phaseTime - visual.contactAt);
     if (g.effect) {
       ctx.save(); ctx.globalAlpha = g.effect.remaining / c.effectDuration;
@@ -451,7 +453,8 @@ Hop.Graphics = {
     const gp = k && !comboSmear ? g.trail[g.trail.length - 1 - k * 4] : null, hg = k && comboSmear ? heroGhost(k) : null;
     if (k && !gp && !hg) continue;
     ctx.save(); if (k) { ctx.globalAlpha = k === 1 ? 0.3 : 0.15; if (gp) ctx.translate(sx(gp.x) - x, sy(gp.y) - y); else ctx.translate(hg[0], hg[1]); }
-    ctx.translate(x + (comboHero?.dx || 0), y + (comboHero?.dy || 0));
+    ctx.translate(x + (comboHero?.dx || 0) + (grand ? sceneHero.dx : 0), y + (comboHero?.dy || 0) + (grand ? sceneHero.dy : 0));
+    if (sceneHero?.rot) { const mid = c.playerRadius - 52; ctx.translate(0, mid); ctx.rotate(sceneHero.rot); ctx.translate(0, -mid); }
     // GROUND_BOUNCE plays upright (tilt weight 0) and the tilt eases back afterwards.
     const tilt = Hop.Sprites?.tiltWeight ? Hop.Sprites.tiltWeight(visual, g.phaseTime) : 1;
     if (D) { if (!comboHero && D.rot) ctx.rotate(D.rot); } // smoothed tilt (Smooth.frame, already weighted)
@@ -473,7 +476,7 @@ Hop.Graphics = {
       }
       return Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
     };
-    const spriteDrawn = (comboHero?.hit && !!Hop.Sprites?.drawHeroHit?.(ctx, 0, c.playerRadius)) || !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
+    const spriteDrawn = ((comboHero?.hit || sceneHero?.hit) && !!Hop.Sprites?.drawHeroHit?.(ctx, 0, c.playerRadius)) || !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
       ((g.state === "FLYING" || g.state === "RESULT") && !!Hop.Sprites?.heroLayers(visual, g.phaseTime, g.state).some(drawLayer)) ||
       (prelaunch && !!Hop.Sprites?.idleLayers?.().some(drawLayer));
     if (!spriteDrawn) this.character(ctx, "HERO", 0, c.playerRadius, 0.936);
@@ -518,10 +521,13 @@ Hop.Graphics = {
       this.contactEffect(ctx, "BOOST", sx(0), sy(0), launchAge);
     }
     const overlay = combo ? this.comboFront(ctx, combo, sx, sy, ground) : grand ? this.grandFront(ctx, grand, sx, sy, ground) : null;
+    if (scene) this.sakugaImpact(ctx, scene, sx, sy, ground, grand ? sceneHero : comboHero && { ...comboHero, rot: sceneHero?.rot || 0 }, !!visual?.reducedMotion);
     ctx.restore(); // combo camera
     if (overlay) this.comboOverlay(ctx, overlay, cam);
     ctx.restore(); // screen shake
-    if (impact.flash > 0) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
+    // cycle 35: the black (inverted) impact frame stays black; the scene flash resumes on the white frame after it
+    const sakA = scene && !visual?.reducedMotion ? this.sakugaImpactAge(scene) : null;
+    if (impact.flash > 0 && !(sakA !== null && sakA < 0.035)) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
     // Tempo feedback pops (chain / milestones / record) and the fast-forward badge, under the cut-ins.
     if (g.tempoEnabled) this.tempoOverlay(ctx, g, visual, x, y);
@@ -963,6 +969,7 @@ Hop.Graphics = {
   POSE_FADE: 0.1,
   comboCastBlend(ctx, id, key, st, a, sx, ground, alpha = 1) {
     if (!a) return;
+    a = this.comboSakuga(st, key, a); // cycle 35 sakuga layer (lean / pose overshoot)
     this.comboCast(ctx, id, a, sx, ground, alpha);
     if (st.short || st.after !== null || st.skipped) return;
     const h = 1 / 120;
@@ -996,7 +1003,7 @@ Hop.Graphics = {
       heroWX: k.heroX, heroY: k.heroY, source: k.source, skipped: !!k.skipped, grand: true, climax: c.grandClimax[k.type] };
   },
   // Scene clock for drawing: the short (reducedMotion) version is a still tableau just after the climax.
-  grandT(st) { return st.short ? st.climax + 0.45 : st.t + (st.after || 0); },
+  grandT(st) { return st.short ? st.climax + 0.45 : this.grandWarp(st, st.t + (st.after || 0)); },
   grandImpact(st, reducedMotion) {
     if (!st || st.short || reducedMotion) return { x: 0, y: 0, flash: 0 };
     const c = Hop.CONFIG, t = this.grandT(st), b = t - st.climax;
@@ -1029,45 +1036,134 @@ Hop.Graphics = {
   // Side the SPECIAL's character comes from: +1 = the hero's left (normal), -1 = the right when the hero is in the left
   // half of the screen (the zoomed camera cannot look past the stage edge).
   grandBack1(st, sx) { return sx(st.heroWX) < Hop.CONFIG.width * 0.5 ? -1 : 1; },
+  // Sakuga (2026-10-17 cycle 35): every scene is 5-6 beats (anticipation -> leap arc with spin -> settle -> wind-up ->
+  // action -> follow-through / finishing pose). Uniform scale pulses only (5-head proportions kept); overshoot / settle
+  // from damped springs; the scene clock holds at the climax (hit-stop) while the impact frames play.
+  easeOutBack(u, s = 1.70158) { u = Math.max(0, Math.min(1, u)) - 1; return 1 + (s + 1) * u * u * u + s * u * u; },
+  osc(a, f = 18, d = 7) { return a <= 0 ? 0 : Math.exp(-d * a) * Math.sin(f * a); },
+  GRAND_HITSTOP: 0.08,
+  grandWarp(st, t) { const cl = st.climax, h = this.GRAND_HITSTOP; return t < cl ? t : t < cl + h ? cl : t - h; },
   grandActor(st, sx, sy, ground) {
-    const c = Hop.CONFIG, t = this.grandT(st), H = st.heroWX, h = this.grandHero(st, sx, sy), feet = h.y + 40 + c.playerRadius;
-    const src = st.source?.x ?? H - 300, S = c.grandActorScale, cl = u => Math.max(0, Math.min(1, u));
-    const leap = (x0, x1, u) => { u = this.glide(u); return { x: x0 + (x1 - x0) * u, dy: (feet - ground) * u - Math.sin(Math.PI * u) * 90 }; };
-    const bk = this.grandBack1(st, sx), fr = bk > 0 ? "right" : "left";
-    const a = { pose: "IDLE", scale: S, face: fr, rotate: 0, alpha: 1, ghosts: [] };
+    const c = Hop.CONFIG, t = this.grandT(st), H = st.heroWX, h = this.grandHero(st, sx, sy), feet = h.y + 40 + c.playerRadius, fd = feet - ground;
+    const src = st.source?.x ?? H - 300, S = c.grandActorScale, cl = u => Math.max(0, Math.min(1, u)), CL = st.climax, b = t - CL;
+    const bk = this.grandBack1(st, sx), fr = bk > 0 ? "right" : "left", fl = bk > 0 ? "left" : "right";
+    const arc = (x0, x1, d0, d1, u, hgt) => { const g = this.glide(u); return { x: x0 + (x1 - x0) * g, dy: d0 + (d1 - d0) * g - Math.sin(Math.PI * cl(u)) * hgt }; };
+    const a = { pose: "IDLE", scale: S, face: fr, rotate: 0, alpha: 1, ghosts: [], beat: "" };
+    const crouch = (u, x) => Object.assign(a, { x, dy: 10 * Math.sin(Math.PI / 2 * cl(u)), rotate: -bk * 0.16 * this.ease(u), scale: S * (1 - 0.04 * cl(u)), beat: "anticipation" });
+    const land = (la, x, d) => { a.x = x; a.dy = d + 12 * this.osc(la, 15, 7); a.scale = S * (1 + 0.06 * this.osc(la, 22, 8)); a.rotate += bk * 0.12 * this.osc(la, 14, 7); };
     if (st.type === "DASH") {
-      const p = t < 0.55 ? leap(src, H - bk * 170, t / 0.55) : { x: H - bk * 170, dy: feet - ground };
-      if (t >= 0.55 && t < 0.75) { p.dy += 8 * Math.sin(Math.PI * (t - 0.55) / 0.2); a.rotate = -bk * 0.12 * Math.sin(Math.PI * cl((t - 0.55) / 0.2)); }
-      if (t >= 0.75) { const u = this.ease(cl((t - 0.75) / 0.2)); p.x = H - bk * 170 + bk * 130 * u; a.rotate = bk * 0.16 * (1 - cl((t - 0.95) / 0.3)); a.pose = "USED";
-        if (t < 1.25) for (let k = 1; k <= 3; k++) { const uk = this.ease(cl((t - 0.03 * k - 0.75) / 0.2)); a.ghosts.push({ x: H - bk * 170 + bk * 130 * uk, dy: p.dy, alpha: (0.45 - k * 0.12) * (1 - cl((t - 0.95) / 0.3)) }); } }
-      Object.assign(a, p);
+      const X0 = H - bk * 190;
+      if (t < 0.14) crouch(t / 0.14, src);
+      else if (t < 0.5) { const u = (t - 0.14) / 0.36; Object.assign(a, arc(src, X0, 10, fd, u, 110), { rotate: bk * Math.PI * 2 * this.smoother(u), scale: S * (0.95 + 0.1 * Math.sin(Math.PI * u)), beat: "leap" }); }
+      else if (t < 0.75) { const u = (t - 0.5) / 0.25; a.rotate = -bk * 0.3 * this.ease(u); land(t - 0.5, X0 - bk * 30 * this.ease(u), fd); a.beat = "windup"; }
+      else if (t < CL) { const u = (t - 0.75) / (CL - 0.75), e = u * u * u; Object.assign(a, { x: X0 - bk * 30 + bk * 175 * e, dy: fd - 8 * Math.sin(Math.PI * u), rotate: -bk * 0.3 + bk * 0.62 * this.ease(u), beat: "dash" });
+        for (let k = 1; k <= 4; k++) { const uk = cl(u - 0.07 * k), ek = uk * uk * uk; a.ghosts.push({ x: X0 - bk * 30 + bk * 175 * ek, dy: fd, alpha: 0.5 - k * 0.1, rotate: a.rotate }); } }
+      else { // impact -> follow-through slide -> turn back (scale pulse) -> finishing pose with breath
+        const xF = X0 + bk * 145 + bk * 75 * this.ease(cl(b / 0.35));
+        Object.assign(a, { x: xF, dy: fd, pose: "USED", rotate: bk * 0.32 * (1 - this.ease(cl(b / 0.5))) + bk * 0.12 * this.osc(b, 14, 5), scale: S * (1 + 0.09 * this.osc(b, 22, 8)), beat: b < 0.6 ? "follow" : "pose" });
+        if (b > 0.65) { const v = cl((b - 0.65) / 0.3); a.dy -= 28 * Math.sin(Math.PI * v); if (v > 0.5) a.face = fl; a.scale *= 1 + 0.06 * this.osc(b - 0.8, 24, 9); a.dy += 2 * Math.sin(t * 5); }
+      }
     } else if (st.type === "STOPPER") {
-      Object.assign(a, t < 0.4 ? leap(src, H - bk * 150, t / 0.4) : { x: H - bk * 150, dy: feet - ground - 6 * Math.sin(t * 3) });
-      a.pose = t > 0.3 ? "USED" : "IDLE"; a.rotate = -bk * 0.05 * cl((t - 0.3) / 0.3);
+      const X0 = H - bk * 150;
+      if (t < 0.12) crouch(t / 0.12, src);
+      else if (t < 0.45) { const u = (t - 0.12) / 0.33; Object.assign(a, arc(src, X0, 10, fd, u, 140), { rotate: bk * 0.3 * Math.sin(Math.PI * u), scale: S * (0.96 + 0.08 * Math.sin(Math.PI * u)), beat: "leap" }); }
+      else if (t < 0.8) { const u = (t - 0.45) / 0.35; a.rotate = -bk * 0.15 * this.easeOutBack(u); land(t - 0.45, X0, fd); a.scale *= 1 + 0.04 * this.easeOutBack(u); a.pose = t > 0.5 ? "USED" : "IDLE"; a.beat = "pray"; }
+      else if (t < CL) { const u = (t - 0.8) / (CL - 0.8); Object.assign(a, { x: X0, dy: fd - 22 * this.ease(u) + 3 * Math.sin(t * 40) * u, rotate: -bk * 0.15 + bk * 0.22 * this.ease(u), pose: "USED", scale: S * 1.04, beat: "channel" }); }
+      else { const pop = -38 * this.ease(cl(b / 0.12)) * (1 - this.ease(cl((b - 0.12) / 0.55)));
+        Object.assign(a, { x: X0, dy: fd - 22 * (1 - this.smoother(cl((b - 0.5) / 0.6))) + pop, pose: "USED", scale: S * (1.04 + 0.12 * this.osc(b, 20, 6)), rotate: -bk * 0.22 * (1 - this.ease(cl(b / 0.3))) + bk * 0.06 * this.osc(b, 12, 5), beat: b < 0.6 ? "reverse" : "bow" });
+        if (b > 0.6) a.rotate += bk * 0.24 * Math.sin(Math.PI * cl((b - 0.6) / 0.6)); }
     } else if (st.type === "BRAKE") {
-      // vanishes into the shadow, the clones cross the hero, then reappears behind the hero
-      if (t < 0.2) { Object.assign(a, { x: src, dy: 0, alpha: 1 - t / 0.2 }); }
-      else if (t < 1.1) Object.assign(a, { x: src, dy: 0, alpha: 0 });
-      else { Object.assign(a, { x: H - bk * 140, dy: feet - ground, alpha: cl((t - 1.1) / 0.12), face: fr, pose: "USED" }); }
-      for (let k = 0; k < 6; k++) {
+      const X1 = H - bk * 150, X2 = H - bk * 205;
+      if (t < 0.12) crouch(t / 0.12, src);
+      else if (t < 0.26) { const u = (t - 0.12) / 0.14; Object.assign(a, { x: src, dy: 10 - 24 * this.ease(u), alpha: 1 - u, scale: S * (1 - 0.45 * u * u), rotate: bk * 0.9 * u, beat: "vanish" }); }
+      else if (t < 1.05) Object.assign(a, { x: src, dy: 0, alpha: 0, beat: "shadow" });
+      else if (t < CL) { const u = (t - 1.05) / (CL - 1.05); Object.assign(a, { x: X1, dy: fd, alpha: cl(u * 2), scale: S * (0.6 + 0.4 * this.easeOutBack(u, 2.4)), rotate: -bk * 0.6 * (1 - this.easeOutBack(u)), face: fr, pose: "USED", beat: "reappear" }); }
+      else if (b < 0.3) { const u = this.ease(cl(b / 0.12)); Object.assign(a, { x: X1 + bk * 75 * u, dy: fd, pose: "USED", face: fr, rotate: bk * 0.22 * u, scale: S * (1 + 0.08 * this.osc(b, 22, 8)), beat: "lunge" }); }
+      else { const u = cl((b - 0.3) / 0.45); Object.assign(a, arc(X1 + bk * 75, X2, fd, fd, u, 110), { pose: u < 1 ? "USED" : "IDLE", face: fr, rotate: -bk * Math.PI * 2 * this.smoother(u), beat: u < 1 ? "backflip" : "land" });
+        if (u >= 1) land(b - 0.75, X2, fd); }
+      for (let k = 0; k < 6; k++) { // shadow clones: each an arc with a spin and an overshoot at the far side
         const t0 = 0.18 + k * 0.15, u = (t - t0) / 0.24; if (u < 0 || u > 1.6) continue;
-        const dir = k % 2 ? -1 : 1, uu = this.glide(cl(u)), x = H - dir * 300 + dir * 600 * uu, dy = feet - ground + [-60, 40, -20, 70, -45, 15][k];
-        a.ghosts.push({ x, dy, alpha: 0.6 * (1 - cl((u - 1) / 0.6)) * cl(u * 6), face: dir > 0 ? "right" : "left", rotate: dir * 0.25, pose: "USED", clone: true });
+        const dir = k % 2 ? -1 : 1, uu = this.easeOutBack(cl(u), 1.2), x = H - dir * 300 + dir * 600 * uu, dy = fd + [-60, 40, -20, 70, -45, 15][k] - 45 * Math.sin(Math.PI * cl(u));
+        a.ghosts.push({ x, dy, alpha: 0.6 * (1 - cl((u - 1) / 0.6)) * cl(u * 6), face: dir > 0 ? "right" : "left", rotate: dir * (0.25 + 0.5 * Math.sin(Math.PI * cl(u))), pose: "USED", clone: true });
       }
     } else if (st.type === "ANGLE") {
-      if (t < 0.3) Object.assign(a, leap(src, H - bk * 120, t / 0.3));
-      else if (t < 1.2) {
-        const u = this.smoother((t - 0.3) / 0.9), th = (bk > 0 ? Math.PI : 0) + u * Math.PI * 5, cx = H, cy = feet - ground - 60 * S;
-        const rx = 130 * Math.cos(th), ry = 85 * Math.sin(th), rot = u * Math.PI * 4;
-        // rotate about the body centre: feet = centre + R(rot) * (0, 60 S)
-        a.x = cx + rx - Math.sin(rot) * 60 * S; a.dy = cy + ry + Math.cos(rot) * 60 * S; a.rotate = rot; a.pose = Math.floor(u * 10) % 2 ? "USED" : "IDLE";
-        a.face = Math.cos(th) < 0 ? "right" : "left";
-      } else { const u = this.ease(cl((t - 1.2) / 0.25)); Object.assign(a, { x: H - bk * 130, dy: feet - ground - 30 * Math.sin(Math.PI * u), pose: "USED", face: fr }); }
+      const X1 = H - bk * 130, cy = fd - 60 * S;
+      if (t < 0.12) crouch(t / 0.12, src);
+      else if (t < 0.35) { const u = (t - 0.12) / 0.23; Object.assign(a, arc(src, H - bk * 130, 10, cy + 60 * S, u, 120), { rotate: bk * Math.PI * 2 * this.smoother(u), beat: "leap" }); }
+      else if (t < 1.1) {
+        const u = this.smoother((t - 0.35) / 0.75), th = (bk > 0 ? Math.PI : 0) + u * Math.PI * 2, rx = 130 * Math.cos(th), ry = 85 * Math.sin(th) - 14 * Math.sin(th * 2), rot = bk * u * Math.PI * 4;
+        Object.assign(a, { x: H + rx - Math.sin(rot) * 60 * S, dy: cy + ry + Math.cos(rot) * 60 * S, rotate: rot, pose: Math.floor(u * 10) % 2 ? "USED" : "IDLE", face: Math.cos(th) < 0 ? "right" : "left", scale: S * (1 + 0.05 * Math.sin(u * Math.PI * 10)), beat: "cartwheel" });
+      } else if (t < CL) { const u = (t - 1.1) / (CL - 1.1); Object.assign(a, arc(X1, X1, cy + 60 * S, fd, u, 40), { rotate: 0, pose: "USED", beat: "land" }); }
+      else { Object.assign(a, { x: X1, dy: fd - 44 * Math.sin(Math.PI * cl(b / 0.35)), pose: "USED", face: fr, scale: S * (1 + 0.14 * this.osc(b, 18, 6)), rotate: bk * 0.4 * this.osc(b, 12, 5), beat: b < 0.7 ? "ta-da" : "bow" });
+        if (b > 0.7) { const v = cl((b - 0.7) / 0.5); a.rotate += bk * 0.32 * Math.sin(Math.PI * v); a.pose = v > 0.2 && v < 0.8 ? "IDLE" : "USED"; } }
     } else { // GUARD
-      Object.assign(a, t < 0.4 ? leap(src, H - bk * 160, t / 0.4) : { x: H - bk * 160, dy: feet - ground - 10 - 6 * Math.sin(t * 2.6) });
-      a.rotate = -bk * 0.06 * cl((t - 0.4) / 0.4);
+      const X0 = H - bk * 160;
+      if (t < 0.12) crouch(t / 0.12, src);
+      else if (t < 0.4) { const u = (t - 0.12) / 0.28; Object.assign(a, arc(src, X0, 10, fd, u, 120), { rotate: bk * 0.5 * Math.sin(Math.PI * u), beat: "leap" }); }
+      else if (t < 0.55) { land(t - 0.4, X0, fd); a.beat = "land"; }
+      else if (t < CL) { const u = (t - 0.55) / (CL - 0.55); Object.assign(a, { x: X0, dy: fd - 30 * this.ease(u) - 4 * Math.sin(t * 7), rotate: -bk * 0.08 * Math.sin(t * 6) - bk * 0.1 * u, scale: S * (1 + 0.03 * Math.sin(t * 8)), pose: u > 0.3 ? "USED" : "IDLE", beat: "chant" }); }
+      else { const pop = -22 * this.ease(cl(b / 0.1)) * (1 - this.ease(cl((b - 0.1) / 0.4)));
+        Object.assign(a, { x: X0, dy: fd - 30 + pop + 30 * this.easeOutBack(cl((b - 0.8) / 0.5), 2.2), rotate: bk * 0.18 * this.osc(b, 10, 4), scale: S * (1 + 0.12 * this.osc(b, 20, 6)), pose: "USED", beat: b < 0.8 ? "seal" : "descend" }); }
     }
     return a;
+  },
+  // Hero reaction in the grand scenes (display only; settles to rest before the scene ends so the flight resumes in place).
+  grandHeroOff(st, sx, sy, ground) {
+    const t = this.grandT(st), CL = st.climax, b = t - CL, cl = u => Math.max(0, Math.min(1, u)), bk = this.grandBack1(st, sx);
+    let dx = 0, dy = 0, rot = 0, hit = false;
+    if (st.type === "DASH") { if (b >= 0) { dx = bk * 55 * this.ease(cl(b / 0.18)) * (1 - this.smoother(cl((b - 0.25) / 0.9))); rot = bk * Math.PI * 2 * this.ease(cl(b / 0.55)); hit = b < 0.45; } else if (t > 0.75) dx = -bk * 4 * Math.sin(t * 50); }
+    else if (st.type === "STOPPER") { if (t > 0.8 && b < 0) dy = -24 * this.ease((t - 0.8) / (CL - 0.8)) + 2 * Math.sin(t * 37);
+      if (b >= 0) { dy = (-24 - 60 * this.easeOutBack(cl(b / 0.35))) * (1 - this.smoother(cl((b - 0.6) / 0.6))); rot = -bk * 0.3 * this.osc(b, 10, 4); } }
+    else if (st.type === "BRAKE") { for (let k = 0; k < 6; k++) { const tk = 0.18 + k * 0.15 + 0.12, dir = k % 2 ? -1 : 1; dx += dir * 12 * this.osc(t - tk, 25, 9); rot += dir * 0.14 * this.osc(t - tk, 22, 8); }
+      if (b >= 0) { rot += -bk * Math.PI * 2 * this.ease(cl(b / 0.6)); dx += bk * 30 * this.osc(b, 8, 4); hit = b < 0.4; } }
+    else if (st.type === "ANGLE") { if (t > 0.35 && t < 1.1) rot = bk * 0.3 * Math.sin((t - 0.35) * 9) * Math.sin(Math.PI * (t - 0.35) / 0.75);
+      if (b >= 0) { rot = -bk * Math.PI * 2 * this.ease(cl(b / 0.5)); dx = bk * 24 * this.osc(b, 9, 4); dy = -30 * Math.sin(Math.PI * cl(b / 0.4)); } }
+    else { if (b >= 0) { dy = (-14 * this.ease(cl(b / 0.3)) + 3 * Math.sin(b * 6)) * (1 - this.smoother(cl((b - 0.9) / 0.5))); rot = -bk * 0.12 * this.osc(b, 6, 3); } }
+    rot = Math.atan2(Math.sin(rot), Math.cos(rot)); // a finished full spin rests at 0
+    const env = st.after !== null ? 0 : 1 - this.smoother(cl((st.t - (st.end - 0.3)) / 0.3));
+    return { dx: dx * env, dy: dy * env, rot: rot * env, hit: hit && st.after === null };
+  },
+  // Impact frames (2 x ~2 display frames during the hit-stop): inverted silhouettes (white on black), then black on white,
+  // with focus lines. Not in the short version / reduced motion. Returns true when drawn (tests).
+  sakugaImpactAge(st) {
+    if (!st || st.short || st.after !== null || st.skipped) return null;
+    const c = Hop.CONFIG, T = st.grand ? st.climax : st.type === "BOOST" ? c.comboWitchTimes.blast : c.comboFighterTimes.upper;
+    const raw = st.grand ? st.t : st.t, a = raw - T; return a >= 0 && a < 0.07 ? a : null;
+  },
+  sakugaImpact(ctx, st, sx, sy, ground, heroOff, reducedMotion) {
+    const a = this.sakugaImpactAge(st); if (a === null || reducedMotion) return false;
+    const c = Hop.CONFIG, inv = a < 0.035, hx = sx(st.heroWX) + (heroOff?.dx || 0), hy = sy(st.heroY) + (heroOff?.dy || 0);
+    ctx.save(); ctx.fillStyle = inv ? "rgba(8,6,16,0.9)" : "rgba(255,255,250,0.92)"; ctx.fillRect(-2000, -2000, c.width + 4000, c.height + 4000);
+    ctx.strokeStyle = inv ? "rgba(255,255,255,0.85)" : "rgba(20,10,30,0.8)";
+    for (let i = 0; i < 28; i++) { const an = i * Math.PI * 2 / 28 + this.lcRand(i) * 0.15, r0 = 120 + 60 * this.lcRand(i + 40); ctx.lineWidth = 2 + 4 * this.lcRand(i + 80);
+      ctx.beginPath(); ctx.moveTo(hx + Math.cos(an) * r0, hy - 40 + Math.sin(an) * r0); ctx.lineTo(hx + Math.cos(an) * 1400, hy - 40 + Math.sin(an) * 1400); ctx.stroke(); }
+    ctx.filter = inv ? "brightness(0) invert(1)" : "brightness(0)";
+    const actors = st.grand ? [[st.type, this.grandActor(st, sx, sy, ground)]] : Object.entries({ BOOST: this.comboActors(st).witch, BOUNCE: this.comboActors(st).fighter }).filter(e => e[1] && e[1].beat !== "hidden");
+    for (const [id, p] of actors) if ((p.alpha ?? 1) > 0.05) this.comboCast(ctx, id, { ...p, alpha: 1 }, sx, ground, 1);
+    ctx.save(); ctx.translate(hx, hy); if (heroOff?.rot) ctx.rotate(heroOff.rot);
+    if (!Hop.Sprites?.drawHeroHit?.(ctx, 0, c.playerRadius)) this.circle(ctx, 0, c.playerRadius - 45, 34, inv ? "#ffffff" : "#000000");
+    ctx.restore(); ctx.filter = "none"; ctx.restore();
+    return true;
+  },
+  // Combo scenes (mage / monk): display-time sakuga layer on top of the pure comboActors placements: lean into the
+  // motion (follow-through), a uniform overshoot pulse on every pose change. Teleports (rush) do not lean.
+  comboSakuga(st, key, a) {
+    if (!a || st.short || st.after !== null || st.skipped) return a;
+    const p = this.comboActors({ ...st, t: st.t - 0.05 })[key]; if (!p) return a;
+    const dxp = a.x - p.x, vx = Math.abs(dxp) > 120 ? 0 : dxp / 0.05, vy = Math.abs((a.dy || 0) - (p.dy || 0)) > 160 ? 0 : ((a.dy || 0) - (p.dy || 0)) / 0.05;
+    const lean = Math.max(-0.2, Math.min(0.2, vx / 3200)) + Math.max(-0.08, Math.min(0.08, -vy / 9000)) * Math.sign(vx || 1);
+    let age = null; for (let k = 1; k <= 18; k++) { const q = this.comboActors({ ...st, t: st.t - k / 60 })[key]; if (!q) break; if (q.pose !== a.pose || q.face !== a.face) { age = (k - 0.5) / 60; break; } }
+    const pulse = age === null ? 0 : 0.07 * Math.exp(-age * 12) * Math.cos(age * 24);
+    return { ...a, rotate: (a.rotate || 0) + lean, scale: (a.scale || 1) * (1 + pulse) };
+  },
+  comboHeroRot(st) {
+    if (!st || st.short || st.after !== null || st.skipped) return 0;
+    const c = Hop.CONFIG, t = st.t, cl = u => Math.max(0, Math.min(1, u)); let r = 0;
+    if (st.type === "BOOST") { const W = c.comboWitchTimes; if (t >= W.dash && t < W.rushEnd) { const step = (W.rushEnd - W.dash) / c.comboWitchHits, k = Math.floor((t - W.dash) / step), u = (t - W.dash - k * step); r = (k % 2 ? 1 : -1) * 0.16 * this.osc(u + 0.02, 30, 10) * 3; }
+      else if (t >= W.rushEnd) r = -0.5 * this.ease(cl((t - W.rushEnd) / 0.3)) * (1 - this.smoother(cl((t - W.blast) / 0.5))) + 0.1 * this.osc(t - W.blast, 12, 5); }
+    else { const F = c.comboFighterTimes, u = t - F.upper - F.hitstop; if (u >= 0) r = Math.PI * 2 * this.ease(cl(u / 0.55)); }
+    r = Math.atan2(Math.sin(r), Math.cos(r));
+    const end = st.end; return r * (1 - this.smoother(cl((t - (end - 0.25)) / 0.25)));
   },
   grandRand(i, k = 0) { return this.lcRand(i * 7.31 + k * 13.7 + 1.9); },
   // Behind the hero: darkness, aura, pillar, magic circle, actor + afterimages / clones.
@@ -1143,9 +1239,9 @@ Hop.Graphics = {
       if (gh.clone && !rm) { ctx.save(); ctx.globalAlpha = fade * gh.alpha; this.line(ctx, [[sx(gh.x) - 160 * Math.sign(gh.rotate), ground + gh.dy - 70], [sx(gh.x), ground + gh.dy - 60]], "#d9b8ff", 3); ctx.restore(); }
     }
     // smear afterimages of the actor while it leaps / dashes / spins (same sprite, earlier placements)
-    if (!rm && st.after === null && A.alpha > 0.5) for (let k = 2; k >= 1; k--) {
-      const p = this.grandActor({ ...st, t: st.t - 0.035 * k }, sx, sy, ground);
-      if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * (k === 1 ? 0.32 : 0.16));
+    if (!rm && st.after === null && A.alpha > 0.5) for (let k = 3; k >= 1; k--) {
+      const p = this.grandActor({ ...st, t: st.t - 0.03 * k }, sx, sy, ground);
+      if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * [0, 0.34, 0.2, 0.1][k] * (p.alpha ?? 1));
     }
     if (A.alpha > 0.01) this.comboCast(ctx, id, A, sx, ground, fade * A.alpha);
     ctx.restore();
@@ -1244,7 +1340,7 @@ Hop.Graphics = {
       const f = A.fighter;
       if (f.dash !== undefined && !st.short) for (let i = 3; i >= 1; i--) this.comboCast(ctx, "BOUNCE", { ...f, x: f.x + i * 55 }, sx, ground, 0.18 * (4 - i) * fade);
       if (f.ghost) this.comboCast(ctx, "BOUNCE", { ...f, x: st.heroWX + f.ghost * 75, face: f.ghost > 0 ? "left" : "right" }, sx, ground, 0.35 * (1 - f.ghostU) * fade);
-      this.comboCast(ctx, "BOUNCE", f, sx, ground);
+      this.comboCast(ctx, "BOUNCE", this.comboSakuga(st, "fighter", f), sx, ground);
     } else {
       const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x), feet = ground + (f.dy || 0), mid = feet - 70 * f.scale, heroX = sx(st.heroWX);
       const visible = st.short || f.beat === "arrive" || f.beat === "buff" || f.beat === "crouch" || f.beat === "drop";
