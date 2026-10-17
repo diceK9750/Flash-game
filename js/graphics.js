@@ -525,7 +525,9 @@ Hop.Graphics = {
     ctx.restore(); // combo camera
     if (overlay) this.comboOverlay(ctx, overlay, cam);
     ctx.restore(); // screen shake
-    if (impact.flash > 0) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
+    // cycle 35: the black (inverted) impact frame stays black; the scene flash resumes on the white frame after it
+    const sakA = scene && !visual?.reducedMotion ? this.sakugaImpactAge(scene) : null;
+    if (impact.flash > 0 && !(sakA !== null && sakA < 0.035)) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
     // Tempo feedback pops (chain / milestones / record) and the fast-forward badge, under the cut-ins.
     if (g.tempoEnabled) this.tempoOverlay(ctx, g, visual, x, y);
