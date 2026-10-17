@@ -175,7 +175,8 @@ function play(seed, mode) {
   const sx = x => x, sy = y => 600 - 18 - y;
   for (let t = 0; t < 3.2 - G.comboSceneStart(false); t += 0.05) {
     g.combo.elapsed = G.comboSceneStart(false) + t; calls.length = 0; G.comboBack(nullCtx, G.comboState(g), sx, sy, 600);
-    const fa = G.comboActors(G.comboState(g)).fighter;
+    // cycle 35: the drawn fighter carries the sakuga layer (lean + uniform pose-change pulse) on top of comboActors
+    const st = G.comboState(g), fa0 = G.comboActors(st).fighter, fa = G.comboSakuga ? G.comboSakuga(st, 'fighter', fa0) : fa0;
     for (const call of calls) if (call.id === 'BOOST') assert.equal(call.feet, 600, 'witch feet on ground'); else assert(call.feet >= 600 + fa.dy - 1e-9, 'afterimages trail below');
     const f = calls.filter(k => k.id === 'BOUNCE').pop(); if (fa.beat === 'hidden') assert.equal(f, undefined); else { near(f.mul, fa.scale, 'fighter scale'); near(f.feet, 600 + fa.dy, 'fighter feet'); }
   }
