@@ -490,7 +490,7 @@ Hop.UI = class {
     el("aerial-hud-charge").hidden = !!g.special || !!g.combo || g.merchant?.type === "C" || g.aerialMode === "UP";
     const m = g.merchant;
     el("merchant-hud").hidden = !m;
-    el("merchant-hud-text").textContent = !m ? "" : m.type === "A" ? "🧪 TYPE A ×" + m.remaining : m.type === "B" ? "⚡ CHARGE " + m.charge + "/" + c.typeBMaxCharge : m.type === "C" ? "FLOAT " + m.remaining + "/" + c.typeCCount : "BOUND ×" + m.remaining;
+    el("merchant-hud-text").textContent = !m ? "" : m.type === "A" ? "🧪 TYPE A ×" + m.remaining : m.type === "B" ? "⚡ CHARGE " + m.charge + "/" + c.typeBMaxCharge + (m.revives > 1 ? " ×" + m.revives : "") : m.type === "C" ? "FLOAT " + m.remaining + "/" + c.typeCCount : "BOUND ×" + m.remaining;
     el("merchant-hud-charge").hidden = m?.type !== "B";
     el("merchant-hud-charge").value = m?.type === "B" ? m.charge / c.typeBMaxCharge : 0;
     this.visual.readyTargets = Hop.UI.readyTargets(g);
