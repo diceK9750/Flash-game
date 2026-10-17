@@ -129,6 +129,11 @@ Hop.Sprites = {
         // and r1 used stills are kept in brake_thief/.
         USED: { id: "BRAKE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
           src: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used_sheet_384x288.png", metadata: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_used.json" },
+        // Grand-scene only (comboPose + grandPose; never roadside, loaded after the title sprites): 影すり抜け: shadow dash (dagger forward) -> slash through; both face the viewer's left like the idle, not mirrored.
+        SHADOW: { id: "BRAKE", animation: "SHADOW", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 26, y: 155 },
+          src: "assets/sprites/cast/brake_thief_special_v1/brake_thief_shadow_sheet_288x288.png", metadata: "assets/sprites/cast/brake_thief_special_v1/brake_thief_shadow.json" },
+        SLASH: { id: "BRAKE", animation: "SLASH", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 9, y: 135 },
+          src: "assets/sprites/cast/brake_thief_special_v1/brake_thief_slash_sheet_288x288.png", metadata: "assets/sprites/cast/brake_thief_special_v1/brake_thief_slash.json" },
         CUTIN_FACE: { id: "BRAKE", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/brake_thief_cutin_face_v2/brake_thief_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/brake_thief_cutin_face_v2/brake_thief_cutin_face.json" }
       },
@@ -139,24 +144,46 @@ Hop.Sprites = {
         // the pivot x); the 96 r1 stills are kept in angle_jester/.
         USED: { id: "ANGLE", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, pose: 1, enabled: true,
           src: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used_sheet_384x288.png", metadata: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_used.json" },
+        // Grand-scene only (comboPose + grandPose; never roadside, loaded after the title sprites): 水平曲芸: one-hand handstand (pivot = palm) -> ta-da (front-facing, mirrored so the cane is on the viewer's right like the idle).
+        HANDSTAND: { id: "ANGLE", animation: "HANDSTAND", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 238, y: 145 },
+          src: "assets/sprites/cast/angle_jester_special_v1/angle_jester_handstand_sheet_288x288.png", metadata: "assets/sprites/cast/angle_jester_special_v1/angle_jester_handstand.json" },
+        TADA: { id: "ANGLE", animation: "TADA", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, facing: "right", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 55, y: 10 },
+          src: "assets/sprites/cast/angle_jester_special_v1/angle_jester_tada_sheet_288x288.png", metadata: "assets/sprites/cast/angle_jester_special_v1/angle_jester_tada.json" },
         CUTIN_FACE: { id: "ANGLE", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/angle_jester_cutin_face_v2/angle_jester_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/angle_jester_cutin_face_v2/angle_jester_cutin_face.json" }
       },
       DASH: { // 戦士 (HD comic idle r1b, drawn like the design sheet with the sword on the viewer's left; mirrored: sword on the viewer's right, shield on the left like the Canvas warrior; the 96 r1 still is kept in dash_warrior/)
         IDLE: { id: "DASH", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle_sheet_288x288.png", metadata: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_idle.json" },
+        // Grand-scene only (comboPose + grandPose; never roadside, loaded after the title sprites): 戦陣突破: wind-up (sword already in the viewer-right hand, not mirrored) -> thrust -> finishing pose (both mirrored so the sword hand matches); FINISH is a 384x384 cell, feet pivot (192,380), unit 4 = same head.
+        WINDUP: { id: "DASH", animation: "WINDUP", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 338, y: 228 },
+          src: "assets/sprites/cast/dash_warrior_special_v1/dash_warrior_windup_sheet_384x288.png", metadata: "assets/sprites/cast/dash_warrior_special_v1/dash_warrior_windup.json" },
+        THRUST: { id: "DASH", animation: "THRUST", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 14, y: 139 },
+          src: "assets/sprites/cast/dash_warrior_special_v1/dash_warrior_thrust_sheet_384x288.png", metadata: "assets/sprites/cast/dash_warrior_special_v1/dash_warrior_thrust.json" },
+        FINISH: { id: "DASH", animation: "FINISH", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 129, y: 6 },
+          src: "assets/sprites/cast/dash_warrior_special_v1/dash_warrior_finish_sheet_384x384.png", metadata: "assets/sprites/cast/dash_warrior_special_v1/dash_warrior_finish.json" },
         CUTIN_FACE: { id: "DASH", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/dash_warrior_cutin_face_v2/dash_warrior_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/dash_warrior_cutin_face_v2/dash_warrior_cutin_face.json" }
       },
       GUARD: { // 賢者 (HD comic idle r1b, no hat by design, drawn like sage_r1b with the staff on the viewer's left; mirrored: staff on the viewer's right, book on the left like the Canvas sage; the 96 r1 still is kept in guard_sage/)
         IDLE: { id: "GUARD", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, enabled: true,
           src: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_idle.json" },
+        // Grand-scene only (comboPose + grandPose; never roadside, loaded after the title sprites): 聖護結界: chant -> barrier, mirrored like the idle (staff on the viewer's right).
+        CHANT: { id: "GUARD", animation: "CHANT", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 77, y: 64 },
+          src: "assets/sprites/cast/guard_sage_special_v1/guard_sage_chant_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_special_v1/guard_sage_chant.json" },
+        BARRIER: { id: "GUARD", animation: "BARRIER", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 76, y: 62 },
+          src: "assets/sprites/cast/guard_sage_special_v1/guard_sage_barrier_sheet_288x288.png", metadata: "assets/sprites/cast/guard_sage_special_v1/guard_sage_barrier.json" },
         CUTIN_FACE: { id: "GUARD", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/guard_sage_cutin_face_v2/guard_sage_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/guard_sage_cutin_face_v2/guard_sage_cutin_face.json" }
       },
       STOPPER: { // 僧侶 (HD comic idle r1a, same facing as the r3 still: staff on the viewer's right like the Canvas cleric, so not mirrored; the 96 r3 still is kept in stopper_cleric/)
         IDLE: { id: "STOPPER", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, enabled: true,
           src: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_idle.json" },
+        // Grand-scene only (comboPose + grandPose; never roadside, loaded after the title sprites): 聖光反転: kneeling prayer (staff on the viewer's right like the idle) -> release (stored with the staff on the left, mirrored so the staff side matches).
+        PRAY: { id: "STOPPER", animation: "PRAY", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 182, y: 66 },
+          src: "assets/sprites/cast/stopper_cleric_special_v1/stopper_cleric_pray_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_special_v1/stopper_cleric_pray.json" },
+        RELEASE: { id: "STOPPER", animation: "RELEASE", frames: 1, fps: 1, loop: false, scale: 1.25, flip: true, facing: "left", comboPose: true, grandPose: true, enabled: true, hotspot: { x: 115, y: 12 },
+          src: "assets/sprites/cast/stopper_cleric_special_v1/stopper_cleric_release_sheet_288x288.png", metadata: "assets/sprites/cast/stopper_cleric_special_v1/stopper_cleric_release.json" },
         CUTIN_FACE: { id: "STOPPER", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/stopper_cleric_cutin_face_v2/stopper_cleric_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/stopper_cleric_cutin_face_v2/stopper_cleric_cutin_face.json" }
       },
@@ -337,6 +364,22 @@ Hop.Sprites = {
       return { w: d.frameWidth * scale, h: d.frameHeight * scale, left, top: feet - d.pivot.y * scale, scale, name: layer.name, flipped: flip };
     } finally { ctx.restore(); }
   },
+  // Grand scenes (cycle 36, pure): the direction a slot shows when drawn as adopted (stored facing, mirrored when the
+  // slot's flip is set). The scene picks one mirror parity per scene, so every pose keeps the same weapon hand.
+  grandFace(id, pose) {
+    const slots = this.definitions.CAST?.[id], def = slots?.[pose] || slots?.IDLE, f = def?.facing || "left";
+    return def?.flip ? (f === "left" ? "right" : "left") : f;
+  },
+  // Screen point of a slot's hotspot (sword / dagger tip, staff orb, cane top) for the drawn placement (same maths as
+  // drawCastScaled: uniform scale about the feet, mirror, rotation). null when that slot is not the one drawn.
+  castPoint(id, x, feet, pose, mul = 1, opts = {}) {
+    const layer = this.comboLayer(id, pose), def = this.definitions.CAST?.[id]?.[pose];
+    if (!layer || layer.name !== pose || !def?.hotspot) return null;
+    const d = layer.asset.data, scale = layer.scale * mul / (d.unit > 0 ? d.unit : 1), flip = opts.face ? opts.face !== (layer.facing || "left") : !!layer.flip;
+    let dx = (def.hotspot.x - d.pivot.x) * scale * (flip ? -1 : 1), dy = (def.hotspot.y - d.pivot.y) * scale; const r = opts.rotate || 0;
+    if (r) [dx, dy] = [dx * Math.cos(r) - dy * Math.sin(r), dx * Math.sin(r) + dy * Math.cos(r)];
+    return { x: x + dx, y: feet + dy };
+  },
   // Hero HIT (HD Rumiko knockback) still for the combo scenes; false -> caller keeps the normal layers.
   drawHeroHit(ctx, x, feet) {
     const asset = this.heroHit, def = this.definitions.HERO.HIT;
@@ -457,12 +500,15 @@ Hop.Sprites.castAssets = {};
 // inside a SPECIAL cut-in, so they start after the truck + hero IDLE (title screen) are ready instead of competing
 // with them. Same files, same drawing; castReady still resolves only when every slot (plates included) settled.
 // Until a plate is ready the cut-in already falls back to the cast body layer (cutinFaceLayer -> null).
+// Grand-scene poses (grandPose, ~0.8 MB, cycle 36) are only drawn inside a SPECIAL scene: deferred with the plates; until
+// one is ready the scene draws the IDLE / USED still in its place (comboLayer fallback).
 Hop.Sprites.castLoad = (pick) => Object.entries(Hop.Sprites.definitions.CAST).flatMap(([id, slots]) =>
-  Object.entries(slots).filter(([name]) => pick(name)).map(([name, definition]) => Hop.Sprites.load(definition).then(asset => {
+  Object.entries(slots).filter(([name, definition]) => pick(name, definition)).map(([name, definition]) => Hop.Sprites.load(definition).then(asset => {
     (Hop.Sprites.castAssets[id] ||= {})[name] = asset;
     return asset;
   })));
-Hop.Sprites.castBodyReady = Promise.all(Hop.Sprites.castLoad(name => name !== "CUTIN_FACE"));
+Hop.Sprites.castDeferred = (name, definition) => name === "CUTIN_FACE" || definition?.grandPose === true;
+Hop.Sprites.castBodyReady = Promise.all(Hop.Sprites.castLoad((name, d) => !Hop.Sprites.castDeferred(name, d)));
 Hop.Sprites.cutinFaceReady = Promise.all([Hop.Sprites.truckReady, Hop.Sprites.idleReady].map(p => p.catch(() => null)))
-  .then(() => Promise.all(Hop.Sprites.castLoad(name => name === "CUTIN_FACE")));
+  .then(() => Promise.all(Hop.Sprites.castLoad((name, d) => Hop.Sprites.castDeferred(name, d))));
 Hop.Sprites.castReady = Promise.all([Hop.Sprites.castBodyReady, Hop.Sprites.cutinFaceReady]).then(([a, b]) => a.concat(b));

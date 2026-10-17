@@ -1,0 +1,32 @@
+{
+  "id": "ANGLE",
+  "animation": "HANDSTAND",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 1,
+  "fps": 1,
+  "loop": false,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "sourceImage": "combo_pose_jester_handstand_r3b.jpg",
+  "facing": "left",
+  "mirrorInScene": false,
+  "hotspot": {
+    "x": 238,
+    "y": 145,
+    "what": "cane top"
+  },
+  "heightRatio": {
+    "value": 4.96,
+    "beforeWarp": 4.96,
+    "pass": [
+      4.75,
+      5.25
+    ]
+  },
+  "notes": "Grand-scene pose 水平曲芸 beat 1 (one-hand handstand, figure-4 legs): pivot = supporting palm. No head warp needed, grid 9.43. 頭身 ~4.96 (standing equivalent). Cane in the viewer-right hand like the idle. Not mirrored. Soft-alpha cyan cutout; feet (or palm) on the pivot; on-screen head = HD idle head. Drawn only in the grand SPECIAL scene (comboPose + grandPose, never roadside). No light / effects in the art: the scene draws them. Display only."
+}
