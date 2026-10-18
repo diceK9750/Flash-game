@@ -1036,6 +1036,17 @@ Hop.Graphics = {
   // Side the SPECIAL's character comes from: +1 = the hero's left (normal), -1 = the right when the hero is in the left
   // half of the screen (the zoomed camera cannot look past the stage edge).
   grandBack1(st, sx) { return sx(st.heroWX) < Hop.CONFIG.width * 0.5 ? -1 : 1; },
+  // DASH finishing pose (cycle 37): distance past the hero (world px) where the warrior settles. GRAND_FINISH_GAP keeps
+  // her clear of the hero sprite; limited by the room the zoomed grand camera (fixed zoom, clamped to the stage, the
+  // climax punch-in included) shows on that side, minus her half width + a margin. Never below the old 30 px.
+  GRAND_FINISH_GAP: 125, GRAND_FINISH_EDGE: 60,
+  grandFinishGap(st, sx, side) {
+    const c = Hop.CONFIG, hs = sx(st.heroWX);
+    let half = c.width / 2;
+    if (!st.short) { const z = Math.max(1, Math.min(c.comboZoomMax, c.width * c.comboZoomFill / 410, c.height * c.comboZoomFill / 305)) * 1.07; half = c.width / 2 / z; }
+    const fx = Math.max(half, Math.min(c.width - half, hs)), room = side < 0 ? hs - (fx - half) : fx + half - hs;
+    return Math.max(30, Math.min(this.GRAND_FINISH_GAP, room - this.GRAND_FINISH_EDGE));
+  },
   // Sakuga (2026-10-17 cycle 35): every scene is 5-6 beats (anticipation -> leap arc with spin -> settle -> wind-up ->
   // action -> follow-through / finishing pose). Uniform scale pulses only (5-head proportions kept); overshoot / settle
   // from damped springs; the scene clock holds at the climax (hit-stop) while the impact frames play.
@@ -1062,7 +1073,12 @@ Hop.Graphics = {
       else if (t < CL) { const u = (t - 0.75) / (CL - 0.75), e = u * u * u; Object.assign(a, { x: X0 - bk * 30 + bk * 175 * e, dy: fd - 8 * Math.sin(Math.PI * u), rotate: -bk * 0.3 + bk * 0.62 * this.ease(u), pose: "THRUST", beat: "dash" });
         for (let k = 1; k <= 4; k++) { const uk = cl(u - 0.07 * k), ek = uk * uk * uk; a.ghosts.push({ x: X0 - bk * 30 + bk * 175 * ek, dy: fd, alpha: 0.5 - k * 0.1, rotate: a.rotate }); } }
       else { // impact -> follow-through slide -> turn back (scale pulse) -> finishing pose with breath
-        const xF = X0 + bk * 145 + bk * 75 * this.ease(cl(b / 0.35));
+        // cycle 37: the follow-through slides on until the finishing pose stands clear of the hero (it was drawn behind
+        // the hero, 30 px past it, and hidden); as far as the zoomed view has room on that side (never off-screen).
+        const dF = this.grandFinishGap(st, sx, bk), xF = X0 + bk * 145 + bk * (45 + dF) * this.ease(cl(b / 0.4));
+        // too little room for the full gap (only right after the launch, e.g. ?debug=dash): the finishing pose is drawn in
+        // front of the hero instead of hidden behind it.
+        if (b >= 0.72 && dF < this.GRAND_FINISH_GAP) a.front = true;
         Object.assign(a, { x: xF, dy: fd, pose: b < 0.72 ? "THRUST" : "FINISH", rotate: bk * 0.32 * (1 - this.ease(cl(b / 0.5))) + bk * 0.12 * this.osc(b, 14, 5), scale: S * (1 + 0.09 * this.osc(b, 22, 8)), beat: b < 0.6 ? "follow" : "pose" });
         if (b > 0.65) { const v = cl((b - 0.65) / 0.3); a.dy -= 28 * Math.sin(Math.PI * v); a.scale *= 1 + 0.06 * this.osc(b - 0.8, 24, 9); a.dy += 2 * Math.sin(t * 5); }
       }
@@ -1419,14 +1435,19 @@ Hop.Graphics = {
       const p = this.grandActor({ ...st, t: st.t - 0.03 * k }, sx, sy, ground);
       if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * [0, 0.34, 0.2, 0.1][k] * (p.alpha ?? 1));
     }
-    if (A.alpha > 0.01) { this.grandPoseFx(ctx, st, A, sx, sy, ground, fade, true); this.grandCastBlend(ctx, id, st, A, sx, sy, ground, fade * A.alpha); this.grandPoseFx(ctx, st, A, sx, sy, ground, fade); }
+    if (A.alpha > 0.01 && !A.front) this.grandActorDraw(ctx, st, A, sx, sy, ground, fade);
     ctx.restore();
+  },
+  grandActorDraw(ctx, st, A, sx, sy, ground, fade) {
+    this.grandPoseFx(ctx, st, A, sx, sy, ground, fade, true); this.grandCastBlend(ctx, st.type, st, A, sx, sy, ground, fade * A.alpha); this.grandPoseFx(ctx, st, A, sx, sy, ground, fade);
   },
   // In front of the hero: shockwaves, slashes, confetti, barrier dome, label (returned as overlay items).
   grandFront(ctx, st, sx, sy, ground) {
     const c = Hop.CONFIG, T = this.GRAND[st.type], t = this.grandT(st), b = t - st.climax, h = this.grandHero(st, sx, sy), cl = u => Math.max(0, Math.min(1, u));
     const fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal), overlay = [];
     ctx.save(); ctx.globalAlpha = fade;
+    const A = this.grandActor(st, sx, sy, ground); // cycle 37: actor drawn over the hero (see grandActor a.front)
+    if (A.front && A.alpha > 0.01) this.grandActorDraw(ctx, st, A, sx, sy, ground, fade);
     if (b >= 0) {
       // common climax burst: double shockwave + radial spikes
       for (let k = 0; k < 2; k++) { const u = cl((b - k * 0.08) / 0.55); if (u <= 0 || u >= 1) continue;
