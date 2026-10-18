@@ -80,6 +80,7 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 #best-comparison { font-size: 14px; }
 .rules { margin-top: 18px; padding: 12px 15px; border-top: 1px solid #cbd6c2; }
 .rules summary { cursor: pointer; font-weight: 700; }
+.result-summary { display: none; } /* portrait phones only (cycle 48), see the portrait block; the full panel stays below */
 .rules ol { padding-left: 22px; }
 @media (min-width: 900px) and (min-height: 600px) {
   main { width: min(1160px, calc(177.78svh - 525px)); }
@@ -227,6 +228,8 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
      line, so the contact name is never cut with … and DEBUG stays inside the row on narrow phones. */
   .aerial-status #contact-status { order: 1; flex: 1 1 100%; }
   main > .special-state { order: -1; margin: -2px 0 10px; }
+  /* result summary (cycle 48): one static line under the status row on the RESULT screen (same text as the panel) */
+  main > .result-summary:not([hidden]) { display: block; order: -1; margin: -2px 0 8px; font: 700 12px/16px system-ui; color: #92571e; overflow-wrap: anywhere; }
 }
 /* Landscape phones / short viewports (2026-10-18 cycle 43, static layout only): the game stage comes first and fits the
    viewport height; header / readouts / status sit in a side column when the screen is wide enough (>= 2.15:1, side column >= ~140px), otherwise

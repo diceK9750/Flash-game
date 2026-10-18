@@ -312,8 +312,13 @@ Hop.UI = class {
     }
     document.getElementById("overlay-prompt").textContent = g.state === s.RESULT ? "画面をタップ（Space）してRETRY" : "画面をタップ / クリック / Space";
     document.getElementById("result-stats").hidden = g.state !== s.RESULT;
+    // Portrait-phone one-line mirror of the result panel (cycle 48; shown by CSS only there): RESULT only, emptied otherwise.
+    const summaryEl = document.getElementById("result-summary");
+    if (summaryEl) { summaryEl.hidden = g.state !== s.RESULT; if (g.state !== s.RESULT) summaryEl.textContent = ""; }
     if (g.state === s.RESULT) {
-      document.getElementById("record-status").textContent = g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : "FLIGHT RECORD";
+      const recordText = g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : "FLIGHT RECORD";
+      document.getElementById("record-status").textContent = recordText;
+      if (summaryEl) summaryEl.textContent = `${recordText} · DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`;
       document.getElementById("result-distance").textContent = Hop.Graphics?.smooth && !this.visual.reducedMotion ? "0.0 m" : `${g.finalDistance.toFixed(1)} m`; // smooth: counted up in update()
       document.getElementById("result-best").textContent = `${g.best.distance.toFixed(1)} m`;
       document.getElementById("result-height").textContent = `${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m`;

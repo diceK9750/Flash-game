@@ -14,7 +14,7 @@ assert.equal((css.match(/orientation: portrait/g) || []).length, 1, 'no other po
 const i = css.indexOf(Q), blk = css.slice(i, css.indexOf('\n}\n', i) + 2);
 assert(i > css.lastIndexOf('@media (max-width: 650px)') && i > css.indexOf('@media (pointer: coarse)') && i < css.indexOf('Landscape phones / short viewports'), 'placement (cascade)');
 assert(!/animation|transition|transform|@keyframes/.test(blk), 'static');
-assert(!/display: none|visibility: hidden|hidden|clip|opacity|height: 0|overflow/.test(blk), 'nothing hidden');
+assert(!/display: none|visibility: hidden|hidden|clip|opacity|height: 0|overflow/.test(blk.replace(/:not\(\[hidden\]\)|overflow-wrap: anywhere/g, '')), 'nothing hidden'); // cycle 48: the result summary is shown only while not [hidden]
 assert(/main \{ display: flex; flex-direction: column; \}/.test(blk), 'flex column');
 const order = sel => { const m = blk.match(new RegExp('\\n  ' + sel.replace(/[.>]/g, '\\$&') + ' \\{[^}]*order: (-?\\d+)')); assert(m, sel); return +m[1]; };
 assert(order('.stage') < order('main > .aerial-status') && order('main > .aerial-status') < order('main > .special-state') && order('main > .special-state') < 0, 'stage, then status row, then SPECIAL line, then the rest (order 0, DOM order)');
