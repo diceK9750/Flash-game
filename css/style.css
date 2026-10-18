@@ -222,7 +222,10 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 @media (orientation: portrait) and (max-width: 600px) {
   main { display: flex; flex-direction: column; }
   .stage { order: -3; flex: none; margin: 0 0 8px; }
-  main > .aerial-status { order: -2; }
+  main > .aerial-status { order: -2; flex-wrap: wrap; row-gap: 2px; }
+  /* status row, 2 static lines (cycle 47): AERIAL ↑ / ↓ bar / GUARD / DEBUG on the first, CONTACT alone on the second
+     line, so the contact name is never cut with … and DEBUG stays inside the row on narrow phones. */
+  .aerial-status #contact-status { order: 1; flex: 1 1 100%; }
   main > .special-state { order: -1; margin: -2px 0 10px; }
 }
 /* Landscape phones / short viewports (2026-10-18 cycle 43, static layout only): the game stage comes first and fits the
@@ -253,6 +256,10 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
   .readouts div { padding: 3px 5px; border-right: 1px solid #e2e6d9; border-bottom: 1px solid #e2e6d9; }
   .readouts div:nth-child(2n) { border-right: 0; }
   .readouts div:nth-last-child(-n+2) { border-bottom: 0; }
+  /* cycle 47: STATE (AIM_ANGLE / AIM_POWER) and DISTANCE take a full row, so no value runs past its cell in the narrow column */
+  .readouts div:nth-child(1), .readouts div:nth-child(4) { grid-column: 1 / -1; border-right: 0; }
+  .readouts div:nth-child(2), .readouts div:nth-child(5) { border-right: 1px solid #e2e6d9; }
+  .readouts div:nth-child(3) { border-right: 0; }
   .readouts span { font-size: 9px; margin-bottom: 1px; line-height: 11px; }
   .readouts strong { font-size: 13px; }
   #state { font-size: 12px; }
