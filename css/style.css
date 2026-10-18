@@ -195,6 +195,15 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
   #se-toggle { flex: none; min-width: 0; padding: 0 8px; }
   #best-summary { flex: none; font-size: 12px; padding: 4px 9px; }
 }
+/* Touch tap targets (2026-10-18 cycle 44, static): on touch screens (coarse pointer) every button / summary is at least
+   44 x 44 px (real box, no overlapping hit-area tricks, no animation). Mouse / trackpad (fine pointer) is unchanged. */
+@media (pointer: coarse) {
+  #se-toggle { min-height: 44px; }
+  .debug-toggle { min-width: 44px; min-height: 44px; padding: 0 12px; }
+  .rules summary { min-height: 44px; padding: 10px 0; box-sizing: border-box; }
+  .debug-close { min-width: 44px; min-height: 44px; padding: 0 14px; }
+  .debug-item { min-height: 44px; }
+}
 /* Landscape phones / short viewports (2026-10-18 cycle 43, static layout only): the game stage comes first and fits the
    viewport height; header / readouts / status sit in a side column when the screen is wide enough (>= 2.15:1, side column >= ~140px), otherwise
    below the stage (scroll). Portrait, tablet and desktop (taller than 500px) are not affected. */
