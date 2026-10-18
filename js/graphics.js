@@ -522,12 +522,18 @@ Hop.Graphics = {
     }
     const overlay = combo ? this.comboFront(ctx, combo, sx, sy, ground) : grand ? this.grandFront(ctx, grand, sx, sy, ground) : null;
     if (scene) this.sakugaImpact(ctx, scene, sx, sy, ground, grand ? sceneHero : comboHero && { ...comboHero, rot: sceneHero?.rot || 0 }, !!visual?.reducedMotion);
+    const camM = scene ? ctx.getTransform?.() : null; // cycle 40: camera transform for the key-pose readout below
     ctx.restore(); // combo camera
     if (overlay) this.comboOverlay(ctx, overlay, cam);
     ctx.restore(); // screen shake
     // cycle 35: the black (inverted) impact frame stays black; the scene flash resumes on the white frame after it
     const sakA = scene && !visual?.reducedMotion ? this.sakugaImpactAge(scene) : null;
     if (impact.flash > 0 && !(sakA !== null && sakA < 0.035)) { ctx.fillStyle = `rgba(255,255,250,${impact.flash})`; ctx.fillRect(0, 0, c.width, c.height); }
+    // cycle 40: key-pose readout. Right after the climax the white flash + bursts washed the SPECIAL's character out for
+    // ~0.25 s; she is drawn once more (same placement / pose, partial alpha) above them, so the effects stay as loud
+    // around her but the pose reads. Never on the black / white impact frames, the short version or reduced motion.
+    if (camM && sakA === null) { const w = this.readoutWeight(scene, !!visual?.reducedMotion);
+      if (w > 0) { ctx.save(); ctx.setTransform(camM); this.readoutDraw(ctx, scene, sx, sy, ground, w); ctx.restore(); } }
     if (g.flash > 0 && !visual.reducedMotion) { ctx.fillStyle = g.successVisual?.strong ? `rgba(255,250,210,${0.55 * g.flash / c.stopperFlashDuration})` : `rgba(255,255,245,${0.22 * g.flash / c.specialFlashDuration})`; ctx.fillRect(0, 0, c.width, c.height); }
     // Tempo feedback pops (chain / milestones / record) and the fast-forward badge, under the cut-ins.
     if (g.tempoEnabled) this.tempoOverlay(ctx, g, visual, x, y);
@@ -1161,6 +1167,20 @@ Hop.Graphics = {
   },
   // Impact frames (2 x ~2 display frames during the hit-stop): inverted silhouettes (white on black), then black on white,
   // with focus lines. Not in the short version / reduced motion. Returns true when drawn (tests).
+  // Key-pose readout (cycle 40): weight 0.. READOUT_MAX from the climax, held READOUT_HOLD s, eased out over READOUT_FADE s.
+  READOUT_MAX: 0.85, READOUT_HOLD: 0.18, READOUT_FADE: 0.25,
+  readoutWeight(st, reducedMotion) {
+    if (!st || st.short || st.skipped || st.after !== null || reducedMotion) return 0;
+    const c = Hop.CONFIG, b = st.grand ? this.grandT(st) - st.climax : st.t - (st.type === "BOOST" ? c.comboWitchTimes.blast : c.comboFighterTimes.upper);
+    if (b < 0) return 0;
+    return this.READOUT_MAX * (1 - this.smoother(Math.max(0, Math.min(1, (b - this.READOUT_HOLD) / this.READOUT_FADE))));
+  },
+  readoutDraw(ctx, st, sx, sy, ground, w) {
+    if (st.grand) { const A = this.grandActor(st, sx, sy, ground); if (A.alpha > 0.01) this.grandCastBlend(ctx, st.type, st, A, sx, sy, ground, w * A.alpha); return; }
+    const A = this.comboActors(st);
+    if (A.witch && (A.witch.alpha ?? 1) > 0.05) this.comboCastBlend(ctx, "BOOST", "witch", st, A.witch, sx, ground, w);
+    if (A.fighter && A.fighter.beat !== "hidden" && (A.fighter.alpha ?? 1) > 0.05) this.comboCastBlend(ctx, "BOUNCE", "fighter", st, A.fighter, sx, ground, w);
+  },
   sakugaImpactAge(st) {
     if (!st || st.short || st.after !== null || st.skipped) return null;
     const c = Hop.CONFIG, T = st.grand ? st.climax : st.type === "BOOST" ? c.comboWitchTimes.blast : c.comboFighterTimes.upper;
