@@ -13,7 +13,9 @@ assert(!/pointer:\s*fine|hover:\s*(hover|none)|any-pointer/.test(css), 'no other
 const i = css.indexOf(Q), end = css.indexOf('\n}\n', i), blk = css.slice(i, end + 2);
 assert(i > css.lastIndexOf('@media (max-width: 650px)') && i < css.indexOf('Landscape phones / short viewports'), 'after phone rules, before landscape blocks');
 assert(!/animation|transition|transform|@keyframes/.test(blk), 'static');
-assert(!/::?(before|after)|margin|position|inset|outline/.test(blk), 'real box only, no hit-area overlap tricks');
+const sizing = blk.split('/* Pressed / focus states')[0]; // cycle 46 appends static pressed / focus colours after the sizing rules
+assert(!/::?(before|after)|margin|position|inset|outline/.test(sizing), 'real box only, no hit-area overlap tricks');
+assert(!/::?(before|after)|margin|position|\binset:|width|height|padding/.test(blk.slice(sizing.length)), 'state rules do not change size / hit area');
 const rule = sel => { const m = blk.match(new RegExp('\\n  ' + sel.replace(/[.#]/g, '\\$&') + ' \\{([^}]*)\\}')); assert(m, sel); return m[1]; };
 for (const sel of ['#se-toggle', '.debug-toggle', '.rules summary', '.debug-close', '.debug-item']) assert(/min-height: 44px/.test(rule(sel)), sel + ' >= 44 tall');
 for (const sel of ['.debug-toggle', '.debug-close']) assert(/min-width: 44px/.test(rule(sel)), sel + ' >= 44 wide');
