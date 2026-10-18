@@ -12,7 +12,9 @@ const Q1 = '@media (orientation: landscape) and (max-height: 500px) {', Q2 = '@m
 const i1 = css.indexOf(Q1), i2 = css.indexOf(Q2); assert(i1 > 0 && i2 > i1, 'both blocks');
 assert(css.indexOf('Landscape phones / short viewports') < i1 && css.indexOf('Landscape phones / short viewports') > css.lastIndexOf('@media (max-width: 650px)'), 'after every other rule (cascade)');
 const tail = css.slice(css.indexOf('Landscape phones / short viewports'));
-assert.equal((tail.match(/@media/g) || []).length, 2, 'only these two media blocks');
+// cycle 50 adds a third, stacked-only block (tests/stacked-landscape.cjs) after these two
+assert.equal((tail.match(/@media/g) || []).length, 3, 'only these two media blocks + the cycle-50 stacked block');
+assert(tail.lastIndexOf('@media') === tail.indexOf('@media (orientation: landscape) and (max-height: 500px) and (max-aspect-ratio: 2149 / 1000) {'), 'third block is the stacked one');
 assert(!/animation|transition|transform|@keyframes/.test(tail), 'static layout only');
 assert(!/display: none|visibility: hidden/.test(tail), 'nothing hidden');
 assert(/#down-status \{ position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset\(50%\)/.test(tail), 'AERIAL ↓ text visually hidden only');
