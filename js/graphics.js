@@ -1047,6 +1047,20 @@ Hop.Graphics = {
   // climax punch-in included) shows on that side, minus her half width + a margin. Never below the old 30 px.
   GRAND_SLASH_BACK: 195, // BRAKE reappear distance (cycle 39)
   GRAND_FINISH_GAP: 125, GRAND_FINISH_EDGE: 60, GRAND_FINISH_HOP: 100, // HOP: least room on the other side for the cycle-38 leap back
+  // Stage-edge room (cycle 41): world px between the hero and the zoomed grand view's edge on `side` (+1 right, -1 left),
+  // with the fixed scene zoom + climax punch-in (same view grandFinishGap uses). Display only.
+  GRAND_KNOCK: 55, GRAND_KNOCK_EDGE: 70, // DASH knock-back; least room kept between the hero's centre and the view edge
+  GRAND_WHEEL_EDGE: 70, GRAND_WHEEL_SOFT: 60, // ANGLE cartwheel: least room kept for the jester's centre; soft-limit knee (widest loop excursion is 172.4 px; >= 60 px of loop kept)
+  softLimit(e, L, soft, min = 60) { // e >= 0 -> e' < max(L, min), slope 1 at 0 (C1, no pop), e' = e below L - soft
+    L = Math.max(L, min); const w = Math.min(soft, L), e0 = L - w; return e <= e0 ? e : e0 + w * Math.tanh((e - e0) / w);
+  },
+  grandRoom(st, sx, side) {
+    const c = Hop.CONFIG, hs = sx(st.heroWX);
+    let half = c.width / 2;
+    if (!st.short) { const z = Math.max(1, Math.min(c.comboZoomMax, c.width * c.comboZoomFill / 410, c.height * c.comboZoomFill / 305)) * 1.07; half = c.width / 2 / z; }
+    const fx = Math.max(half, Math.min(c.width - half, hs));
+    return side < 0 ? hs - (fx - half) : fx + half - hs;
+  },
   grandFinishGap(st, sx, side) {
     const c = Hop.CONFIG, hs = sx(st.heroWX);
     let half = c.width / 2;
@@ -1126,7 +1140,10 @@ Hop.Graphics = {
       else if (t < 0.35) { const u = (t - 0.12) / 0.23; Object.assign(a, arc(src, H - bk * 130, 10, cy + 60 * S, u, 120), { rotate: bk * Math.PI * 2 * this.smoother(u), beat: "leap" }); }
       else if (t < 1.1) {
         const u = this.smoother((t - 0.35) / 0.75), th = (bk > 0 ? Math.PI : 0) + u * Math.PI * 2, rx = 130 * Math.cos(th), ry = 85 * Math.sin(th) - 14 * Math.sin(th * 2), rot = bk * u * Math.PI * 4;
-        Object.assign(a, { x: H + rx - Math.sin(rot) * 60 * S, dy: cy + ry + Math.cos(rot) * 60 * S, rotate: rot, pose: "HANDSTAND", scale: S * (1 + 0.05 * Math.sin(u * Math.PI * 10)), beat: "cartwheel" });
+        // cycle 41: on the stage-edge side (+bk) the loop is squeezed toward the hero so the jester stays in the zoomed view
+        // (smooth: identity up to the knee, then a tanh soft limit at room - GRAND_WHEEL_EDGE; no velocity pop, untouched with room)
+        let ex = rx - Math.sin(rot) * 60 * S; if (ex * bk > 0) ex = bk * this.softLimit(ex * bk, this.grandRoom(st, sx, bk) - this.GRAND_WHEEL_EDGE, this.GRAND_WHEEL_SOFT);
+        Object.assign(a, { x: H + ex, dy: cy + ry + Math.cos(rot) * 60 * S, rotate: rot, pose: "HANDSTAND", scale: S * (1 + 0.05 * Math.sin(u * Math.PI * 10)), beat: "cartwheel" });
       } else if (t < CL) { const u = (t - 1.1) / (CL - 1.1); Object.assign(a, arc(X1, X1, cy + 60 * S, fd, u, 40), { rotate: 0, pose: "HANDSTAND", beat: "land" }); }
       else { Object.assign(a, { x: X1, dy: fd - 44 * Math.sin(Math.PI * cl(b / 0.35)), pose: b < 0.85 ? "TADA" : "IDLE", face: fr, scale: S * (1 + 0.14 * this.osc(b, 18, 6)), rotate: bk * 0.4 * this.osc(b, 12, 5), beat: b < 0.7 ? "ta-da" : "bow" });
         if (b > 0.7) { const v = cl((b - 0.7) / 0.5); a.rotate += bk * 0.32 * Math.sin(Math.PI * v); } }
@@ -1153,7 +1170,8 @@ Hop.Graphics = {
   grandHeroOff(st, sx, sy, ground) {
     const t = this.grandT(st), CL = st.climax, b = t - CL, cl = u => Math.max(0, Math.min(1, u)), bk = this.grandBack1(st, sx);
     let dx = 0, dy = 0, rot = 0, hit = false;
-    if (st.type === "DASH") { if (b >= 0) { dx = bk * 55 * this.ease(cl(b / 0.18)) * (1 - this.smoother(cl((b - 0.25) / 0.9))); rot = bk * Math.PI * 2 * this.ease(cl(b / 0.55)); hit = b < 0.45; } else if (t > 0.75) dx = -bk * 4 * Math.sin(t * 50); }
+    if (st.type === "DASH") { if (b >= 0) { const kb = Math.max(0, Math.min(this.GRAND_KNOCK, this.grandRoom(st, sx, bk) - this.GRAND_KNOCK_EDGE)); // cycle 41: never out of view at the stage edge
+      dx = bk * kb * this.ease(cl(b / 0.18)) * (1 - this.smoother(cl((b - 0.25) / 0.9))); rot = bk * Math.PI * 2 * this.ease(cl(b / 0.55)); hit = b < 0.45; } else if (t > 0.75) dx = -bk * 4 * Math.sin(t * 50); }
     else if (st.type === "STOPPER") { if (t > 0.8 && b < 0) dy = -24 * this.ease((t - 0.8) / (CL - 0.8)) + 2 * Math.sin(t * 37);
       if (b >= 0) { dy = (-24 - 60 * this.easeOutBack(cl(b / 0.35))) * (1 - this.smoother(cl((b - 0.6) / 0.6))); rot = -bk * 0.3 * this.osc(b, 10, 4); } }
     else if (st.type === "BRAKE") { for (let k = 0; k < 6; k++) { const tk = 0.18 + k * 0.15 + 0.12, dir = k % 2 ? -1 : 1; dx += dir * 12 * this.osc(t - tk, 25, 9); rot += dir * 0.14 * this.osc(t - tk, 22, 8); }
