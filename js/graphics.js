@@ -1039,6 +1039,7 @@ Hop.Graphics = {
   // DASH finishing pose (cycle 37): distance past the hero (world px) where the warrior settles. GRAND_FINISH_GAP keeps
   // her clear of the hero sprite; limited by the room the zoomed grand camera (fixed zoom, clamped to the stage, the
   // climax punch-in included) shows on that side, minus her half width + a margin. Never below the old 30 px.
+  GRAND_SLASH_BACK: 195, // BRAKE reappear distance (cycle 39)
   GRAND_FINISH_GAP: 125, GRAND_FINISH_EDGE: 60, GRAND_FINISH_HOP: 100, // HOP: least room on the other side for the cycle-38 leap back
   grandFinishGap(st, sx, side) {
     const c = Hop.CONFIG, hs = sx(st.heroWX);
@@ -1098,7 +1099,9 @@ Hop.Graphics = {
         Object.assign(a, { x: X0, dy: fd - 22 * (1 - this.smoother(cl((b - 0.5) / 0.6))) + pop, pose: b < 0.75 ? "RELEASE" : "IDLE", scale: S * (1.04 + 0.12 * this.osc(b, 20, 6)), rotate: -bk * 0.22 * (1 - this.ease(cl(b / 0.3))) + bk * 0.06 * this.osc(b, 12, 5), beat: b < 0.6 ? "reverse" : "bow" });
         if (b > 0.6) a.rotate += bk * 0.24 * Math.sin(Math.PI * cl((b - 0.6) / 0.6)); }
     } else if (st.type === "BRAKE") {
-      const X1 = H - bk * 150, X2 = H - bk * 205;
+      // cycle 39: she reappears GRAND_SLASH_BACK px from the hero so the 75 px lunge stops with the SLASH pose beside the
+      // hero (dagger tip at the hero) instead of half hidden behind the hero sprite (was 150 -> 75 px, ~70% of the hero box).
+      const X1 = H - bk * this.GRAND_SLASH_BACK, X2 = H - bk * 205;
       if (t < 0.12) crouch(t / 0.12, src);
       else if (t < 0.26) { const u = (t - 0.12) / 0.14; Object.assign(a, { x: src, dy: 10 - 24 * this.ease(u), alpha: 1 - u, scale: S * (1 - 0.45 * u * u), rotate: bk * 0.9 * u, pose: "SHADOW", beat: "vanish" }); }
       else if (t < 1.05) Object.assign(a, { x: src, dy: 0, alpha: 0, pose: "SHADOW", beat: "shadow" });
