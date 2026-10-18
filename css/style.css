@@ -204,6 +204,16 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
   .debug-close { min-width: 44px; min-height: 44px; padding: 0 14px; }
   .debug-item { min-height: 44px; }
 }
+/* Portrait phones, game first (2026-10-18 cycle 45, static layout only): the game stage moves to the top at full width
+   (16:9), the AERIAL / CONTACT / GUARD / DEBUG status row (and the SPECIAL line) sit directly under it so they stay on
+   screen during play, then title / readouts / hint / final / history / results / rules follow. Visual order only: the DOM,
+   and so keyboard focus order (SE -> DEBUG -> rules), is unchanged. Tablet, desktop and landscape are not affected. */
+@media (orientation: portrait) and (max-width: 600px) {
+  main { display: flex; flex-direction: column; }
+  .stage { order: -3; flex: none; margin: 0 0 8px; }
+  main > .aerial-status { order: -2; }
+  main > .special-state { order: -1; margin: -2px 0 10px; }
+}
 /* Landscape phones / short viewports (2026-10-18 cycle 43, static layout only): the game stage comes first and fits the
    viewport height; header / readouts / status sit in a side column when the screen is wide enough (>= 2.15:1, side column >= ~140px), otherwise
    below the stage (scroll). Portrait, tablet and desktop (taller than 500px) are not affected. */
