@@ -289,15 +289,41 @@ Hop.Sprites = {
     const d = asset.data;
     const frame = this.frameAt(d, time);
     scale /= d.unit > 0 ? d.unit : 1; // HD cells: same on-screen size as the 96 version
+    // Sakuga silhouette frames (impact flash, pose smear) set ctx.filter to brightness(0) [+ invert(1)]. A filtered
+    // drawImage makes the canvas rasterize a filter layer per draw (~100 ms frames on a throttled phone CPU), so the
+    // same black / white silhouette of this cell is drawn from a small cached copy instead, filter off (cycle 51,
+    // display only; same pixels within rounding). No canvas available (tests) -> the filtered draw as before.
+    const tint = this.silhouetteTint(ctx), sil = tint && this.silhouette(asset, frame, tint);
     ctx.save();
     try {
       ctx.imageSmoothingEnabled = !!d.smooth;
       if (d.smooth) ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(asset.image, frame * d.frameWidth, 0, d.frameWidth, d.frameHeight,
+      if (sil) ctx.filter = "none";
+      ctx.drawImage(sil || asset.image, sil ? 0 : frame * d.frameWidth, 0, d.frameWidth, d.frameHeight,
         x - d.pivot.x * scale, feet - d.pivot.y * scale, d.frameWidth * scale, d.frameHeight * scale);
       return true;
     } catch (_) { return false; }
     finally { ctx.restore(); }
+  },
+  SILHOUETTE_FILTERS: Object.freeze({ "brightness(0)": "#000000", "brightness(0) invert(1)": "#ffffff" }),
+  silhouetteTint(ctx) { const f = ctx?.filter; return typeof f === "string" && f !== "none" ? this.SILHOUETTE_FILTERS[f] || null : null; },
+  // One cell of a sheet as a solid-colour silhouette (alpha kept), cached per asset / frame / colour; null without canvas.
+  silhouette(asset, frame, tint) {
+    const key = frame + tint, cache = asset.silhouettes ||= new Map();
+    if (cache.has(key)) return cache.get(key);
+    let out = null;
+    try {
+      const d = asset.data, doc = typeof document !== "undefined" ? document : null;
+      const cv = doc?.createElement?.("canvas"), c2 = cv?.getContext?.("2d");
+      if (c2 && typeof c2.drawImage === "function") {
+        cv.width = d.frameWidth; cv.height = d.frameHeight;
+        c2.drawImage(asset.image, frame * d.frameWidth, 0, d.frameWidth, d.frameHeight, 0, 0, d.frameWidth, d.frameHeight);
+        c2.globalCompositeOperation = "source-in"; c2.fillStyle = tint; c2.fillRect(0, 0, d.frameWidth, d.frameHeight);
+        out = cv;
+      }
+    } catch (_) { out = null; }
+    cache.set(key, out);
+    return out;
   },
   // CAST still for a roadside character / merchant (pure lookup): { asset, scale, flip } or null.
   // pose 1 = used (post-contact): the character's pose-1 slot (BOUNCE KICK, BOOST / BRAKE / ANGLE USED) when
