@@ -1039,7 +1039,7 @@ Hop.Graphics = {
   // DASH finishing pose (cycle 37): distance past the hero (world px) where the warrior settles. GRAND_FINISH_GAP keeps
   // her clear of the hero sprite; limited by the room the zoomed grand camera (fixed zoom, clamped to the stage, the
   // climax punch-in included) shows on that side, minus her half width + a margin. Never below the old 30 px.
-  GRAND_FINISH_GAP: 125, GRAND_FINISH_EDGE: 60,
+  GRAND_FINISH_GAP: 125, GRAND_FINISH_EDGE: 60, GRAND_FINISH_HOP: 100, // HOP: least room on the other side for the cycle-38 leap back
   grandFinishGap(st, sx, side) {
     const c = Hop.CONFIG, hs = sx(st.heroWX);
     let half = c.width / 2;
@@ -1075,12 +1075,18 @@ Hop.Graphics = {
       else { // impact -> follow-through slide -> turn back (scale pulse) -> finishing pose with breath
         // cycle 37: the follow-through slides on until the finishing pose stands clear of the hero (it was drawn behind
         // the hero, 30 px past it, and hidden); as far as the zoomed view has room on that side (never off-screen).
-        const dF = this.grandFinishGap(st, sx, bk), xF = X0 + bk * 145 + bk * (45 + dF) * this.ease(cl(b / 0.4));
-        // too little room for the full gap (only right after the launch, e.g. ?debug=dash): the finishing pose is drawn in
-        // front of the hero instead of hidden behind it.
-        if (b >= 0.72 && dF < this.GRAND_FINISH_GAP) a.front = true;
+        const dF = this.grandFinishGap(st, sx, bk), slide = u => X0 + bk * 145 + bk * (45 + dF) * this.ease(cl(u / 0.4)), xF = slide(b);
+        // cycle 38: too little room past the hero (only right after the launch, e.g. ?debug=dash) -> after the slide she
+        // leaps back over the hero (backflip, same pose / facing, no mirror) and strikes the finishing pose on the side
+        // that has room, facing the hero. Only if neither side has room is the pose drawn in front of the hero (cycle 37).
+        const dB = dF < this.GRAND_FINISH_GAP ? this.grandFinishGap(st, sx, -bk) : 0, hop = dB >= this.GRAND_FINISH_HOP;
+        if (b >= 0.72 && dF < this.GRAND_FINISH_GAP && !hop) a.front = true;
         Object.assign(a, { x: xF, dy: fd, pose: b < 0.72 ? "THRUST" : "FINISH", rotate: bk * 0.32 * (1 - this.ease(cl(b / 0.5))) + bk * 0.12 * this.osc(b, 14, 5), scale: S * (1 + 0.09 * this.osc(b, 22, 8)), beat: b < 0.6 ? "follow" : "pose" });
-        if (b > 0.65) { const v = cl((b - 0.65) / 0.3); a.dy -= 28 * Math.sin(Math.PI * v); a.scale *= 1 + 0.06 * this.osc(b - 0.8, 24, 9); a.dy += 2 * Math.sin(t * 5); }
+        if (hop && b >= 0.36) {
+          const xT = H - bk * dB, u = cl((b - 0.36) / 0.36), xS = slide(0.36);
+          if (b < 0.72) Object.assign(a, { x: xS + (xT - xS) * this.glide(u), dy: fd - 150 * Math.sin(Math.PI * u), rotate: a.rotate - bk * Math.PI * 2 * this.smoother(u), beat: "leap back" });
+          else { a.x = xT; a.dy = fd + 12 * this.osc(b - 0.72, 15, 7); a.scale *= 1 + 0.06 * this.osc(b - 0.75, 24, 9); a.dy += 2 * Math.sin(t * 5); }
+        } else if (b > 0.65) { const v = cl((b - 0.65) / 0.3); a.dy -= 28 * Math.sin(Math.PI * v); a.scale *= 1 + 0.06 * this.osc(b - 0.8, 24, 9); a.dy += 2 * Math.sin(t * 5); }
       }
     } else if (st.type === "STOPPER") {
       const X0 = H - bk * 150;
