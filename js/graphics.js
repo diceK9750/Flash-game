@@ -336,6 +336,7 @@ Hop.Graphics = {
     const sy = y => ground - c.playerRadius - y;
     // Combo scene (display only): one state per frame; screen shake wraps the world, not the cut-in.
     const combo = this.comboState(g);
+    if (combo) combo.room = sx(combo.heroWX); // cycle 42: hero -> left stage edge (the combo view never looks past it), for the BOOST layout
     if (combo && this.smooth) { const sub = this.subStep(g, g.combo?.rate || 1); if (combo.after === null) combo.t = Math.min(combo.end, combo.t + sub); else combo.after = Math.min(combo.afterTotal, combo.after + sub); }
     // Grand solo SPECIAL scene (cycle 34): same clock rules as the combo scene.
     const grand = this.grandState(g);
@@ -787,6 +788,8 @@ Hop.Graphics = {
   // Actor placements in world x / pose / scale for a scene time (pure). Used by the drawing and by tests.
   // pose = CAST slot name (combo poses PUNCH / UPPER / CAST, else IDLE / KICK / USED); face = "left" / "right"
   // (Sprites.drawCastScaled mirrors a slot whose drawn facing differs, about the feet).
+  // cycle 42 (display only): BOOST layout at the left stage edge; st.room = hero screen x (world px to the stage edge).
+  COMBO_WITCH_FIT: 190, COMBO_RUSH_FIT: 135, COMBO_HOP_EDGE: 60,
   comboActors(st) {
     const c = Hop.CONFIG, H = st.heroWX, t = st.t, lerp = (a, b, u) => a + (b - a) * this.glide(u);
     const src = st.source?.x ?? H, par = st.partner?.x ?? H + 500;
@@ -795,7 +798,9 @@ Hop.Graphics = {
       const W = c.comboWitchTimes, hits = c.comboWitchHits, step = (W.rushEnd - W.dash) / hits;
       // Witch: chants with the staff raised (CAST), fires the big spell with the staff thrust (USED).
       const witchPose = st.short ? (t >= 0 ? "CAST" : "IDLE") : t < 0.15 ? "IDLE" : t < W.liftEnd - 0.05 ? "CAST" : "USED";
-      out.witch = { x: st.short && t >= 0 ? H - 120 : lerp(src, H - 120, t / W.dash), pose: witchPose, scale: 1 };
+      // cycle 42: hero too close to the left stage edge for her spot (H - 120) -> she stands on the right (H + 200, past the rush)
+      const room = st.room ?? Infinity, wX = room < this.COMBO_WITCH_FIT ? H + 200 : H - 120, rushL = room >= this.COMBO_RUSH_FIT;
+      out.witch = { x: st.short && t >= 0 ? wX : lerp(src, wX, t / W.dash), pose: witchPose, scale: 1 };
       out.witch.face = out.witch.x < H ? "right" : "left";
       if (st.short) {
         out.fighter = t >= 0 ? { x: H - 40, pose: "UPPER", face: "right", scale: 1, rotate: 0 } : { x: par, pose: "IDLE", face: "left", scale: 1, rotate: 0 };
@@ -804,15 +809,17 @@ Hop.Graphics = {
       if (t < W.dash) out.fighter = { x: lerp(par, H + 75, t / W.dash), pose: "IDLE", face: "left", scale: 1, rotate: 0, dash: Math.max(0, t) / W.dash };
       else if (t < W.rushEnd) {
         // Rush: PUNCH (every third blow the old KICK), teleporting left / right every two blows, always facing the hero.
-        const k = Math.min(hits - 1, Math.floor((t - W.dash) / step)), u = (t - W.dash - k * step) / step, right = Math.floor(k / 2) % 2 === 0;
+        // cycle 42: no room on the hero's left (stage edge) -> every blow from the right, no teleport ghost
+        const k = Math.min(hits - 1, Math.floor((t - W.dash) / step)), u = (t - W.dash - k * step) / step, right = !rushL || Math.floor(k / 2) % 2 === 0;
         out.fighter = { x: H + (right ? 1 : -1) * (75 - 14 * (1 - u)), pose: k % 3 === 2 ? "KICK" : "PUNCH", face: right ? "left" : "right", scale: 1, rotate: 0,
-          ghost: k > 0 && k % 2 === 0 ? (right ? -1 : 1) : 0, ghostU: u };
+          ghost: rushL && k > 0 && k % 2 === 0 ? (right ? -1 : 1) : 0, ghostU: u };
         out.hits = k + 1; out.hitU = u;
         out.hero.dx = Math.sin(t * 73) * 4; out.hero.dy = Math.cos(t * 59) * 3;
       } else {
         // Finisher: UPPER from the hero's left, launching the hero; then she hops back out of the blast.
         const u = (t - W.rushEnd) / (W.liftEnd - W.rushEnd);
-        out.fighter = { x: t < W.liftEnd ? H - 40 : lerp(H - 40, H - 170, (t - W.liftEnd) / 0.2), pose: "UPPER", face: "right", scale: 1, rotate: -0.12 * this.ease(u * 1.6) };
+        const hopX = H - Math.max(40, Math.min(170, room - this.COMBO_HOP_EDGE)); // cycle 42: hop back only as far as the stage edge allows
+        out.fighter = { x: t < W.liftEnd ? H - 40 : lerp(H - 40, hopX, (t - W.liftEnd) / 0.2), pose: "UPPER", face: "right", scale: 1, rotate: -0.12 * this.ease(u * 1.6) };
         out.hits = hits; out.finish = true;
         out.hero.dy = -c.comboWitchLiftPx * this.ease(u) + (t > W.liftEnd ? Math.sin((t - W.liftEnd) * 9) * 3 : 0);
       }
@@ -1049,6 +1056,7 @@ Hop.Graphics = {
   GRAND_FINISH_GAP: 125, GRAND_FINISH_EDGE: 60, GRAND_FINISH_HOP: 100, // HOP: least room on the other side for the cycle-38 leap back
   // Stage-edge room (cycle 41): world px between the hero and the zoomed grand view's edge on `side` (+1 right, -1 left),
   // with the fixed scene zoom + climax punch-in (same view grandFinishGap uses). Display only.
+  GRAND_THRUST_REACH: 85, // cycle 42: least room between the DASH warrior's centre and the view edge ahead of her (sword + margin)
   GRAND_KNOCK: 55, GRAND_KNOCK_EDGE: 70, // DASH knock-back; least room kept between the hero's centre and the view edge
   GRAND_WHEEL_EDGE: 70, GRAND_WHEEL_SOFT: 60, // ANGLE cartwheel: least room kept for the jester's centre; soft-limit knee (widest loop excursion is 172.4 px; >= 60 px of loop kept)
   softLimit(e, L, soft, min = 60) { // e >= 0 -> e' < max(L, min), slope 1 at 0 (C1, no pop), e' = e below L - soft
@@ -1096,7 +1104,9 @@ Hop.Graphics = {
       else { // impact -> follow-through slide -> turn back (scale pulse) -> finishing pose with breath
         // cycle 37: the follow-through slides on until the finishing pose stands clear of the hero (it was drawn behind
         // the hero, 30 px past it, and hidden); as far as the zoomed view has room on that side (never off-screen).
-        const dF = this.grandFinishGap(st, sx, bk), slide = u => X0 + bk * 145 + bk * (45 + dF) * this.ease(cl(u / 0.4)), xF = slide(b);
+        // cycle 42: the slide past the hero also stops where the THRUST sprite (sword ahead) would run off the stage edge.
+        const dF = this.grandFinishGap(st, sx, bk), dS = Math.max(-45, Math.min(dF, this.grandRoom(st, sx, bk) - this.GRAND_THRUST_REACH));
+        const slide = u => X0 + bk * 145 + bk * (45 + dS) * this.ease(cl(u / 0.4)), xF = slide(b);
         // cycle 38: too little room past the hero (only right after the launch, e.g. ?debug=dash) -> after the slide she
         // leaps back over the hero (backflip, same pose / facing, no mirror) and strikes the finishing pose on the side
         // that has room, facing the hero. Only if neither side has room is the pose drawn in front of the hero (cycle 37).
@@ -1580,7 +1590,7 @@ Hop.Graphics = {
           for (let i = 0; i < 18; i++) {
             const ph = (t * 1.3 + i / 18) % 1, a = i * 2.39, d = (1 - ph) * 150;
             ctx.globalAlpha = fade * Math.min(1, ph * 3) * 0.9;
-            this.circle(ctx, wx + 28 + Math.cos(a) * d, ground - 120 + Math.sin(a) * d * 0.7, 3 + ph * 3, i % 3 ? "#ffe9a0" : "#ffb347");
+            this.circle(ctx, wx + (A.witch.face === "left" ? -28 : 28) + Math.cos(a) * d, ground - 120 + Math.sin(a) * d * 0.7, 3 + ph * 3, i % 3 ? "#ffe9a0" : "#ffb347");
           }
           ctx.globalAlpha = fade;
         }
@@ -1687,7 +1697,7 @@ Hop.Graphics = {
       }
       if (st.short && t >= 0) { this.circle(ctx, heroX, heroY, 70, "rgba(255,190,90,0.35)"); label("爆裂斜光", heroX, heroY - 60, 40, "#ffe55c", undefined, 0, -50); }
       if (!st.short && t >= W.liftEnd && t < W.blast) { // fireball from the staff
-        const u = this.ease((t - W.liftEnd) / (W.blast - W.liftEnd)), x0 = wx + 30, y0 = ground - 120;
+        const u = this.ease((t - W.liftEnd) / (W.blast - W.liftEnd)), x0 = wx + (A.witch.face === "left" ? -30 : 30), y0 = ground - 120;
         const x = x0 + (heroX - x0) * u, y = y0 + (heroY - y0) * u - Math.sin(u * Math.PI) * 60, r = 18 + 18 * u;
         const grad = ctx.createRadialGradient?.(x, y, 2, x, y, r * 1.6);
         if (grad) { grad.addColorStop(0, "#fffbe0"); grad.addColorStop(0.4, "#ffb13b"); grad.addColorStop(1, "rgba(255,80,20,0)"); ctx.fillStyle = grad; }
