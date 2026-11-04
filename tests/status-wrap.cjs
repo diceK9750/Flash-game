@@ -7,7 +7,7 @@
 // scoped to those two existing blocks, static, nothing hidden, no text / DOM change, ellipsis rule untouched (it just
 // never triggers), border lines consistent.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
-const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8').replace(/\r\n?/g, '\n');
 const block = q => { const i = css.indexOf(q); assert(i > 0, q); return css.slice(i, css.indexOf('\n}\n', i) + 2); };
 const P = block('@media (orientation: portrait) and (max-width: 600px) {'), L = block('@media (orientation: landscape) and (max-height: 500px) and (min-aspect-ratio: 43 / 20) {');
 assert(/main > \.aerial-status \{ order: -2; flex-wrap: wrap; row-gap: 2px; \}/.test(P), 'portrait status row wraps');
@@ -20,6 +20,6 @@ assert(L.indexOf('nth-child(1), .readouts div:nth-child(4)') > L.indexOf('.reado
 assert(css.includes('  #contact-status { flex: 1 1 auto; min-width: 72px; overflow: hidden; text-overflow: ellipsis; }'), 'phone CONTACT rule unchanged');
 assert(css.includes('  .aerial-status { flex-wrap: nowrap; gap: 9px; font-size: 11px; line-height: 18px; margin: 0 0 8px; white-space: nowrap; }'), 'phone row rule unchanged');
 // status texts themselves unchanged (no renaming / abbreviation)
-const ui = fs.readFileSync(path.join(root, 'js', 'ui.js'), 'utf8');
+const ui = fs.readFileSync(path.join(root, 'js', 'ui.js'), 'utf8').replace(/\r\n?/g, '\n');
 assert(ui.includes('set("contact-status", `CONTACT / ${') && ui.includes('set("up-status", `AERIAL ↑ ×${g.upRemaining}`);') && ui.includes('`GUARD × ${g.normalGuard}`'), 'texts unchanged');
 console.log(JSON.stringify({ statusWrap: 'PASS' })); // geometry is measured with CDP (cycle 47 record: synth / play / layout)

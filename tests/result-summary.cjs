@@ -18,7 +18,7 @@ const store = {};
 const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {},
   localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } } };
 scope.window = scope; vm.createContext(scope);
-for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), scope, { filename: name });
+for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8').replace(/\r\n?/g, '\n'), scope, { filename: name });
 const H = scope.Hop, { Game, UI, STATES: S } = H;
 const rng = seed => () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
 function play(tempo, seed) {
@@ -29,7 +29,7 @@ function play(tempo, seed) {
   assert.equal(g.state, S.RESULT); return { g, ui };
 }
 const sum = element('result-summary'), rec = element('record-status'), cmp = element('best-comparison');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/\r\n?/g, '\n'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8').replace(/\r\n?/g, '\n');
 assert(/<p id="special-state"[^>]*><\/p>\n    <p id="result-summary" class="result-summary" hidden aria-hidden="true"><\/p>/.test(html), 'markup after the SPECIAL line, aria-hidden');
 assert(/\n\.result-summary \{ display: none; \}/.test(css), 'not displayed outside portrait phones');
 const P = css.slice(css.indexOf('@media (orientation: portrait) and (max-width: 600px) {')); const pb = P.slice(0, P.indexOf('\n}\n'));

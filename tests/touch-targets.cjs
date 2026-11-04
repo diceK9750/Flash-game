@@ -6,7 +6,7 @@
 // margin hit-area tricks that could overlap the stage, every interactive selector gets min-height 44px, and the base
 // (fine pointer) rules are byte-for-byte what they were.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
-const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8'), html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8').replace(/\r\n?/g, '\n'), html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/\r\n?/g, '\n');
 const Q = '@media (pointer: coarse) {';
 assert.equal(css.split(Q).length - 1, 1, 'exactly one coarse-pointer block');
 assert(!/pointer:\s*fine|hover:\s*(hover|none)|any-pointer/.test(css), 'no other pointer queries');
@@ -28,6 +28,6 @@ assert(css.includes('#se-toggle { min-width: 64px; min-height: 40px;'), 'SE base
 // every interactive element in the page is covered
 const tags = html.match(/<(button|summary|a|input|select|textarea)\b[^>]*>/g) || [];
 assert.deepEqual(tags.map(t => t.match(/^<(\w+)/)[1]).sort(), ['button', 'button', 'summary', 'summary'], 'page targets: SE, DEBUG, 2 summaries');
-const ui = fs.readFileSync(path.join(root, 'js', 'ui.js'), 'utf8');
+const ui = fs.readFileSync(path.join(root, 'js', 'ui.js'), 'utf8').replace(/\r\n?/g, '\n');
 for (const c of ['debug-item', 'debug-close']) assert(ui.includes(c), 'menu ' + c);
 console.log(JSON.stringify({ touchTargets: 'PASS', selectors: 5 }));
