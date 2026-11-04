@@ -1279,6 +1279,51 @@ Hop.Graphics = {
     const s = A.scale || 1, dx = (A.face === "right" ? 1 : -1) * 45 * s, dy = -100 * s, r = A.rotate || 0;
     return { x: x + dx * Math.cos(r) - dy * Math.sin(r), y: feet + dx * Math.sin(r) + dy * Math.cos(r) };
   },
+  // GUARD magic circle strokes (origin = circle centre, strokeStyle set by the caller): 2 rings, hexagram, 12 runes.
+  guardCirclePaths(ctx, R, draw, t) {
+    const cl = u => Math.max(0, Math.min(1, u));
+    ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * draw); ctx.stroke();
+    ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, R * 0.8, Math.PI / 2, Math.PI / 2 - Math.PI * 2 * draw, true); ctx.stroke();
+    ctx.rotate(t * 0.9);
+    for (let tri = 0; tri < 2; tri++) { const u = cl(draw * 2 - tri * 0.6); if (u <= 0) continue; ctx.beginPath();
+      for (let i = 0; i <= 3 * u; i++) { const an = tri * Math.PI / 3 + i * Math.PI * 2 / 3 - Math.PI / 2; const px = Math.cos(an) * R * 0.8, py = Math.sin(an) * R * 0.8; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
+    ctx.rotate(-t * 1.8); ctx.lineWidth = 2;
+    for (let i = 0; i < 12; i++) { if (i / 12 > draw) break; const an = i * Math.PI / 6, rx = Math.cos(an) * R * 0.9, ry = Math.sin(an) * R * 0.9;
+      ctx.save(); ctx.translate(rx, ry); ctx.rotate(an); ctx.beginPath(); ctx.moveTo(-5, -6); ctx.lineTo(5, -6); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.moveTo(-4, 3); ctx.lineTo(4, 3); ctx.stroke(); ctx.restore(); }
+  },
+  // GUARD magic-circle glow at reduced resolution (cycle 52, display only). The old per-stroke shadowBlur 16 blurred
+  // the full-resolution circle area every frame (~10 ms/frame at 4x CPU on a phone viewport). Here the strokes are
+  // drawn at 1/GUARD_GLOW_DOWN scale into a small cached canvas, blurred there by an equivalent shadow (blur / DOWN,
+  // drawn through a shadow offset so the shadow lands apart from the source copy), and that glow is upscaled under the crisp strokes, which
+  // the caller then draws at full resolution without a shadow. The glow is smooth, so upsampling changes it only
+  // slightly. Returns false (caller keeps the old shadowed strokes) without a canvas / getTransform, or under a filter
+  // or a non source-over blend.
+  GUARD_GLOW_DOWN: 3,
+  guardCircleGlow(ctx, x, y, R, draw, t, color, alpha) {
+    const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
+    if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
+    let L = this.guardGlowLayer;
+    if (!L) { const a = doc?.createElement?.("canvas"), b = doc?.createElement?.("canvas"), ca = a?.getContext?.("2d"), cb = b?.getContext?.("2d");
+      if (!ca || !cb) return false; L = this.guardGlowLayer = { a, b, ca, cb }; }
+    if (!(alpha > 0)) return true;
+    const D = this.GUARD_GLOW_DOWN, blur = 16, k = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d));
+    const cx = m.a * x + m.c * y + m.e, cy = m.b * x + m.d * y + m.f;
+    const ns = Math.ceil(((R + 6) * k + 1.5 * blur + 4) / D) * 2, r = ns * D / 2, ox = Math.floor(cx) - r, oy = Math.floor(cy) - r;
+    const wb = 2 * ns + 8; // glow canvas: shadow lands in [0, ns), the source copy (discarded) at [ns + 8, wb)
+    if (L.a.width < ns || L.a.height < ns) { L.a.width = Math.max(L.a.width, ns); L.a.height = Math.max(L.a.height, ns); }
+    if (L.b.width < wb || L.b.height < ns) { L.b.width = Math.max(L.b.width, wb); L.b.height = Math.max(L.b.height, ns); }
+    const { ca, cb } = L;
+    ca.setTransform(1, 0, 0, 1, 0, 0); ca.clearRect(0, 0, ns, ns); ca.globalAlpha = 1;
+    ca.lineCap = ctx.lineCap; ca.lineJoin = ctx.lineJoin; ca.miterLimit = ctx.miterLimit;
+    ca.setTransform(m.a / D, m.b / D, m.c / D, m.d / D, (m.e - ox) / D, (m.f - oy) / D); ca.translate(x, y); ca.strokeStyle = color;
+    this.guardCirclePaths(ca, R, draw, t);
+    cb.setTransform(1, 0, 0, 1, 0, 0); cb.clearRect(0, 0, wb, ns); cb.globalAlpha = 1;
+    cb.shadowColor = color; cb.shadowBlur = blur / D; cb.shadowOffsetX = -(ns + 8); cb.shadowOffsetY = 0;
+    cb.drawImage(L.a, 0, 0, ns, ns, ns + 8, 0, ns, ns); cb.shadowColor = "rgba(0,0,0,0)"; cb.shadowBlur = 0; cb.shadowOffsetX = 0;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(L.b, 0, 0, ns, ns, ox, oy, ns * D, ns * D); ctx.restore();
+    return true;
+  },
   // Additive radial glow (col = "r,g,b").
   grandGlow(ctx, x, y, r, col, a) {
     if (!(r > 1) || !(a > 0.01)) return;
@@ -1456,16 +1501,11 @@ Hop.Graphics = {
     } else if (st.type === "GUARD") {
       // magic circle behind the hero: rings + hexagram + runes drawn progressively, counter-rotating
       const draw = this.ease(cl((t - 0.12) / 0.8)), R = 125 * (1 + 0.05 * Math.sin(t * 4)) * (b > 0.9 ? 1 + 0.3 * cl((b - 0.9) / 0.4) : 1);
-      ctx.save(); ctx.globalAlpha = fade * (b > 0.9 ? 1 - cl((b - 0.9) / 0.4) : 1); ctx.translate(h.x, h.y); ctx.strokeStyle = T.color; ctx.lineWidth = 5; ctx.shadowColor = T.color; ctx.shadowBlur = 16;
-      ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * draw); ctx.stroke();
-      ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, R * 0.8, Math.PI / 2, Math.PI / 2 - Math.PI * 2 * draw, true); ctx.stroke();
-      ctx.rotate(t * 0.9);
-      for (let tri = 0; tri < 2; tri++) { const u = cl(draw * 2 - tri * 0.6); if (u <= 0) continue; ctx.beginPath();
-        for (let i = 0; i <= 3 * u; i++) { const an = tri * Math.PI / 3 + i * Math.PI * 2 / 3 - Math.PI / 2; const px = Math.cos(an) * R * 0.8, py = Math.sin(an) * R * 0.8; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
-      ctx.rotate(-t * 1.8); ctx.lineWidth = 2;
-      for (let i = 0; i < 12; i++) { if (i / 12 > draw) break; const an = i * Math.PI / 6, rx = Math.cos(an) * R * 0.9, ry = Math.sin(an) * R * 0.9;
-        ctx.save(); ctx.translate(rx, ry); ctx.rotate(an); ctx.beginPath(); ctx.moveTo(-5, -6); ctx.lineTo(5, -6); ctx.moveTo(0, -6); ctx.lineTo(0, 6); ctx.moveTo(-4, 3); ctx.lineTo(4, 3); ctx.stroke(); ctx.restore(); }
-      ctx.restore();
+      // Cycle 52 (display only): the glow comes from a reduced-resolution blur (guardCircleGlow); strokes stay full-res.
+      const ringA = fade * (b > 0.9 ? 1 - cl((b - 0.9) / 0.4) : 1);
+      const glow = this.guardCircleGlow(ctx, h.x, h.y, R, draw, t, T.color, ringA);
+      ctx.save(); ctx.globalAlpha = ringA; ctx.translate(h.x, h.y); ctx.strokeStyle = T.color; if (!glow) { ctx.shadowColor = T.color; ctx.shadowBlur = 16; }
+      this.guardCirclePaths(ctx, R, draw, t); ctx.restore();
       // ground circle under the sage
       ctx.save(); ctx.globalAlpha = fade * 0.8 * cl(t / 0.4); ctx.strokeStyle = T.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(ax, afeet, 60, 14, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     } else if (st.type === "ANGLE" && t > 0.3) {
