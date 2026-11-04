@@ -6,7 +6,7 @@
 // ratio only (never overlaps the side-column query), visual order only, stage rules untouched, static, nothing hidden,
 // no font below 10 px, tap targets untouched.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
-const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8').replace(/\r\n?/g, '\n');
 const Q = '@media (orientation: landscape) and (max-height: 500px) and (max-aspect-ratio: 2149 / 1000) {';
 const i = css.indexOf(Q); assert(i > 0, 'stacked block');
 const end = css.indexOf('\n}\n', i); const blk = css.slice(i + Q.length, end);

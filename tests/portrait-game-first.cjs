@@ -1,3 +1,4 @@
+// Normalize CRLF so Windows core.autocrlf=true checkouts still pass.
 // Portrait phones, game first (2026-10-18 auto cycle 45, CSS only, static). Before, on portrait phones the title,
 // version / SE / BEST, six readouts and the status row pushed the game stage 298-313 px down (CDP, 360x640 ... 412x915).
 // Now, only under (orientation: portrait) and (max-width: 600px), main is a flex column: the stage is first at full width
@@ -7,7 +8,7 @@
 // transition / transform), visual order only (no DOM change, so keyboard focus order SE -> DEBUG -> rules is unchanged),
 // nothing hidden, the stage keeps 16:9 at full width, and the status row comes right after the stage.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
-const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8'), html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8').replace(/\r\n?/g, '\n'), html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/\r\n?/g, '\n');
 const Q = '@media (orientation: portrait) and (max-width: 600px) {';
 assert.equal(css.split(Q).length - 1, 1, 'exactly one portrait-phone block');
 assert.equal((css.match(/orientation: portrait/g) || []).length, 1, 'no other portrait queries');
