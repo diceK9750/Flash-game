@@ -102,6 +102,15 @@ assert.equal(copies.length, 1); const [cp] = copies;
 assert.equal(cp.img, L.a); near(cp.shadowBlur, 16 / D, 'small blur'); assert.equal(cp.shadowColor, COLOR); assert.equal(cp.shadowOffsetY, 0);
 assert.equal(cp.args[4] + cp.shadowOffsetX, 0, 'shadow lands on the read region'); assert.ok(cp.args[4] >= sw, 'source copy outside the read region');
 assert.ok(L.b.width >= cp.args[4] + sw, 'source copy on-canvas');
+// 2b) cycle 59: the blurred layer is rebuilt every GUARD_GLOW_EVERY (3) frames; in between it is reused (no new blur)
+// but still blitted as the ring band at the same 3x scale under the crisp strokes
+assert.equal(G.GUARD_GLOW_EVERY, 3);
+const nCopies = () => L.cb.log.filter(e => e.op === 'drawImage').length;
+for (let j = 1; j <= 2; j++) { const fr = frame(neu.H, T_CHANT + j / 60), gl = fr.images.filter(e => e.img === L.b);
+  assert.equal(nCopies(), 1, 'reused frame ' + j); assert.ok(gl.length >= 3, 'reused glow still blitted');
+  gl.forEach(g => { near(g.args[6] / g.args[2], D, 'reuse scale x'); near(g.args[7] / g.args[3], D, 'reuse scale y'); });
+  assert.equal(fr.circle.filter(e => e.shadowBlur > 0).length, 0); }
+frame(neu.H, T_CHANT + 3 / 60); assert.equal(nCopies(), 2, 'rebuilt on the 3rd frame');
 // 3) filter / blend -> old path
 for (const o of [{ filter: 'brightness(0)' }, { gco: 'lighter' }]) { const f = frame(neu.H, T_CHANT, o);
   assert.equal(f.circle.filter(e => e.shadowBlur === 16).length, 16, JSON.stringify(o)); assert.equal(f.images.filter(e => e.img === L.b).length, 0); }
