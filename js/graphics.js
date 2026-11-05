@@ -1782,13 +1782,14 @@ Hop.Graphics = {
       }
     } else if (st.type === "GUARD" && b >= 0) {
       // barrier dome: hex lattice inside a growing sphere, then a shimmer pulse
+      // Cycle 57 (display only): the lattice is one path / one stroke, and hexes wholly outside the dome are skipped.
       const R = 108 * this.ease(cl(b / 0.3)) * (1 + 0.03 * Math.sin(b * 12)), a = 0.85 - 0.45 * cl((b - 0.3) / 0.8);
       if (R > 2) { ctx.save(); ctx.globalAlpha = fade * a; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2);
         const gr = ctx.createRadialGradient(h.x, h.y, R * 0.2, h.x, h.y, R); gr.addColorStop(0, "rgba(120,230,255,0.08)"); gr.addColorStop(1, "rgba(120,230,255,0.45)"); ctx.fillStyle = gr; ctx.fill();
-        ctx.clip(); ctx.strokeStyle = "rgba(220,250,255,0.85)"; ctx.lineWidth = 2;
-        for (let gx = -4; gx <= 4; gx++) for (let gy = -4; gy <= 4; gy++) { const cx = h.x + gx * 36 + (gy % 2 ? 18 : 0), cy = h.y + gy * 31; ctx.beginPath();
-          for (let i = 0; i <= 6; i++) { const an = i * Math.PI / 3 + Math.PI / 6; const px = cx + Math.cos(an) * 20, py = cy + Math.sin(an) * 20; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke(); }
-        ctx.restore(); ctx.save(); ctx.globalAlpha = fade * a; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+        ctx.clip(); ctx.strokeStyle = "rgba(220,250,255,0.85)"; ctx.lineWidth = 2; ctx.beginPath();
+        for (let gx = -4; gx <= 4; gx++) for (let gy = -4; gy <= 4; gy++) { const cx = h.x + gx * 36 + (gy % 2 ? 18 : 0), cy = h.y + gy * 31; if (Math.hypot(cx - h.x, cy - h.y) > R + 22) continue;
+          for (let i = 0; i <= 6; i++) { const an = i * Math.PI / 3 + Math.PI / 6; const px = cx + Math.cos(an) * 20, py = cy + Math.sin(an) * 20; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } }
+        ctx.stroke(); ctx.restore(); ctx.save(); ctx.globalAlpha = fade * a; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
       for (let i = 0; i < 14; i++) { const life = (b * 0.9 + this.grandRand(i, 11)) % 1, px = h.x + (this.grandRand(i, 12) - 0.5) * 220, py = h.y + 90 - life * 260;
         ctx.globalAlpha = fade * (1 - life) * (1 - cl((b - 1.0) / 0.4)); this.spark(ctx, px, py, 6, "#e8fdff", i + b * 2); }
       ctx.globalAlpha = fade;
