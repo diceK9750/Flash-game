@@ -90,9 +90,9 @@ Hop.Graphics = {
   },
   // Truck entrance after the launch cut-in (display only): rush-in time (s) and start offset (px, left of its spot).
   truckRushIn: 0.22, truckRushInPx: 420,
-  truck(ctx, x, ground) {
-    if (Hop.Sprites?.drawTruck?.(ctx, x, ground)) return; // HD truck still when loaded (display only), else the Canvas truck
-    ctx.save(); ctx.translate(x, ground); ctx.scale(1.12, 1.12);
+  truck(ctx, x, ground, view = null) {
+    if (Hop.Sprites?.drawTruck?.(ctx, x, ground, view)) return; // HD truck still when loaded (display only), else the Canvas truck
+    ctx.save(); this.lcViewClip(ctx, view); ctx.translate(x, ground); ctx.scale(1.12, 1.12);
     ctx.fillStyle = "#faf3da"; ctx.fillRect(-110, -91, 91, 70);
     ctx.fillStyle = "#e79748"; ctx.fillRect(-17, -72, 48, 51);
     ctx.fillStyle = "#a3dfed"; ctx.fillRect(-9, -65, 29, 24);
@@ -624,11 +624,22 @@ Hop.Graphics = {
   // Deterministic pseudo-random in [0,1) (sparks / debris; same picture every play).
   lcRand(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); },
   // Uniformly scaled hero / truck stills (5-heads-tall kept); false when the asset is missing.
-  lcHero(ctx, x, feet, mul, idle = false) {
+  // view (optional): visible rect in the current coords; the still is cropped to it, the Canvas fallback clipped.
+  lcHero(ctx, x, feet, mul, idle = false, view = null) {
     const S = Hop.Sprites, def = S?.definitions?.HERO?.[idle ? "IDLE" : "HIT"], asset = idle ? S?.heroIdle : S?.heroHit;
-    if (asset?.ready && def && S.draw(ctx, asset, 0, x, feet, def.scale * mul)) return true;
-    ctx.save(); ctx.translate(x, feet); ctx.scale(mul, mul); this.character(ctx, "HERO", 0, 0, 0.936); ctx.restore();
+    if (asset?.ready && def && S.draw(ctx, asset, 0, x, feet, def.scale * mul, view)) return true;
+    ctx.save(); this.lcViewClip(ctx, view); ctx.translate(x, feet); ctx.scale(mul, mul); this.character(ctx, "HERO", 0, 0, 0.936); ctx.restore();
     return false;
+  },
+  lcViewClip(ctx, view) {
+    if (!view) return;
+    ctx.beginPath(); ctx.rect(view.x0, view.y0, view.x1 - view.x0, view.y1 - view.y0); ctx.clip();
+  },
+  // fillRect of (x, y, w, h) cropped to view (whole rect without a view); nothing when empty.
+  lcFillBox(ctx, x, y, w, h, view) {
+    const x0 = Math.max(x, view ? view.x0 : x), y0 = Math.max(y, view ? view.y0 : y);
+    const x1 = Math.min(x + w, view ? view.x1 : x + w), y1 = Math.min(y + h, view ? view.y1 : y + h);
+    if (x1 > x0 && y1 > y0) ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
   },
   // Screen px per sprite-cell px at mul 1 (HD cells: def.scale / unit); Canvas fallback ≈ the same size.
   lcCellPx(kind) {
@@ -636,39 +647,71 @@ Hop.Graphics = {
     const asset = kind === "truck" ? S?.truckIdle : S?.heroHit, unit = asset?.data?.unit;
     return def && unit > 0 ? def.scale / unit : kind === "truck" ? 0.29 : 0.4167;
   },
-  lcTruck(ctx, x, ground, mul) {
-    ctx.save(); ctx.translate(x, ground); ctx.scale(mul, mul); this.truck(ctx, 0, 0); ctx.restore();
+  lcTruck(ctx, x, ground, mul, view = null) {
+    ctx.save(); ctx.translate(x, ground); ctx.scale(mul, mul);
+    const v = view && { x0: (view.x0 - x) / mul, y0: (view.y0 - ground) / mul, x1: (view.x1 - x) / mul, y1: (view.y1 - ground) / mul };
+    this.truck(ctx, 0, 0, v); ctx.restore();
   },
-  lcSpeedLines(ctx, w, h, t, color, n = 26, dir = -1) {
+  lcSpeedLines(ctx, w, h, t, color, n = 26, dir = -1, view = null) {
     ctx.save(); ctx.strokeStyle = color; ctx.lineCap = "round";
     for (let i = 0; i < n; i++) {
       const y = (this.lcRand(i) - 0.5) * h, len = 120 + this.lcRand(i + 50) * 260, sp = 900 + this.lcRand(i + 90) * 900;
       const x = ((this.lcRand(i + 7) * (w + len) + dir * t * sp) % (w + len) + (w + len)) % (w + len) - w / 2 - len / 2;
       ctx.lineWidth = 2 + this.lcRand(i + 30) * 5; ctx.globalAlpha = 0.35 + this.lcRand(i + 13) * 0.5;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke();
+      // view: the band rect (clip lifted); the stroke is cut at its x edges (the y overhang and the round cap past the
+      // cut, <= 3.5 px, stay under the 8 px band rim)
+      const x0 = view ? Math.max(x, view.x0) : x, x1 = view ? Math.min(x + len, view.x1) : x + len;
+      if (!(x1 > x0)) continue;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
     }
     ctx.restore();
   },
-  lcFocusLines(ctx, cx, cy, inner, outer, n, color, spin = 0) {
+  // view (optional) = { x0, y0, x1, y1 }: each wedge is cut to that rect geometrically (no clip mask needed).
+  lcFocusLines(ctx, cx, cy, inner, outer, n, color, spin = 0, view = null) {
     ctx.save(); ctx.fillStyle = color;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + spin + this.lcRand(i) * 0.08, w = 0.012 + this.lcRand(i + 40) * 0.02;
       const r0 = inner * (0.85 + this.lcRand(i + 80) * 0.4);
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a - w) * outer, cy + Math.sin(a - w) * outer);
-      ctx.lineTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
-      ctx.lineTo(cx + Math.cos(a + w) * outer, cy + Math.sin(a + w) * outer);
+      let pts = [[cx + Math.cos(a - w) * outer, cy + Math.sin(a - w) * outer], [cx + Math.cos(a) * r0, cy + Math.sin(a) * r0],
+        [cx + Math.cos(a + w) * outer, cy + Math.sin(a + w) * outer]];
+      if (view) pts = this.lcClipPoly(pts, view);
+      if (pts.length < 3) continue;
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let j = 1; j < pts.length; j++) ctx.lineTo(pts[j][0], pts[j][1]);
       ctx.closePath(); ctx.fill();
     }
     ctx.restore();
   },
-  lcBand(ctx, cy, h, tilt, fill, draw) {
+  // Convex polygon cut to an axis-aligned rect (Sutherland-Hodgman, pure).
+  lcClipPoly(pts, r) {
+    const edges = [[0, r.x0, 1], [0, r.x1, -1], [1, r.y0, 1], [1, r.y1, -1]];
+    for (const [k, v, sgn] of edges) {
+      const out = [], inside = p => (p[k] - v) * sgn >= 0;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i], q = pts[(i + 1) % pts.length], pi = inside(p), qi = inside(q);
+        if (pi) out.push(p);
+        if (pi !== qi) { const f = (v - p[k]) / (q[k] - p[k]); out.push([p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f]); }
+      }
+      pts = out; if (!pts.length) break;
+    }
+    return pts;
+  },
+  // Tilted comic band: fill + draw(w, h) clipped to the band (band-local coords, origin = band centre).
+  // open(w, h, view) (optional; 2026-11-05 auto cycle 54, display only) then paints with the clip lifted: every layer
+  // crops itself to the band rect view = { x0, y0, x1, y1 } (stills: source + destination rect, focus wedges: polygon
+  // cut, speed lines: x cut, glow: its own box), so the same pixels land inside the band and nothing past the 8 px rim.
+  // A tilted anti-aliased clip made every pixel drawn under it pay for the clip mask (approach beat ~4x CPU).
+  // over(w, h) (optional) is clipped to the band again. draw may be null when open() paints everything.
+  lcBand(ctx, cy, h, tilt, fill, draw, open = null, over = null) {
     const c = Hop.CONFIG, w = c.width * 1.3;
+    const clip = () => { ctx.save(); ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.clip(); };
     ctx.save(); ctx.translate(c.width / 2, cy); ctx.rotate(tilt);
-    ctx.beginPath(); ctx.rect(-w / 2, -h / 2, w, h); ctx.save(); ctx.clip();
+    if (draw || !open) clip(); // the fill is the band rect itself: no clip needed for it alone
     ctx.fillStyle = fill; ctx.fillRect(-w / 2, -h / 2, w, h);
-    draw(w, h);
-    ctx.restore();
+    if (draw) draw(w, h);
+    if (open) { if (draw) ctx.restore(); open(w, h, { x0: -w / 2, y0: -h / 2, x1: w / 2, y1: h / 2 }); if (over) clip(); }
+    if (over) over(w, h);
+    if (!open || over) ctx.restore();
     ctx.lineWidth = 8; ctx.strokeStyle = "#111"; ctx.strokeRect(-w / 2, -h / 2, w, h);
     ctx.lineWidth = 3; ctx.strokeStyle = "#fff"; ctx.strokeRect(-w / 2, -h / 2 + 6, w, h - 12);
     ctx.restore();
@@ -767,21 +810,21 @@ Hop.Graphics = {
       // (1) slow-mo close-ups: truck grille / headlight band + the hero's shocked face band.
       const u = st.u, slow = t * 0.25;
       this.lcFocusLines(ctx, W / 2, H / 2, 260, 900, 48, "rgba(255,255,255,0.10)", slow);
-      this.lcBand(ctx, H * 0.27, 300, -0.07, "#ffb22e", (w, h) => {
-        this.lcSpeedLines(ctx, w, h, slow, "#fff4c8");
+      this.lcBand(ctx, H * 0.27, 300, -0.07, "#ffb22e", null, (w, h, view) => {
+        this.lcSpeedLines(ctx, w, h, slow, "#fff4c8", 26, -1, view);
         // headlight = cell (+88,-73) from the pivot: put it at band (x0, 0)
         const mul = 8.5 + 1.2 * u, px = this.lcCellPx("truck") * mul, hx = 60 + u * 140, hy = 10;
-        this.lcTruck(ctx, hx - 88 * px, hy + 73 * px, mul);
-        const glow = ctx.createRadialGradient?.(hx, hy, 4, hx, hy, 150 + 40 * Math.sin(t * 30));
-        if (glow?.addColorStop) { glow.addColorStop(0, "rgba(255,255,230,0.95)"); glow.addColorStop(0.3, "rgba(255,240,150,0.55)"); glow.addColorStop(1, "rgba(255,240,150,0)"); ctx.fillStyle = glow; ctx.fillRect(-w / 2, -h / 2, w, h); }
+        this.lcTruck(ctx, hx - 88 * px, hy + 73 * px, mul, view);
+        // the glow is fully transparent beyond R: only its box is filled (same pixels, fewer gradient samples)
+        const R = 150 + 40 * Math.sin(t * 30), glow = ctx.createRadialGradient?.(hx, hy, 4, hx, hy, R);
+        if (glow?.addColorStop) { glow.addColorStop(0, "rgba(255,255,230,0.95)"); glow.addColorStop(0.3, "rgba(255,240,150,0.55)"); glow.addColorStop(1, "rgba(255,240,150,0)"); ctx.fillStyle = glow; this.lcFillBox(ctx, hx - R - 2, hy - R - 2, 2 * R + 4, 2 * R + 4, view); }
       });
-      this.lcBand(ctx, H * 0.73, 300, -0.07, "#3d6fd6", (w, h) => {
-        this.lcFocusLines(ctx, 130, 0, 150, 800, 40, "rgba(255,255,255,0.45)", 0);
+      this.lcBand(ctx, H * 0.73, 300, -0.07, "#3d6fd6", null, (w, h, view) => {
+        this.lcFocusLines(ctx, 130, 0, 150, 800, 40, "rgba(255,255,255,0.45)", 0, view);
         // shocked face = HIT cell (+46,-140) from the pivot, centred in the band (uniform zoom)
         const mul = 10 + 1 * u, px = this.lcCellPx("hero") * mul;
-        this.lcHero(ctx, 130 - 46 * px, 30 + 140 * px, mul);
-        this.lcText(ctx, "!?", 330, -60, 96, 0.12, "#ffe14d");
-      });
+        this.lcHero(ctx, 130 - 46 * px, 30 + 140 * px, mul, false, view);
+      }, () => this.lcText(ctx, "!?", 330, -60, 96, 0.12, "#ffe14d"));
       this.lcText(ctx, "ブォォォン…", W * 0.2, H * 0.52, 44, -0.07, "#ffffff", "#2a1a08", 1 + 0.05 * Math.sin(t * 20));
     } else {
       const cx = W * 0.5, cy = H * 0.52, burstR = (520 + 420 * k) * (0.35 + 0.65 * st.burst);
