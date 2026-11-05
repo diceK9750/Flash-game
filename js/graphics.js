@@ -1511,7 +1511,26 @@ Hop.Graphics = {
     cb.shadowColor = color; cb.shadowBlur = blur / D; cb.shadowOffsetX = -(ns + 8); cb.shadowOffsetY = 0;
     cb.drawImage(L.a, 0, 0, ns, ns, ns + 8, 0, ns, ns); cb.shadowColor = "rgba(0,0,0,0)"; cb.shadowBlur = 0; cb.shadowOffsetX = 0;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(L.b, 0, 0, ns, ns, ox, oy, ns * D, ns * D); ctx.restore();
+    // Cycle 58 (display only): blit a band around the ring instead of the full square. Coverage (not source size)
+    // dominated cost; corners + empty centre are skipped. Hole keeps the outer rings (0.8R / R) and most of the
+    // hexagram glow; imageSmoothing stays on (no nearest banding).
+    const S = ns * D, rin = Math.max(0, 0.55 * R * k - 1.5 * blur), rout = r, step = 12 * D;
+    for (let dy = 0; dy < S; dy += step) {
+      const y0 = dy, y1 = Math.min(S, dy + step), ym = 0.5 * (y0 + y1) - r, ay = Math.abs(ym);
+      if (ay >= rout) continue;
+      const xOut = Math.sqrt(rout * rout - ym * ym), dh = y1 - y0, sy0 = y0 / D, sdh = dh / D;
+      if (ay >= rin) {
+        const x0 = Math.max(0, Math.floor(r - xOut)), x1 = Math.min(S, Math.ceil(r + xOut)), dw = x1 - x0;
+        if (dw > 0) ctx.drawImage(L.b, x0 / D, sy0, dw / D, sdh, ox + x0, oy + y0, dw, dh);
+      } else {
+        const xIn = Math.sqrt(rin * rin - ym * ym);
+        let x0 = Math.max(0, Math.floor(r - xOut)), x1 = Math.min(S, Math.ceil(r - xIn)), dw = x1 - x0;
+        if (dw > 0) ctx.drawImage(L.b, x0 / D, sy0, dw / D, sdh, ox + x0, oy + y0, dw, dh);
+        x0 = Math.max(0, Math.floor(r + xIn)); x1 = Math.min(S, Math.ceil(r + xOut)); dw = x1 - x0;
+        if (dw > 0) ctx.drawImage(L.b, x0 / D, sy0, dw / D, sdh, ox + x0, oy + y0, dw, dh);
+      }
+    }
+    ctx.restore();
     return true;
   },
   // Additive radial glow (col = "r,g,b").

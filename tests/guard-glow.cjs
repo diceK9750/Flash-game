@@ -71,13 +71,24 @@ assert.equal(crisp.length, 16, 'same 16 strokes');
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, msg + ' ' + a + ' vs ' + b);
 crisp.forEach((e, i) => { const o = ringStrokes[i]; near(e.width, o.width, 'width'); assert.equal(e.strokeStyle, o.strokeStyle); near(e.globalAlpha, o.globalAlpha, 'alpha');
   assert.equal(e.path.length, o.path.length); e.path.forEach((p, j) => p.forEach((v, q) => typeof v === 'number' ? near(v, o.path[j][q], 'path') : assert.equal(v, o.path[j][q]))); });
-const L = G.guardGlowLayer, glow = fn.images.filter(e => e.img === L.b);
-assert.equal(glow.length, 1, 'one glow drawImage');
-const [g] = glow, [sx0, sy0, sw, sh, dx, dy, dw, dh] = g.args, D = G.GUARD_GLOW_DOWN;
-assert.equal(D, 3); assert.deepEqual(g.m, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, 'device space');
-assert.deepEqual([sx0, sy0], [0, 0]); assert.equal(sw, sh); assert.deepEqual([dw, dh], [sw * D, sh * D]); assert.ok(Number.isInteger(dx) && Number.isInteger(dy), 'whole-pixel destination');
-near(g.globalAlpha, ringStrokes[0].globalAlpha, 'glow alpha'); assert.equal(g.shadowBlur, 0); assert.equal(g.globalCompositeOperation, 'source-over');
-assert.ok(fn.main.log.indexOf(g) < fn.main.log.indexOf(crisp[0]), 'glow under the strokes');
+const L = G.guardGlowLayer, glow = fn.images.filter(e => e.img === L.b), D = G.GUARD_GLOW_DOWN;
+assert.equal(D, 3);
+assert.ok(glow.length >= 3, 'ring-band glow drawImages (got ' + glow.length + ')');
+glow.forEach(g => {
+  assert.deepEqual(g.m, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, 'device space');
+  near(g.globalAlpha, ringStrokes[0].globalAlpha, 'glow alpha');
+  assert.equal(g.shadowBlur, 0); assert.equal(g.globalCompositeOperation, 'source-over');
+  assert.equal(g.imageSmoothingEnabled, true, 'bilinear upscale (no nearest banding)');
+  const [sx0, sy0, sw1, sh1, dx1, dy1, dw, dh] = g.args;
+  assert.ok(Number.isInteger(dx1) && Number.isInteger(dy1), 'whole-pixel destination');
+  near(dw / sw1, D, 'scale x'); near(dh / sh1, D, 'scale y');
+});
+const nsClear = L.ca.log.find(e => e.op === 'clearRect');
+assert.ok(nsClear); const sw = nsClear.args[2], sh = sw; // glow read region is ns x ns
+const dx = Math.min(...glow.map(g => g.args[4])), dy = Math.min(...glow.map(g => g.args[5]));
+const area = glow.reduce((s, g) => s + g.args[6] * g.args[7], 0);
+assert.ok(area < sw * D * sh * D * 0.85, 'band covers less than the full square');
+assert.ok(fn.main.log.indexOf(glow[0]) < fn.main.log.indexOf(crisp[0]), 'glow under the strokes');
 // small canvas: same strokes at 1/3 scale, offset to the glow destination
 const small = L.ca.log.filter(e => e.op === 'stroke');
 assert.equal(small.length, 16); assert.ok(small.every(e => e.shadowBlur === 0 && e.globalAlpha === 1 && e.strokeStyle === COLOR));
@@ -97,4 +108,4 @@ for (const o of [{ filter: 'brightness(0)' }, { gco: 'lighter' }]) { const f = f
 // whole scene draws (back layer) with the glow and stays in cached canvases
 for (let i = 0; i <= 90; i++) frame(neu.H, i / 30);
 assert.equal(neu.created(), 2, 'two canvases, created once');
-console.log('guardGlow PASS: 16 crisp strokes unchanged in device space without shadow, one 1/3-scale glow (blur 16/3) upscaled under them; fallback = old shadowed strokes.');
+console.log('guardGlow PASS: 16 crisp strokes unchanged in device space without shadow, 1/3-scale glow (blur 16/3) upscaled as a ring band under them; fallback = old shadowed strokes.');
