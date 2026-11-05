@@ -286,6 +286,8 @@ Hop.Sprites = {
   duration(data) { return (Array.isArray(data.sequence) ? data.sequence.length : data.frames) / data.fps; },
   // view (optional) = { x0, y0, x1, y1 } in the current coords: the cell is cropped to it (source and destination
   // rect cut alike, same pixels inside), so a caller can skip a clip (cycle 54 launch cut-in bands). Empty -> true.
+  // asset.opaque (optional, opaqueBoxes) crops each cell to its pixels the same way (cycle 55): a transparent texel
+  // costs as much to sample as an opaque one (the launch cut-in hero stills are ~2/3 empty cell).
   draw(ctx, asset, time, x, feet, scale, view = null) {
     if (!asset?.ready || !asset.image?.complete || !asset.image.naturalWidth || !asset.data?.pivot) return false;
     const d = asset.data;
@@ -303,8 +305,12 @@ Hop.Sprites = {
       if (sil) ctx.filter = "none";
       let sx = sil ? 0 : frame * d.frameWidth, sy = 0, sw = d.frameWidth, sh = d.frameHeight;
       let dx = x - d.pivot.x * scale, dy = feet - d.pivot.y * scale, dw = d.frameWidth * scale, dh = d.frameHeight * scale;
-      if (view) {
-        const x0 = Math.max(dx, view.x0), y0 = Math.max(dy, view.y0), x1 = Math.min(dx + dw, view.x1), y1 = Math.min(dy + dh, view.y1);
+      // opaque box (cycle 55): only the part of the cell that has pixels (+ a transparent margin) is sampled
+      const ob = asset.opaque?.[frame];
+      if (view || ob) {
+        let x0 = dx, y0 = dy, x1 = dx + dw, y1 = dy + dh;
+        if (ob) { x0 = dx + ob.x0 * scale; y0 = dy + ob.y0 * scale; x1 = dx + ob.x1 * scale; y1 = dy + ob.y1 * scale; }
+        if (view) { x0 = Math.max(x0, view.x0); y0 = Math.max(y0, view.y0); x1 = Math.min(x1, view.x1); y1 = Math.min(y1, view.y1); }
         if (!(x1 > x0 && y1 > y0)) return true;
         const kx = sw / dw, ky = sh / dh;
         sx += (x0 - dx) * kx; sy += (y0 - dy) * ky; sw = (x1 - x0) * kx; sh = (y1 - y0) * ky;
@@ -314,6 +320,36 @@ Hop.Sprites = {
       return true;
     } catch (_) { return false; }
     finally { ctx.restore(); }
+  },
+  // Per-cell opaque box of a loaded sheet (2026-11-05 auto cycle 55, display only): { x0, y0, x1, y1 } in cell px,
+  // the alpha bounding box grown by OPAQUE_MARGIN fully transparent px (bilinear / mipmap taps beyond it read only
+  // alpha 0, so the cropped draw puts the same pixels on screen), clamped to the cell; null for a cell that would
+  // barely shrink (> OPAQUE_MIN_GAIN of its area). Read once at load (one getImageData of the sheet); returns null
+  // (no crop) without a canvas or when the image cannot be read (e.g. a file:// taint).
+  OPAQUE_MARGIN: 4, OPAQUE_MIN_GAIN: 0.9,
+  opaqueBoxes(asset) {
+    try {
+      const d = asset?.data, img = asset?.image, doc = typeof document !== "undefined" ? document : null;
+      if (!asset?.ready || !d || !img?.naturalWidth) return null;
+      const cv = doc?.createElement?.("canvas"), c2 = cv?.getContext?.("2d", { willReadFrequently: true });
+      if (!c2 || typeof c2.getImageData !== "function") return null;
+      const W = d.frameWidth * d.frames, H = d.frameHeight; cv.width = W; cv.height = H;
+      c2.drawImage(img, 0, 0);
+      const px = c2.getImageData(0, 0, W, H)?.data; if (!px || px.length !== W * H * 4) return null;
+      const out = [];
+      for (let f = 0; f < d.frames; f++) {
+        let x0 = d.frameWidth, y0 = H, x1 = -1, y1 = -1;
+        for (let y = 0; y < H; y++) for (let x = 0, i = (y * W + f * d.frameWidth) * 4 + 3; x < d.frameWidth; x++, i += 4) {
+          if (px[i]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+        const m = this.OPAQUE_MARGIN;
+        const box = x1 < 0 ? { x0: 0, y0: 0, x1: 0, y1: 0 }
+          : { x0: Math.max(0, x0 - m), y0: Math.max(0, y0 - m), x1: Math.min(d.frameWidth, x1 + 1 + m), y1: Math.min(H, y1 + 1 + m) };
+        out.push((box.x1 - box.x0) * (box.y1 - box.y0) > this.OPAQUE_MIN_GAIN * d.frameWidth * H ? null : box);
+      }
+      cv.width = cv.height = 1;
+      return out;
+    } catch (_) { return null; }
   },
   SILHOUETTE_FILTERS: Object.freeze({ "brightness(0)": "#000000", "brightness(0) invert(1)": "#ffffff" }),
   silhouetteTint(ctx) { const f = ctx?.filter; return typeof f === "string" && f !== "none" ? this.SILHOUETTE_FILTERS[f] || null : null; },
@@ -520,6 +556,7 @@ Hop.Sprites.stopResultReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.STOP
   return asset;
 });
 Hop.Sprites.hitReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.HIT).then(asset => {
+  asset.opaque = Hop.Sprites.opaqueBoxes(asset); // launch cut-in / roadside stills sample only their pixels (cycle 55)
   Hop.Sprites.heroHit = asset;
   return asset;
 });
@@ -528,6 +565,7 @@ Hop.Sprites.specialReactionReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO
   return asset;
 });
 Hop.Sprites.truckReady = Hop.Sprites.load(Hop.Sprites.definitions.TRUCK.IDLE).then(asset => {
+  asset.opaque = Hop.Sprites.opaqueBoxes(asset); // launch cut-in / roadside stills sample only their pixels (cycle 55)
   Hop.Sprites.truckIdle = asset;
   return asset;
 });
