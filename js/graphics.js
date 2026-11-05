@@ -1540,6 +1540,46 @@ Hop.Graphics = {
     ctx.restore();
     return true;
   },
+  // GUARD barrier dome, cached (cycle 60, display only). After its 0.3 s growth the dome only breathes by +-3%, but its
+  // radial-gradient fill, circle clip and ~60 antialiased hex strokes were re-rasterized every frame (~5 ms/frame at 4x
+  // CPU on a phone viewport). The fill + clipped lattice are drawn once at the largest radius (GUARD_DOME_R0) into a
+  // device-pixel layer (rebuilt only when the camera zoom drifts > 4% or rotates) and blitted, scaled by zoom ratio x
+  // R / R0 (<= 3%), row by row over the disc only. The white rim stays a live stroke. Returns false (caller draws live)
+  // without a canvas / getTransform, or under a filter or a non source-over blend.
+  GUARD_DOME_MIN: 100,
+  GUARD_DOME_R0: 108 * 1.03,
+  guardDomeCached(ctx, x, y, R, alpha) {
+    const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
+    if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
+    let L = this.guardDomeLayer;
+    if (!L) { const a = doc?.createElement?.("canvas"), ca = a?.getContext?.("2d"); if (!ca) return false; L = this.guardDomeLayer = { a, ca }; }
+    const k = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d)); if (!(k > 0)) return false;
+    if (!(alpha > 0)) return true;
+    const R0 = this.GUARD_DOME_R0, rot = (m.a / k).toFixed(3) + ":" + (m.b / k).toFixed(3) + ":" + (m.c / k).toFixed(3) + ":" + (m.d / k).toFixed(3);
+    if (!(L.k > 0) || Math.abs(k / L.k - 1) >= 0.04 || L.rot !== rot) {
+      const n = Math.ceil(2 * (R0 + 2) * k) + 2, c0 = n / 2, ca = L.ca;
+      if (L.a.width < n || L.a.height < n) { L.a.width = Math.max(L.a.width, n); L.a.height = Math.max(L.a.height, n); }
+      ca.setTransform(1, 0, 0, 1, 0, 0); ca.clearRect(0, 0, L.a.width, L.a.height); ca.globalAlpha = 1;
+      ca.lineCap = ctx.lineCap; ca.lineJoin = ctx.lineJoin; ca.miterLimit = ctx.miterLimit;
+      ca.save(); ca.setTransform(m.a, m.b, m.c, m.d, c0, c0); ca.beginPath(); ca.arc(0, 0, R0, 0, Math.PI * 2);
+      const gr = ca.createRadialGradient(0, 0, R0 * 0.2, 0, 0, R0); gr.addColorStop(0, "rgba(120,230,255,0.08)"); gr.addColorStop(1, "rgba(120,230,255,0.45)"); ca.fillStyle = gr; ca.fill();
+      ca.clip(); ca.strokeStyle = "rgba(220,250,255,0.85)"; ca.lineWidth = 2; ca.beginPath(); this.guardLatticePath(ca, 0, 0, R0); ca.stroke(); ca.restore();
+      L.k = k; L.rot = rot; L.n = n; L.c0 = c0; L.builds = (L.builds || 0) + 1;
+    }
+    const sc = (k / L.k) * (R / R0), cx = m.a * x + m.c * y + m.e, cy = m.b * x + m.d * y + m.f, c0 = L.c0, rr = Math.min(c0, (R0 + 1) * L.k), step = 24;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.imageSmoothingEnabled = true;
+    for (let y0 = Math.max(0, Math.floor(c0 - rr)); y0 < Math.min(L.n, c0 + rr); y0 += step) { // rows over the disc only
+      const y1 = Math.min(L.n, y0 + step), ym = Math.min(Math.abs(y0 - c0), Math.abs(y1 - c0)), hw = y0 <= c0 && y1 >= c0 ? rr : Math.sqrt(Math.max(0, rr * rr - ym * ym));
+      const x0 = Math.max(0, Math.floor(c0 - hw)), x1 = Math.min(L.n, Math.ceil(c0 + hw)); if (x1 <= x0) continue;
+      ctx.drawImage(L.a, x0, y0, x1 - x0, y1 - y0, cx + (x0 - c0) * sc, cy + (y0 - c0) * sc, (x1 - x0) * sc, (y1 - y0) * sc); }
+    ctx.restore();
+    return true;
+  },
+  // GUARD barrier-dome hex lattice path (centre x, y; hexes wholly outside radius R + 22 are skipped, cycle 57).
+  guardLatticePath(ctx, x, y, R) {
+    for (let gx = -4; gx <= 4; gx++) for (let gy = -4; gy <= 4; gy++) { const cx = x + gx * 36 + (gy % 2 ? 18 : 0), cy = y + gy * 31; if (Math.hypot(cx - x, cy - y) > R + 22) continue;
+      for (let i = 0; i <= 6; i++) { const an = i * Math.PI / 3 + Math.PI / 6; const px = cx + Math.cos(an) * 20, py = cy + Math.sin(an) * 20; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } }
+  },
   // Additive radial glow (col = "r,g,b").
   grandGlow(ctx, x, y, r, col, a) {
     if (!(r > 1) || !(a > 0.01)) return;
@@ -1810,11 +1850,12 @@ Hop.Graphics = {
       // barrier dome: hex lattice inside a growing sphere, then a shimmer pulse
       // Cycle 57 (display only): the lattice is one path / one stroke, and hexes wholly outside the dome are skipped.
       const R = 108 * this.ease(cl(b / 0.3)) * (1 + 0.03 * Math.sin(b * 12)), a = 0.85 - 0.45 * cl((b - 0.3) / 0.8);
-      if (R > 2) { ctx.save(); ctx.globalAlpha = fade * a; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2);
+      // Cycle 60 (display only): once grown (R >= GUARD_DOME_MIN) the fill + hex lattice come from a cached layer.
+      if (R >= this.GUARD_DOME_MIN && this.guardDomeCached(ctx, h.x, h.y, R, fade * a)) { ctx.save(); ctx.globalAlpha = fade * a; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      else if (R > 2) { ctx.save(); ctx.globalAlpha = fade * a; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2);
         const gr = ctx.createRadialGradient(h.x, h.y, R * 0.2, h.x, h.y, R); gr.addColorStop(0, "rgba(120,230,255,0.08)"); gr.addColorStop(1, "rgba(120,230,255,0.45)"); ctx.fillStyle = gr; ctx.fill();
         ctx.clip(); ctx.strokeStyle = "rgba(220,250,255,0.85)"; ctx.lineWidth = 2; ctx.beginPath();
-        for (let gx = -4; gx <= 4; gx++) for (let gy = -4; gy <= 4; gy++) { const cx = h.x + gx * 36 + (gy % 2 ? 18 : 0), cy = h.y + gy * 31; if (Math.hypot(cx - h.x, cy - h.y) > R + 22) continue;
-          for (let i = 0; i <= 6; i++) { const an = i * Math.PI / 3 + Math.PI / 6; const px = cx + Math.cos(an) * 20, py = cy + Math.sin(an) * 20; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } }
+        this.guardLatticePath(ctx, h.x, h.y, R);
         ctx.stroke(); ctx.restore(); ctx.save(); ctx.globalAlpha = fade * a; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(h.x, h.y, R, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
       for (let i = 0; i < 14; i++) { const life = (b * 0.9 + this.grandRand(i, 11)) % 1, px = h.x + (this.grandRand(i, 12) - 0.5) * 220, py = h.y + 90 - life * 260;
         ctx.globalAlpha = fade * (1 - life) * (1 - cl((b - 1.0) / 0.4)); this.spark(ctx, px, py, 6, "#e8fdff", i + b * 2); }
