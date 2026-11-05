@@ -343,6 +343,11 @@ Hop.Graphics = {
     if (grand && this.smooth) { const sub = this.subStep(g, g.combo?.rate || 1); if (grand.after === null) grand.t = Math.min(grand.end, grand.t + sub); else grand.after = Math.min(grand.afterTotal, grand.after + sub); }
     const scene = combo || grand;
     const impact = grand ? this.grandImpact(grand, !!visual?.reducedMotion) : this.comboImpact(combo, !!visual?.reducedMotion);
+    // cycle 53 (display only): while the launch cut-in hides the whole stage behind its opaque backdrop, everything
+    // under it is still drawn with the same calls (same display-state side effects) but into an empty clip, so the
+    // canvas never rasterizes it. Same pixels: the cut-in repaints every one of them.
+    const lcHide = this.launchCutinCovers(ctx, g, visual);
+    const lcSeen = lcHide ? this.lcHideBegin(ctx) : null;
     ctx.fillStyle = "#bce9f3"; ctx.fillRect(0, 0, c.width, c.height);
     // Tempo feedback shake (speed + hit kick, capped; none in reduced motion or while a scene / cut-in plays).
     const shake = scene || g.launchCutin ? { x: 0, y: 0 } : this.tempoShake(g, visual);
@@ -542,8 +547,35 @@ Hop.Graphics = {
     this.specialCutin(ctx, g, visual);
     // Merchant SPECIAL flourish (display only, over the cut-in and outliving it).
     this.merchantFlourish(ctx, g, visual);
+    if (lcSeen) this.lcHideEnd(ctx, lcSeen);
     // Launch cut-in (truck x hero) above everything while it plays.
     this.launchCutin(ctx, g, visual);
+  },
+  // True when this frame's launch cut-in paints an opaque backdrop over the whole stage (full / repeat cut-in,
+  // approach / impact / launch beats at alpha 1, shake within the 40 px backdrop overscan), the canvas has a plain
+  // source-over / alpha 1 state and Path2D exists (tests' fake contexts: false -> everything drawn as before).
+  // Hidden pass: the empty clip skips rasterizing; the stage's images are only noted (drawImage has no state side
+  // effects, and nothing of them would reach the screen) and then touched with one 1x1 device-pixel draw at the
+  // corner the opaque backdrop repaints, so their decodes stay warm and the first fade frame does not stall.
+  lcHideBegin(ctx) {
+    const seen = new Set();
+    ctx.save(); ctx.clip(new Path2D());
+    ctx.drawImage = (img) => { if (img) seen.add(img); };
+    return seen;
+  },
+  lcHideEnd(ctx, seen) {
+    delete ctx.drawImage;
+    ctx.restore();
+    if (!seen.size) return;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+    for (const img of seen) { try { ctx.drawImage(img, 0, 0, 1, 1, 0, 0, 1, 1); } catch (_) { /* unusable source: skip */ } }
+    ctx.restore();
+  },
+  launchCutinCovers(ctx, g, visual) {
+    const cut = g?.launchCutin; if (!cut || typeof Path2D !== "function" || typeof ctx?.clip !== "function") return false;
+    if (ctx.globalAlpha !== 1 || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
+    const st = this.launchCutinStyle(cut, !!visual?.reducedMotion);
+    return st.visible && st.beat !== "still" && st.alpha >= 1 && Math.abs(st.shakeX) < 40 && Math.abs(st.shakeY) < 40;
   },
   // ---- Launch cut-in (truck x hero at AIM_POWER -> FLYING; display only, never mutates game) -------------
   // Beat times in seconds for a cut-in record (pure): impact = IMPACT start, launch = flight start, fade = fade start.
@@ -644,13 +676,76 @@ Hop.Graphics = {
   lcText(ctx, text, x, y, size, rot, fill, stroke = "#1a0f08", scale = 1) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(scale, scale);
     ctx.font = `900 ${size}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-    ctx.lineWidth = size * 0.26; ctx.strokeStyle = stroke; ctx.strokeText(text, 0, 0);
-    ctx.lineWidth = size * 0.1; ctx.strokeStyle = "#ffffff"; ctx.strokeText(text, 0, 0);
+    if (!this.lcTextOutline(ctx, text, size, stroke, scale)) {
+      ctx.lineWidth = size * 0.26; ctx.strokeStyle = stroke; ctx.strokeText(text, 0, 0);
+      ctx.lineWidth = size * 0.1; ctx.strokeStyle = "#ffffff"; ctx.strokeText(text, 0, 0);
+    }
     ctx.fillStyle = fill; ctx.fillText(text, 0, 0);
     ctx.restore();
   },
+  // Cut-in label outline cache (2026-11-05 auto cycle 53, display only). The two outline strokes of a label (dark rim
+  // 0.26 em + white rim 0.1 em, round joins) re-stroked every glyph outline of 100+ px Japanese text at DPR 3 on every
+  // frame (~10 ms/frame at 4x CPU). They are now stroked once per label into a cached canvas at device resolution and
+  // blitted (bilinear) under the vector fill, which stays crisp on top. Used only near scale 1 (the settled wobble);
+  // pop-in frames (scale far from 1), a filter / non source-over blend, or no canvas keep the vector strokes (false).
+  // ctx is already at the label origin (translate / rotate / scale applied, font + center / middle alignment set).
+  LC_OUTLINE_SCALE_TOL: 0.05, LC_OUTLINE_CACHE_MAX: 16,
+  lcTextOutline(ctx, text, size, stroke, scale) {
+    if (!(Math.abs(scale - 1) <= this.LC_OUTLINE_SCALE_TOL + 1e-9)) return false;
+    const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
+    if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
+    // linear part at scale 1 (device px per label px, rotation included); the outline is cached in device space so
+    // the blit is axis-aligned (only the settled wobble scale and the position change per frame)
+    const a = m.a / scale, b = m.b / scale, c = m.c / scale, d = m.d / scale;
+    if (![a, b, c, d, m.e, m.f].every(Number.isFinite) || !(Math.abs(a * d - b * c) > 1e-6)) return false;
+    const key = `${text}|${size}|${stroke}|${ctx.font}|${[a, b, c, d].map(v => Math.round(v * 1e4)).join(",")}`, cache = this.lcOutlineCache ||= new Map();
+    let e = cache.get(key);
+    if (e === null) return false;
+    if (!e) {
+      const cv = doc?.createElement?.("canvas"), c2 = cv?.getContext?.("2d"); if (!c2) return false;
+      const lc = this.lcTextState(ctx, doc), setup = () => { Object.assign(c2, lc); c2.font = ctx.font; c2.textAlign = "center"; c2.textBaseline = "middle"; };
+      setup();
+      const mt = c2.measureText(text), mw = ctx.measureText?.(text)?.width;
+      // glyph check: a detached canvas may resolve the font differently (e.g. no inherited lang = other CJK face);
+      // then this label keeps the vector strokes (cached as unusable so it is not re-checked every frame)
+      if (!(Number.isFinite(mt.width) && Number.isFinite(mw) && Math.abs(mt.width - mw) <= Math.max(0.5, mw * 0.002))) {
+        if (cache.size >= this.LC_OUTLINE_CACHE_MAX) cache.clear();
+        cache.set(key, null); return false;
+      }
+      const pad = size * 0.13 + 3, num = (v, dv) => Number.isFinite(v) ? v : dv, half = num(mt.width, size * text.length) / 2;
+      const L = num(mt.actualBoundingBoxLeft, half) + pad, R = num(mt.actualBoundingBoxRight, half) + pad;
+      const A = num(mt.actualBoundingBoxAscent, size * 0.6) + pad, D = num(mt.actualBoundingBoxDescent, size * 0.6) + pad;
+      const xs = [], ys = []; for (const [u, v] of [[-L, -A], [R, -A], [-L, D], [R, D]]) { xs.push(a * u + c * v); ys.push(b * u + d * v); }
+      const ox = Math.ceil(-Math.min(...xs)) + 1, oy = Math.ceil(-Math.min(...ys)) + 1; // label origin inside the cache (device px)
+      cv.width = Math.max(1, ox + Math.ceil(Math.max(...xs)) + 1); cv.height = Math.max(1, oy + Math.ceil(Math.max(...ys)) + 1);
+      c2.setTransform(a, b, c, d, ox, oy);
+      setup(); c2.lineJoin = "round";
+      c2.lineWidth = size * 0.26; c2.strokeStyle = stroke; c2.strokeText(text, 0, 0);
+      c2.lineWidth = size * 0.1; c2.strokeStyle = "#ffffff"; c2.strokeText(text, 0, 0);
+      e = { cv, ox, oy };
+      if (cache.size >= this.LC_OUTLINE_CACHE_MAX) cache.clear();
+      cache.set(key, e);
+    }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "low";
+    ctx.drawImage(e.cv, m.e - e.ox * scale, m.f - e.oy * scale, e.cv.width * scale, e.cv.height * scale);
+    ctx.restore();
+    return true;
+  },
+  // text-shaping state of the main context that a detached canvas would not share (lang is resolved, since a detached
+  // canvas cannot inherit it from the page)
+  lcTextState(ctx, doc) {
+    const out = {};
+    for (const k of ["direction", "letterSpacing", "wordSpacing", "fontKerning", "fontStretch", "fontVariantCaps", "textRendering"]) {
+      if (typeof ctx[k] === "string") out[k] = ctx[k];
+    }
+    if (typeof ctx.lang === "string") {
+      out.lang = ctx.lang !== "inherit" ? ctx.lang
+        : (ctx.canvas?.closest?.("[lang]")?.getAttribute?.("lang") || doc?.documentElement?.lang || "inherit");
+    }
+    return out;
+  },
   launchCutin(ctx, g, visual) {
-    const cut = g.launchCutin; if (!cut) return;
+    const cut = g.launchCutin; if (!cut) { this.lcOutlineCache = null; return; } // label outlines: kept only while a cut-in plays
     const rm = !!visual?.reducedMotion, st = this.launchCutinStyle(cut, rm);
     if (!st.visible) return;
     const c = Hop.CONFIG, W = c.width, H = c.height, k = cut.intensity ?? 1, t = cut.elapsed;
