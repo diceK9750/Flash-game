@@ -284,7 +284,9 @@ Hop.Sprites = {
     return sequence ? sequence[step] : step;
   },
   duration(data) { return (Array.isArray(data.sequence) ? data.sequence.length : data.frames) / data.fps; },
-  draw(ctx, asset, time, x, feet, scale) {
+  // view (optional) = { x0, y0, x1, y1 } in the current coords: the cell is cropped to it (source and destination
+  // rect cut alike, same pixels inside), so a caller can skip a clip (cycle 54 launch cut-in bands). Empty -> true.
+  draw(ctx, asset, time, x, feet, scale, view = null) {
     if (!asset?.ready || !asset.image?.complete || !asset.image.naturalWidth || !asset.data?.pivot) return false;
     const d = asset.data;
     const frame = this.frameAt(d, time);
@@ -299,8 +301,16 @@ Hop.Sprites = {
       ctx.imageSmoothingEnabled = !!d.smooth;
       if (d.smooth) ctx.imageSmoothingQuality = "high";
       if (sil) ctx.filter = "none";
-      ctx.drawImage(sil || asset.image, sil ? 0 : frame * d.frameWidth, 0, d.frameWidth, d.frameHeight,
-        x - d.pivot.x * scale, feet - d.pivot.y * scale, d.frameWidth * scale, d.frameHeight * scale);
+      let sx = sil ? 0 : frame * d.frameWidth, sy = 0, sw = d.frameWidth, sh = d.frameHeight;
+      let dx = x - d.pivot.x * scale, dy = feet - d.pivot.y * scale, dw = d.frameWidth * scale, dh = d.frameHeight * scale;
+      if (view) {
+        const x0 = Math.max(dx, view.x0), y0 = Math.max(dy, view.y0), x1 = Math.min(dx + dw, view.x1), y1 = Math.min(dy + dh, view.y1);
+        if (!(x1 > x0 && y1 > y0)) return true;
+        const kx = sw / dw, ky = sh / dh;
+        sx += (x0 - dx) * kx; sy += (y0 - dy) * ky; sw = (x1 - x0) * kx; sh = (y1 - y0) * ky;
+        dx = x0; dy = y0; dw = x1 - x0; dh = y1 - y0;
+      }
+      ctx.drawImage(sil || asset.image, sx, sy, sw, sh, dx, dy, dw, dh);
       return true;
     } catch (_) { return false; }
     finally { ctx.restore(); }
@@ -344,10 +354,10 @@ Hop.Sprites = {
     return { asset, scale: def.scale, flip: !!def.flip };
   },
   // Draw the truck still with its origin at (x, ground) (the Canvas truck's translate point); false -> Canvas truck.
-  drawTruck(ctx, x, ground) {
+  drawTruck(ctx, x, ground, view = null) {
     const def = this.definitions.TRUCK?.IDLE, asset = this.truckIdle;
     if (!def || def.enabled === false || !asset?.ready) return false;
-    return this.draw(ctx, asset, 0, x, ground, def.scale);
+    return this.draw(ctx, asset, 0, x, ground, def.scale, view);
   },
   // Draw a CAST still with its feet at (x, feet); false -> caller draws the Canvas figure.
   drawCast(ctx, id, x, feet, pose = 0) {
