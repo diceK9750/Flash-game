@@ -6,7 +6,7 @@
 // in the coarse block (mouse / trackpad untouched), no motion (no transition / animation / transform), no size / hit-area
 // properties, every target has both states, text contrast on each pressed fill >= 4.5:1, base rules unchanged.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
-const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const root = path.resolve(__dirname, '..'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8').replace(/\r\n?/g, '\n');
 const Q = '@media (pointer: coarse) {', i = css.indexOf(Q), blk = css.slice(i, css.indexOf('\n}\n', i) + 2);
 const k = blk.indexOf('/* Pressed / focus states'); assert(k > 0, 'state rules in the coarse block');
 const states = blk.slice(k);
