@@ -193,64 +193,10 @@ Hop.Graphics = {
     const slidePx = (style.slide || 0) * c.width * 0.45;
     ctx.translate(c.width * 0.5 + slidePx * Math.cos(tilt), cy - slidePx * Math.sin(tilt));
     ctx.rotate(-tilt);
-    const hw = bandW / 2, hh = bandH / 2, skew = 36;
-    // Wipe reveal left → right
-    ctx.beginPath();
-    ctx.rect(-hw - 4, -hh - 30, bandW * reveal + 8, bandH + 60);
-    ctx.clip();
-    // Opaque flat band (single-tone plate)
-    ctx.beginPath();
-    ctx.moveTo(-hw + skew, -hh); ctx.lineTo(hw + skew * 0.2, -hh);
-    ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
-    ctx.closePath();
-    ctx.fillStyle = cut.strong ? "#5a4218" : "#241830";
-    ctx.fill();
-    // Accent duotone wash on the plate (solid, not translucent over the stage)
-    ctx.save();
-    ctx.clip();
-    const wash = ctx.createLinearGradient(0, -hh, 0, hh);
-    if (typeof wash?.addColorStop === "function") {
-      wash.addColorStop(0, accent);
-      wash.addColorStop(0.45, cut.strong ? "#8a6830" : "#3a2848");
-      wash.addColorStop(1, cut.strong ? "#3a2a10" : "#181020");
-      ctx.fillStyle = wash;
-    } else ctx.fillStyle = accent;
-    ctx.globalAlpha = style.alpha * 0.85;
-    ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
-    // Decisive face close-up (CUTIN_FACE plate) filling the band — not full-body.
-    ctx.globalAlpha = style.alpha;
-    {
-      const face = Hop.Sprites?.cutinFaceLayer?.(cut.castId);
-      const fall = !face ? Hop.Sprites?.castLayer?.(cut.castId, 0) : null;
-      let drawn = false;
-      if (face?.asset?.ready) {
-        // Drawn height = FaceFill x band height (Sprites.draw: on-screen height = 96 x scale); centre pivot.
-        const scale = (face.scale || 1) * bandH * c.specialCutinFaceFill / 96 * style.portraitPop;
-        drawn = !!Hop.Sprites.draw(ctx, face.asset, 0, c.width * (c.specialCutinFaceCenterX - 0.5), 0, scale);
-      } else if (fall?.asset?.ready) {
-        const feetY = hh - 14;
-        const scale = (fall.scale || 1.25) * c.specialCutinPortraitScale * style.portraitPop;
-        if (fall.flip) {
-          ctx.save();
-          try { ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, fall.asset, 0, 0, feetY, scale); }
-          finally { ctx.restore(); }
-        } else drawn = !!Hop.Sprites.draw(ctx, fall.asset, 0, 0, feetY, scale);
-      }
-      if (!drawn) this.character(ctx, cut.castId, 0, hh * 0.35, 1.6 * style.portraitPop);
-      // Soft plate wash (keep face readable)
-      ctx.globalAlpha = style.alpha * (cut.strong ? 0.12 : 0.14);
-      ctx.fillStyle = cut.strong ? "#ffe9a0" : accent;
-      ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
-    }
-    ctx.restore();
-    // Thin rim
-    ctx.globalAlpha = style.alpha;
-    ctx.strokeStyle = cut.strong ? "#f0d890" : "#f5eef8";
-    ctx.lineWidth = cut.strong ? 5 : 3;
-    ctx.beginPath();
-    ctx.moveTo(-hw + skew, -hh); ctx.lineTo(hw + skew * 0.2, -hh);
-    ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
-    ctx.closePath(); ctx.stroke();
+    // Settled band (wipe done, portrait pop over, full alpha: the hold / reduced still) = one whole-pixel blit of a
+    // cached layer. The exit fade stays live: its per-element alphas stack (plate + wash + face), a group alpha would not.
+    const settled = reveal >= 1 && style.portraitPop === 1 && style.alpha >= 1;
+    if (!(settled && this.specialCutinBandCached(ctx, cut, accent, bandW, bandH, style.alpha))) this.specialCutinBand(ctx, cut, accent, bandW, bandH, reveal, style.portraitPop, style.alpha);
     ctx.restore(); // band transform + wipe
     // Skill name rides the band's right end, over the edge of the face (slides in with the wipe).
     const nameX = c.width * (c.specialCutinNameX - (1 - reveal) * c.specialCutinNameSlide) + (style.slide || 0) * c.width * 0.7;
@@ -281,6 +227,112 @@ Hop.Graphics = {
     ctx.fillStyle = accent;
     ctx.fillText(cut.merchantType ? "MERCHANT SPECIAL" : "SPECIAL", c.width * 0.06, cy - bandH * 0.5 - 4);
     ctx.restore();
+  },
+  // SPECIAL cut-in band (plate, duotone wash, face close-up, soft wash, rim) in band space (origin = band centre, tilt
+  // applied by the caller), revealed left -> right to `reveal`, portrait scale x pop, layer alpha a.
+  specialCutinBand(ctx, cut, accent, bandW, bandH, reveal, pop, a) {
+    const c = Hop.CONFIG;
+    ctx.save();
+    ctx.globalAlpha = a;
+    const hw = bandW / 2, hh = bandH / 2, skew = 36;
+    // Wipe reveal left → right
+    ctx.beginPath();
+    ctx.rect(-hw - 4, -hh - 30, bandW * reveal + 8, bandH + 60);
+    ctx.clip();
+    // Opaque flat band (single-tone plate)
+    ctx.beginPath();
+    ctx.moveTo(-hw + skew, -hh); ctx.lineTo(hw + skew * 0.2, -hh);
+    ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
+    ctx.closePath();
+    ctx.fillStyle = cut.strong ? "#5a4218" : "#241830";
+    ctx.fill();
+    // Accent duotone wash on the plate (solid, not translucent over the stage)
+    ctx.save();
+    ctx.clip();
+    const wash = ctx.createLinearGradient(0, -hh, 0, hh);
+    if (typeof wash?.addColorStop === "function") {
+      wash.addColorStop(0, accent);
+      wash.addColorStop(0.45, cut.strong ? "#8a6830" : "#3a2848");
+      wash.addColorStop(1, cut.strong ? "#3a2a10" : "#181020");
+      ctx.fillStyle = wash;
+    } else ctx.fillStyle = accent;
+    ctx.globalAlpha = a * 0.85;
+    ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
+    // Decisive face close-up (CUTIN_FACE plate) filling the band — not full-body.
+    ctx.globalAlpha = a;
+    {
+      const face = Hop.Sprites?.cutinFaceLayer?.(cut.castId);
+      const fall = !face ? Hop.Sprites?.castLayer?.(cut.castId, 0) : null;
+      let drawn = false;
+      if (face?.asset?.ready) {
+        // Drawn height = FaceFill x band height (Sprites.draw: on-screen height = 96 x scale); centre pivot.
+        const scale = (face.scale || 1) * bandH * c.specialCutinFaceFill / 96 * pop;
+        drawn = !!Hop.Sprites.draw(ctx, face.asset, 0, c.width * (c.specialCutinFaceCenterX - 0.5), 0, scale);
+      } else if (fall?.asset?.ready) {
+        const feetY = hh - 14;
+        const scale = (fall.scale || 1.25) * c.specialCutinPortraitScale * pop;
+        if (fall.flip) {
+          ctx.save();
+          try { ctx.scale(-1, 1); drawn = !!Hop.Sprites.draw(ctx, fall.asset, 0, 0, feetY, scale); }
+          finally { ctx.restore(); }
+        } else drawn = !!Hop.Sprites.draw(ctx, fall.asset, 0, 0, feetY, scale);
+      }
+      if (!drawn) this.character(ctx, cut.castId, 0, hh * 0.35, 1.6 * pop);
+      // Soft plate wash (keep face readable)
+      ctx.globalAlpha = a * (cut.strong ? 0.12 : 0.14);
+      ctx.fillStyle = cut.strong ? "#ffe9a0" : accent;
+      ctx.fillRect(-hw - skew, -hh, bandW + skew * 2, bandH + 4);
+    }
+    ctx.restore();
+    // Thin rim
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = cut.strong ? "#f0d890" : "#f5eef8";
+    ctx.lineWidth = cut.strong ? 5 : 3;
+    ctx.beginPath();
+    ctx.moveTo(-hw + skew, -hh); ctx.lineTo(hw + skew * 0.2, -hh);
+    ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  },
+  // Settled SPECIAL cut-in band from a cached layer (2026-11-05 auto cycle 56, display only). Drawn live, the band is
+  // a rotated anti-aliased clip with a gradient wash and a ~1200 x 1000 device-px upscaled face inside (~12 ms/frame
+  // at 4x CPU on a phone viewport, under every SPECIAL's first second). Once the wipe and the portrait pop are over its
+  // pixels do not change during the hold, so it is drawn once at alpha 1 into a device-space canvas with the same
+  // linear transform (tilt + DPR) and then blitted 1:1 at a whole-pixel offset (<= 0.5 device px from the live
+  // position). Rebuilt when the cast, strong flag, accent, transform or a face / portrait sprite's
+  // load state changes. Returns false (caller draws live) without a canvas / getTransform, or under a filter or a
+  // non source-over blend.
+  specialCutinBandCached(ctx, cut, accent, bandW, bandH, alpha) {
+    const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
+    if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
+    let L = this.cutinBandLayer;
+    if (!L) { const cv = doc?.createElement?.("canvas"), cx = cv?.getContext?.("2d"); if (!cx) return false; L = this.cutinBandLayer = { cv, cx, key: null }; }
+    if (!(alpha > 0)) return true;
+    const face = Hop.Sprites?.cutinFaceLayer?.(cut.castId), fall = Hop.Sprites?.castLayer?.(cut.castId, 0);
+    const key = [cut.castId, !!cut.strong, accent, bandW, bandH, m.a, m.b, m.c, m.d, !!face?.asset?.ready, !!fall?.asset?.ready].join("|");
+    if (L.key !== key) {
+      // device-space box of the band around its origin: wipe rect (+4 / +30 px) and skewed plate + rim (5 px)
+      const hw = bandW / 2 + 36 + 8, hh = bandH / 2 + 36;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const [x, y] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]) {
+        const X = m.a * x + m.c * y, Y = m.b * x + m.d * y;
+        x0 = Math.min(x0, X); y0 = Math.min(y0, Y); x1 = Math.max(x1, X); y1 = Math.max(y1, Y);
+      }
+      const ox = Math.floor(x0) - 2, oy = Math.floor(y0) - 2, w = Math.ceil(x1) + 2 - ox, h = Math.ceil(y1) + 2 - oy;
+      if (!(w > 0 && h > 0 && w * h <= 16e6)) return false;
+      if (L.cv.width !== w || L.cv.height !== h) { L.cv.width = w; L.cv.height = h; }
+      const cx = L.cx;
+      cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, w, h);
+      cx.globalAlpha = 1; cx.globalCompositeOperation = "source-over"; cx.filter = "none";
+      cx.lineCap = ctx.lineCap; cx.lineJoin = ctx.lineJoin; cx.miterLimit = ctx.miterLimit;
+      cx.setTransform(m.a, m.b, m.c, m.d, -ox, -oy);
+      this.specialCutinBand(cx, cut, accent, bandW, bandH, 1, 1, 1);
+      Object.assign(L, { key, ox, oy });
+    }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha;
+    ctx.drawImage(L.cv, Math.round(m.e) + L.ox, Math.round(m.f) + L.oy);
+    ctx.restore();
+    return true;
   },
   // Merchant SPECIAL flourish (2026-10-16, display only; never mutates game): gold coin burst + sparkles and a big
   // skill-name pop, timed on the real-time clock from the merchant cut-in's start and lasting merchantFlourishDuration
