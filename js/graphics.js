@@ -1785,8 +1785,9 @@ Hop.Graphics = {
     }
     // smear afterimages of the actor while it leaps / dashes / spins (same sprite, earlier placements)
     // Cycle 62 (display only): DASH keeps the closest smear (k=1); other SPECIALS keep k=1..3.
+    // Cycle 65 (display only): ANGLE also keeps k=1 (cartwheel afterimages); BRAKE/STOPPER/GUARD stay k=1..3.
     if (!rm && st.after === null && A.alpha > 0.5) {
-      const kMax = st.type === "DASH" ? 1 : 3;
+      const kMax = (st.type === "DASH" || st.type === "ANGLE") ? 1 : 3;
       for (let k = kMax; k >= 1; k--) {
         const p = this.grandActor({ ...st, t: st.t - 0.03 * k }, sx, sy, ground);
         if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * [0, 0.34, 0.2, 0.1][k] * (p.alpha ?? 1));
