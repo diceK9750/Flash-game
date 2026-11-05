@@ -1489,6 +1489,7 @@ Hop.Graphics = {
   // slightly. Returns false (caller keeps the old shadowed strokes) without a canvas / getTransform, or under a filter
   // or a non source-over blend.
   GUARD_GLOW_DOWN: 3,
+  GUARD_GLOW_EVERY: 3,
   guardCircleGlow(ctx, x, y, R, draw, t, color, alpha) {
     const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
     if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
@@ -1498,37 +1499,43 @@ Hop.Graphics = {
     if (!(alpha > 0)) return true;
     const D = this.GUARD_GLOW_DOWN, blur = 16, k = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d));
     const cx = m.a * x + m.c * y + m.e, cy = m.b * x + m.d * y + m.f;
-    const ns = Math.ceil(((R + 6) * k + 1.5 * blur + 4) / D) * 2, r = ns * D / 2, ox = Math.floor(cx) - r, oy = Math.floor(cy) - r;
-    const wb = 2 * ns + 8; // glow canvas: shadow lands in [0, ns), the source copy (discarded) at [ns + 8, wb)
-    if (L.a.width < ns || L.a.height < ns) { L.a.width = Math.max(L.a.width, ns); L.a.height = Math.max(L.a.height, ns); }
-    if (L.b.width < wb || L.b.height < ns) { L.b.width = Math.max(L.b.width, wb); L.b.height = Math.max(L.b.height, ns); }
-    const { ca, cb } = L;
-    ca.setTransform(1, 0, 0, 1, 0, 0); ca.clearRect(0, 0, ns, ns); ca.globalAlpha = 1;
-    ca.lineCap = ctx.lineCap; ca.lineJoin = ctx.lineJoin; ca.miterLimit = ctx.miterLimit;
-    ca.setTransform(m.a / D, m.b / D, m.c / D, m.d / D, (m.e - ox) / D, (m.f - oy) / D); ca.translate(x, y); ca.strokeStyle = color;
-    this.guardCirclePaths(ca, R, draw, t);
-    cb.setTransform(1, 0, 0, 1, 0, 0); cb.clearRect(0, 0, wb, ns); cb.globalAlpha = 1;
-    cb.shadowColor = color; cb.shadowBlur = blur / D; cb.shadowOffsetX = -(ns + 8); cb.shadowOffsetY = 0;
-    cb.drawImage(L.a, 0, 0, ns, ns, ns + 8, 0, ns, ns); cb.shadowColor = "rgba(0,0,0,0)"; cb.shadowBlur = 0; cb.shadowOffsetX = 0;
+    // Cycle 59 (display only): the blurred layer is rebuilt only every GUARD_GLOW_EVERY-th frame (or when the camera
+    // zoom drifts > 4% / the circle outgrows the layer). In between, the last layer is reused, re-centred on the
+    // circle and scaled by the zoom ratio; the glow under the crisp strokes lags the rotation by at most one frame.
+    L.n = (L.n || 0) + 1; const rot = (m.a / k).toFixed(3) + ":" + (m.b / k).toFixed(3) + ":" + (m.c / k).toFixed(3) + ":" + (m.d / k).toFixed(3);
+    const ns = Math.ceil(((Math.ceil(R / 8) * 8 + 6) * k + 1.5 * blur + 4) / D) * 2;
+    const reuse = L.bk > 0 && (L.n - L.bn) < this.GUARD_GLOW_EVERY && Math.abs(k / L.bk - 1) < 0.04 && ns <= L.bns && L.bm === rot;
+    if (!reuse) {
+      const r = ns * D / 2, ox = Math.floor(cx) - r, oy = Math.floor(cy) - r;
+      const wb = 2 * ns + 8; // glow canvas: shadow lands in [0, ns), the source copy (discarded) at [ns + 8, wb)
+      if (L.a.width < ns || L.a.height < ns) { L.a.width = Math.max(L.a.width, ns); L.a.height = Math.max(L.a.height, ns); }
+      if (L.b.width < wb || L.b.height < ns) { L.b.width = Math.max(L.b.width, wb); L.b.height = Math.max(L.b.height, ns); }
+      const { ca, cb } = L;
+      ca.setTransform(1, 0, 0, 1, 0, 0); ca.clearRect(0, 0, ns, ns); ca.globalAlpha = 1;
+      ca.lineCap = ctx.lineCap; ca.lineJoin = ctx.lineJoin; ca.miterLimit = ctx.miterLimit;
+      ca.setTransform(m.a / D, m.b / D, m.c / D, m.d / D, (m.e - ox) / D, (m.f - oy) / D); ca.translate(x, y); ca.strokeStyle = color;
+      this.guardCirclePaths(ca, R, draw, t);
+      cb.setTransform(1, 0, 0, 1, 0, 0); cb.clearRect(0, 0, wb, ns); cb.globalAlpha = 1;
+      cb.shadowColor = color; cb.shadowBlur = blur / D; cb.shadowOffsetX = -(ns + 8); cb.shadowOffsetY = 0;
+      cb.drawImage(L.a, 0, 0, ns, ns, ns + 8, 0, ns, ns); cb.shadowColor = "rgba(0,0,0,0)"; cb.shadowBlur = 0; cb.shadowOffsetX = 0;
+      L.bn = L.n; L.bk = k; L.bns = ns; L.bm = rot; L.fx = cx - ox; L.fy = cy - oy; L.bR = R * k;
+    }
+    const bns = L.bns, sc = k / L.bk, fx = L.fx, fy = L.fy;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha; ctx.imageSmoothingEnabled = true;
     // Cycle 58 (display only): blit a band around the ring instead of the full square. Coverage (not source size)
     // dominated cost; corners + empty centre are skipped. Hole keeps the outer rings (0.8R / R) and most of the
-    // hexagram glow; imageSmoothing stays on (no nearest banding).
-    const S = ns * D, rin = Math.max(0, 0.55 * R * k - 1.5 * blur), rout = r, step = 12 * D;
+    // hexagram glow; imageSmoothing stays on (no nearest banding). Band geometry is in layer pixels (U), mapped to the
+    // screen as cx + (U - fx) * sc.
+    const S = bns * D, r = S / 2, rin = Math.max(0, 0.55 * L.bR - 1.5 * blur), rout = r, step = 12 * D;
+    const blit = (x0, x1, y0, y1) => { const dw = x1 - x0; if (dw > 0) ctx.drawImage(L.b, x0 / D, y0 / D, dw / D, (y1 - y0) / D, cx + (x0 - fx) * sc, cy + (y0 - fy) * sc, dw * sc, (y1 - y0) * sc); };
     for (let dy = 0; dy < S; dy += step) {
       const y0 = dy, y1 = Math.min(S, dy + step), ym = 0.5 * (y0 + y1) - r, ay = Math.abs(ym);
       if (ay >= rout) continue;
-      const xOut = Math.sqrt(rout * rout - ym * ym), dh = y1 - y0, sy0 = y0 / D, sdh = dh / D;
-      if (ay >= rin) {
-        const x0 = Math.max(0, Math.floor(r - xOut)), x1 = Math.min(S, Math.ceil(r + xOut)), dw = x1 - x0;
-        if (dw > 0) ctx.drawImage(L.b, x0 / D, sy0, dw / D, sdh, ox + x0, oy + y0, dw, dh);
-      } else {
-        const xIn = Math.sqrt(rin * rin - ym * ym);
-        let x0 = Math.max(0, Math.floor(r - xOut)), x1 = Math.min(S, Math.ceil(r - xIn)), dw = x1 - x0;
-        if (dw > 0) ctx.drawImage(L.b, x0 / D, sy0, dw / D, sdh, ox + x0, oy + y0, dw, dh);
-        x0 = Math.max(0, Math.floor(r + xIn)); x1 = Math.min(S, Math.ceil(r + xOut)); dw = x1 - x0;
-        if (dw > 0) ctx.drawImage(L.b, x0 / D, sy0, dw / D, sdh, ox + x0, oy + y0, dw, dh);
-      }
+      const xOut = Math.sqrt(rout * rout - ym * ym);
+      if (ay >= rin) blit(Math.max(0, Math.floor(r - xOut)), Math.min(S, Math.ceil(r + xOut)), y0, y1);
+      else { const xIn = Math.sqrt(rin * rin - ym * ym);
+        blit(Math.max(0, Math.floor(r - xOut)), Math.min(S, Math.ceil(r - xIn)), y0, y1);
+        blit(Math.max(0, Math.floor(r + xIn)), Math.min(S, Math.ceil(r + xOut)), y0, y1); }
     }
     ctx.restore();
     return true;
