@@ -1,5 +1,5 @@
 // Cycle 78 (display only): FLYING readouts show live height/speed; idle/RESULT keep peaks.
-// aria-live for merchant SUCCESS matches the on-screen MERCHANT SUCCESS title (c74 leftover).
+// aria-live for merchant SUCCESS/MISS matches the on-screen MERCHANT titles (c74/c79 leftover).
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
 const elements = new Map();
@@ -22,11 +22,18 @@ const H = scope.Hop, { Game, UI, CONFIG: c, STATES: S } = H;
 let cases = 0;
 function test(name, fn) { try { fn(); cases++; } catch (e) { e.message = name + ': ' + e.message; throw e; } }
 
-test('specialOutcomeLabel mirrors panel title', () => {
-  assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL SUCCESS', detail: `商人 Type A / ${c.merchantNames.A}` }), 'MERCHANT SUCCESS');
+test('specialOutcomeLabel / specialPanelTitle mirror MERCHANT vs SPECIAL', () => {
+  const mA = `商人 Type A / ${c.merchantNames.A}`;
+  assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL SUCCESS', detail: mA }), 'MERCHANT SUCCESS');
   assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL SUCCESS', detail: '爆裂斜光' }), 'SPECIAL SUCCESS');
+  assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL MISS', detail: mA }), 'MERCHANT MISS');
   assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL MISS', detail: 'x' }), 'SPECIAL MISS');
   assert.equal(UI.specialOutcomeLabel(null), '');
+  assert.equal(UI.specialPanelTitle({ label: 'SPECIAL SUCCESS', detail: mA }), 'MERCHANT SUCCESS!');
+  assert.equal(UI.specialPanelTitle({ label: 'SPECIAL SUCCESS', detail: '爆裂斜光' }), 'SPECIAL SUCCESS!');
+  assert.equal(UI.specialPanelTitle({ label: 'SPECIAL MISS', detail: mA }), 'MERCHANT MISS');
+  assert.equal(UI.specialPanelTitle({ label: 'SPECIAL MISS', detail: 'x' }), 'SPECIAL MISS');
+  assert.equal(UI.specialPanelTitle(null), '');
 });
 
 test('FLYING shows live height/speed; labels switch; peaks restored off-flight', () => {
@@ -65,6 +72,27 @@ test('merchant SUCCESS announce uses MERCHANT SUCCESS', () => {
   assert(live.includes('MERCHANT SUCCESS'), live);
   assert(live.includes(c.merchantNames.B), live);
   assert(!live.startsWith('SPECIAL SUCCESS'), live);
+});
+
+test('merchant MISS panel + announce use MERCHANT MISS', () => {
+  const g = new Game(() => 0.99);
+  g.launchCutinEnabled = false; g.comboEnabled = false;
+  g.act(); g.angle = 40; g.act(); g.power = 0.9; g.act();
+  const ui = new UI(g, element('canvas')); ui.update();
+  const detail = `商人 Type C / ${c.merchantNames.C}`;
+  g.specialMessage = { label: 'SPECIAL MISS', detail, remaining: c.specialMessageDuration };
+  Object.defineProperty(g.specialMessage, 'missOutcome', { value: 'normal' });
+  Object.defineProperty(g.specialMessage, 'missType', { value: 'BOOST' });
+  ui.notices = { special: null, message: null, charge: g.downCharge, guard: false, result: false };
+  ui.update();
+  assert.equal(element('special-title').textContent, 'MERCHANT MISS');
+  assert(element('special-detail').textContent.includes(detail), element('special-detail').textContent);
+  ui.notices = { special: null, message: null, charge: g.downCharge, guard: false, result: false };
+  ui.updateQuality();
+  const live = element('announcements').textContent;
+  assert(live.includes('MERCHANT MISS'), live);
+  assert(live.includes(c.merchantNames.C), live);
+  assert(!live.startsWith('SPECIAL MISS'), live);
 });
 
 test('html pins height-label / speed-label; peak SPEED wording', () => {

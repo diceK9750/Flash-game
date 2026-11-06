@@ -251,7 +251,7 @@ Hop.UI = class {
     specialPanel.className = g.special ? "special-panel" : "special-panel resolved";
     specialPanel.hidden = !g.special && success ? success.waiting
       : (g.state !== s.FLYING && !(g.state === s.RESULT && g.specialMessage?.label === "SPECIAL MISS" && Date.now() < this.messageUntil)) || (!g.special && !g.specialMessage);
-    document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : success ? success.title : (g.specialMessage?.label === "SPECIAL SUCCESS" ? (Hop.UI.merchantTypeFromDetail(g.specialMessage.detail) ? "MERCHANT SUCCESS!" : "SPECIAL SUCCESS!") : g.specialMessage?.label || "");
+    document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : success ? success.title : Hop.UI.specialPanelTitle(g.specialMessage);
     document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : success ? success.detail : Hop.UI.specialMessageDetail(g.specialMessage);
     document.getElementById("special-track").hidden = !g.special;
     document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
@@ -428,11 +428,19 @@ Hop.UI = class {
     return g.state === Hop.STATES.FLYING && !g.launchCutin && !g.combo && !g.special && g.merchant?.type !== "C" &&
       g.airborne() && g.aerialMode === "DOWN" && g.downCharge >= 1;
   }
-  // Cycle 78 (display only): aria-live outcome matches the on-screen SUCCESS title (MERCHANT vs SPECIAL).
+  // Cycle 78/79 (display only): aria-live / panel outcome matches MERCHANT vs SPECIAL for SUCCESS and MISS.
   static specialOutcomeLabel(m) {
     if (!m) return "";
-    if (m.label === "SPECIAL SUCCESS" && Hop.UI.merchantTypeFromDetail(m.detail)) return "MERCHANT SUCCESS";
+    const merchant = Hop.UI.merchantTypeFromDetail(m.detail);
+    if (m.label === "SPECIAL SUCCESS" && merchant) return "MERCHANT SUCCESS";
+    if (m.label === "SPECIAL MISS" && merchant) return "MERCHANT MISS";
     return m.label;
+  }
+  // Panel title: SUCCESS keeps the trailing !; MISS does not (same as pre-c79 SPECIAL MISS).
+  static specialPanelTitle(m) {
+    if (!m) return "";
+    const base = Hop.UI.specialOutcomeLabel(m);
+    return base === "SPECIAL SUCCESS" || base === "MERCHANT SUCCESS" ? base + "!" : base;
   }
   // SPECIAL panel detail after resolve. MISS adds why (no tap within the window) and what happened instead.
   static specialMessageDetail(m) {

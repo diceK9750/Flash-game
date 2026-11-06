@@ -30,7 +30,8 @@ for (let s = 1; s <= 200; s++) {
     if (g.special) continue;
     misses++; assert(frames >= 58 && frames <= 61, 'window ~1.0 s real time: ' + frames);
     const detail = element('special-detail').textContent;
-    assert.equal(element('special-title').textContent, 'SPECIAL MISS'); assert(detail.includes(why), detail);
+    const expectTitle = open.merchantType ? 'MERCHANT MISS' : 'SPECIAL MISS';
+    assert.equal(element('special-title').textContent, expectTitle); assert(detail.includes(why), detail);
     if (g.body.stopped) { stops++; assert(detail.endsWith('僧侶の効果で停止'), detail); assert.equal(element('special-panel').hidden, false, 'shown on the RESULT that the miss caused'); }
     else if (open.entry.label.includes('GUARDED')) { guards++; assert(/GUARDで/.test(detail), detail); }
     else assert(detail.endsWith('通常の効果のみ'), detail);

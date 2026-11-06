@@ -95,6 +95,14 @@ test('MISS unchanged: panel immediately', () => {
   assert.equal(element('special-title').textContent, 'SPECIAL MISS');
 });
 
+test('merchant MISS shows MERCHANT MISS immediately', () => {
+  const g = isolated(); const ui = new UI(g, element('canvas')); ui.update();
+  arm(g, 'BOUNCE', 'A'); g.resolveSpecial(false); ui.update();
+  assert.equal(g.specialCutin, null); assert.equal(element('special-panel').hidden, false);
+  assert.equal(element('special-title').textContent, 'MERCHANT MISS');
+  assert(element('special-detail').textContent.includes(`商人 Type A / ${c.merchantNames.A}`));
+});
+
 test('a new SPECIAL acceptance overrides the waiting/held panel; reset clears it', () => {
   const { g, ui } = setup('BOUNCE'); g.act(); ui.update(); watch(g, ui, cover + 0.2);
   assert.equal(element('special-panel').hidden, false);

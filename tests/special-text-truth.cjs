@@ -40,8 +40,9 @@ for(const e of rec){const name=e.merchantType?c.merchantNames[e.merchantType]:c.
   if(s.includes('通常の効果のみ'))C(!/GUARDED/.test(e.entryLabel||''),'says normal effect but was guarded',e);}
  C(e.live.includes(e.success?'SUCCESS':'MISS')||e.live==='','live notice outcome',e);
  if(e.merchantType&&e.success&&e.live.includes('SUCCESS'))C(e.live.includes('MERCHANT SUCCESS'),'merchant live title',e);
- if(!e.success&&e.live.includes('SPECIAL MISS'))C(e.live.includes('SPECIAL MISS · '+e.shown),'MISS notice carries the panel reason',e);}
-const misses=rec.filter(e=>!e.success&&e.live.includes('SPECIAL MISS')).length;
+ if(e.merchantType&&!e.success&&e.live.includes('MISS'))C(e.live.includes('MERCHANT MISS'),'merchant live miss title',e);
+ if(!e.success&&e.live.includes('MISS')){const tag=e.merchantType?'MERCHANT MISS':'SPECIAL MISS';C(e.live.includes(tag+' · '+e.shown),'MISS notice carries the panel reason',e);}}
+const misses=rec.filter(e=>!e.success&&/MISS/.test(e.live)).length;
 assert.ok(rec.length>50&&misses>5,'enough resolves / announced misses: '+rec.length+'/'+misses);
 assert.deepEqual(bad.map(b=>b.why+' '+b.type+' seed '+b.seed),[],'shown SPECIAL text matches the outcome');
 console.log('special-text-truth OK: '+rec.length+' resolves, '+misses+' announced misses');
