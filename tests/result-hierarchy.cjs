@@ -47,6 +47,9 @@ test('DOM scan order: record → grid(primary) → merchant → comparison → n
   assert(block.includes('PEAK SPEED / 最高速度'));
   assert(!block.includes('MAX HEIGHT'));
   assert(!block.includes('MAX SPEED'));
+  // Cycle 82: primary FINAL matches overlay / side final-line (最終飛距離).
+  assert(block.includes('FINAL DISTANCE / 最終飛距離'));
+  assert(!/FINAL DISTANCE \/ 飛距離</.test(block));
 });
 
 test('CSS hierarchy rules + merchant pin preserved', () => {

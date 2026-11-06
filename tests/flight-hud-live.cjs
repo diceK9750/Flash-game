@@ -113,4 +113,16 @@ test('RESULT peak height/speed labels use PEAK not MAX', () => {
   assert(!block.includes('MAX SPEED'), block);
 });
 
+// Cycle 82: RESULT primary FINAL + AERIAL DOWN aria match the other HUD copies.
+test('RESULT FINAL DISTANCE and AERIAL DOWN aria align', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const block = html.match(/<section id="result-stats"[\s\S]*?<\/section>/)[0];
+  assert(block.includes('FINAL DISTANCE / 最終飛距離'), block);
+  assert(!/FINAL DISTANCE \/ 飛距離</.test(block), block);
+  assert(html.includes('FINAL / 最終飛距離'));
+  const aerial = [...html.matchAll(/id="(?:down-charge|aerial-hud-charge)"[^>]*aria-label="([^"]+)"/g)].map(m => m[1]);
+  assert.deepEqual(aerial, ['AERIAL DOWN充電率', 'AERIAL DOWN充電率'], aerial);
+  assert(!html.includes('aria-label="DOWN充電率"'));
+});
+
 console.log(JSON.stringify({ flightHudLive: 'PASS', cases }));
