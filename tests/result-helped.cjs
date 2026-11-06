@@ -1,6 +1,6 @@
 // RESULT "what helped" line (2026-10-16 auto cycle 09). Audit found the counters truthful but the RESULT text
 // incomplete: highlights keep 3 unique items without counts and JUST never appeared. #result-helped lists every
-// success of the run with counts (JUST発射 · <name> SPECIAL×n · 商人 Type X→Y · GUARD BLOCK×n), checked here against
+// success of the run with counts (JUST発射 · <name> SPECIAL×n · 商人 Type X→Y · 品名→品名 · GUARD BLOCK×n), checked here against
 // the real resolveSpecial(true) calls over many seeded plays. Display only.
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
@@ -15,7 +15,7 @@ assert(/<p id="result-helped"><\/p>/.test(fs.readFileSync(path.join(root, 'index
 const fake = { justLaunch: true, history: [{ type: 'DASH', label: 'DASH SPECIAL' }, { type: 'BOOST', label: 'BOOST' }, { type: 'DASH', label: 'DASH SPECIAL' },
   { type: 'BOOST', label: 'BOOST SPECIAL' }, { type: 'GUARD', label: 'GUARD / MERCHANT TYPE B' }, { type: 'STOPPER', label: 'STOPPER (GUARDED)' }, { type: 'DASH', label: 'DASH / MERCHANT TYPE A' }] };
 const order = Object.keys(H.CAST).filter(t => t === 'BOOST' || t === 'DASH'), spText = { BOOST: H.CAST.BOOST.name + ' SPECIAL×1', DASH: H.CAST.DASH.name + ' SPECIAL×2' };
-assert.equal(UI.helped(fake).join(' · '), ['JUST発射', ...order.map(t => spText[t]), '商人 Type B→A', 'GUARD BLOCK×1'].join(' · '));
+assert.equal(UI.helped(fake).join(' · '), ['JUST発射', ...order.map(t => spText[t]), UI.merchantHelpedText(['B','A']), 'GUARD BLOCK×1'].join(' · '));
 assert.deepEqual(JSON.parse(JSON.stringify(UI.helped({ justLaunch: false, history: [{ type: 'BRAKE', label: 'BRAKE' }] }))), []);
 // real runs vs resolveSpecial truth
 let plays = 0, withSpecial = 0, withJust = 0;

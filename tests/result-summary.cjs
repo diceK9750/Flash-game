@@ -29,6 +29,15 @@ function play(tempo, seed) {
   assert.equal(g.state, S.RESULT); return { g, ui };
 }
 const sum = element('result-summary'), rec = element('record-status'), cmp = element('best-comparison'), ov = element('overlay');
+// Cycle 74: portrait summary may append " · 🎒Type X · name" after a merchant meeting.
+function summaryBase(g, recText) {
+  return `${recText} · DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`;
+}
+function expectedSummary(g, recText) {
+  const base = summaryBase(g, recText);
+  const met = g.debugUsed || g.merchantStats.attempts > 0 || g.merchantStats.successes > 0;
+  return base + (met && g.merchantStats.lastType ? ` · 🎒${UI.merchantTypeLabel(g.merchantStats.lastType)}` : '');
+}
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/\r\n?/g, '\n'), css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8').replace(/\r\n?/g, '\n');
 assert(/<p id="special-state"[^>]*><\/p>\n    <p id="result-summary" class="result-summary" hidden aria-hidden="true"><\/p>/.test(html), 'markup after the SPECIAL line, aria-hidden');
 assert(/\n\.result-summary \{ display: none; \}/.test(css), 'not displayed outside portrait phones');
@@ -42,10 +51,10 @@ const texts = [];
 for (const [tempo, seed] of [[true, 4], [false, 9], [true, 6]]) {
   const { g, ui } = play(tempo, seed); ui.update();
   assert.equal(sum.hidden, false, 'shown in RESULT');
-  assert.equal(sum.textContent, rec.textContent + ' · ' + cmp.textContent.split('\n')[0].replace(/ ★更新$/, ''), 'same texts as the panel (summary keeps distance line without ★)');
+  assert(sum.textContent.startsWith(rec.textContent + ' · ' + cmp.textContent.split('\n')[0].replace(/ ★更新$/, '')), 'same texts as the panel (summary keeps distance line without ★)');
   // Summary always mirrors record-status + DISTANCE line (without the ★更新 marker).
-  assert.equal(sum.textContent, `${rec.textContent} · DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`);
-  assert(new RegExp(recordHead + ' · DISTANCE 今回 \\d+\\.\\d m \\/ BEST \\d+\\.\\d m$').test(sum.textContent), sum.textContent);
+  assert.equal(sum.textContent, expectedSummary(g, rec.textContent));
+  assert(new RegExp(recordHead + ' · DISTANCE 今回 \\d+\\.\\d m \\/ BEST \\d+\\.\\d m').test(sum.textContent), sum.textContent);
   if (g.newRecords.length) {
     assert(rec.textContent.startsWith('NEW RECORD! · '), rec.textContent);
     for (const k of g.newRecords) assert(rec.textContent.includes(UI.RECORD_LABELS[k]), rec.textContent + ' missing ' + k);
@@ -66,7 +75,7 @@ for (const [tempo, seed] of [[true, 4], [false, 9], [true, 6]]) {
   g.angle = 40; g.act(); ui.update(); g.power = 0.7; g.act(); ui.update();
   for (let i = 0; i < 60 * 300 && g.state === S.FLYING; i++) { if (g.special) g.act(); g.update(1 / 60); ui.update(); if (g.state !== S.RESULT) { assert.equal(sum.hidden, true, 'never in flight'); assert.equal(sum.textContent, ''); } }
   assert.equal(g.state, S.RESULT); ui.update(); assert.equal(sum.hidden, false);
-  assert.equal(sum.textContent, `${rec.textContent} · DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`, 'updated at the second RESULT');
+  assert.equal(sum.textContent, expectedSummary(g, rec.textContent), 'updated at the second RESULT');
   assert(sum.textContent.includes(`今回 ${g.finalDistance.toFixed(1)} m`), 'second run distance');
 }
 { // DEBUG play wording, same as the panel

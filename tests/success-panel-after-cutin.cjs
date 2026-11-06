@@ -76,10 +76,16 @@ test('panel shows the success text while game.specialMessage has already expired
   assert.equal(element('contact-tag').hidden, true);
 });
 
-test('merchant success waits too', () => {
+test('merchant success waits too and shows MERCHANT SUCCESS!', () => {
   const g = isolated(); const ui = new UI(g, element('canvas')); ui.update();
   arm(g, 'BOUNCE', 'A'); g.act(); ui.update(); assert.equal(g.specialMessage.label, 'SPECIAL SUCCESS');
   assert.equal(element('special-panel').hidden, true);
+  assert.equal(element('special-title').textContent, 'MERCHANT SUCCESS!');
+  assert.equal(element('special-detail').textContent, `商人 Type A / ${c.merchantNames.A}`);
+  // Visible just after the cut-in covering window (panel still held).
+  watch(g, ui, cover + 0.05);
+  assert.equal(element('special-panel').hidden, false);
+  assert.equal(element('special-title').textContent, 'MERCHANT SUCCESS!');
   const shown = watch(g, ui, 3); assert(shown.length > 60);
 });
 

@@ -561,8 +561,10 @@ Hop.Graphics = {
       ctx.restore();
       const lift = visual.reducedMotion ? 25 : 25 + (1 - Math.min(1, g.merchantVisual.remaining / c.specialMessageDuration)) * 20;
       this.circle(ctx, mx + 35, y - lift, 12, "#ffd867");
+      // Cycle 74 (display only): Type · item-name (same labels as RESULT / SUCCESS).
       ctx.font = "bold 23px system-ui"; ctx.fillStyle = "#654417";
-      ctx.fillText(`Type ${g.merchantVisual.type}`, mx - 30, y - 110);
+      const mt = g.merchantVisual.type, mn = c.merchantNames?.[mt];
+      ctx.fillText(mn ? `Type ${mt} · ${mn}` : `Type ${mt}`, mx - 30, y - 110);
     }
     if (g.merchant?.type === "C") this.line(ctx, [[x - 45, y + 23], [x + 40, y + 23]], "#bc7641", 8);
     if (g.effect?.label === "BOUND BOOST") {
