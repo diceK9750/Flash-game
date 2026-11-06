@@ -88,8 +88,9 @@ assert.deepEqual(JSON.parse(saved), { distance: 100, height: 50, speed: 200 });
 const restored = new Game(); assert.equal(restored.best.distance, 100);
 restored.body.x = 80; restored.finish(); assert.equal(restored.newRecords.length, 0); assert.equal(restored.best.speed, 200);
 const resultUI = new scope.Hop.UI(score, element('canvas')); resultUI.update();
-assert.equal(element('record-status').textContent, 'NEW RECORD!');
+assert.equal(element('record-status').textContent, 'NEW RECORD! · 飛距離 · 高さ · 速度');
 assert(element('best-comparison').textContent.includes('BEST 100.0 m'));
+assert.equal(element('best-comparison').textContent.split('\n').filter(l => l.includes('★更新')).length, 3);
 assert(element('contact-totals').textContent.includes('接触総数 0'));
 
 const debug = launch(); const beforeWrites = writes;
