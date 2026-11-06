@@ -26,12 +26,22 @@ test('kind list: ids = ?debug values, one SPECIAL per config entry, merchants A-
   assert.deepEqual(local(H.DEBUG_KINDS.filter(k => k.merchant).map(k => [k.cast, k.merchant])), MERCHANTS);
   const keys = H.DEBUG_KINDS.map(k => k.key); assert.equal(new Set([...keys, '0']).size, keys.length + 1);
   for (const type of SPECIALS) {
-    const label = Game.debugKindLabel(type.toLowerCase());
+    const id = type.toLowerCase(), label = Game.debugKindLabel(id);
     assert.equal(label.title, c.specials[type].name); assert(label.detail.includes(H.CAST[type].name));
+    assert(label.detail.startsWith(type + ' · '), label.detail); // type code first for ?debug= discoverability
+    assert(label.detail.includes('?debug=' + id), label.detail);
     if (c.specials[type].partner) assert(label.detail.includes(H.CAST[c.specials[type].partner].name) && label.detail.includes('合体'));
   }
-  for (const [cast, letter] of MERCHANTS) { const label = Game.debugKindLabel('merchant-' + letter.toLowerCase()); assert.equal(label.title, `商人${letter} ${c.merchantNames[letter]}`); assert(label.detail.includes(H.CAST[cast].name)); }
+  for (const [cast, letter] of MERCHANTS) {
+    const id = 'merchant-' + letter.toLowerCase(), label = Game.debugKindLabel(id);
+    assert.equal(label.title, `商人${letter} ${c.merchantNames[letter]}`);
+    assert(label.detail.includes(H.CAST[cast].name));
+    assert(label.detail.includes('?debug=' + id), label.detail);
+  }
   assert.equal(Game.debugKindLabel('all').title, '全キャラ順番'); assert.equal(Game.debugKindLabel('aerial').title, 'キャラなし'); assert.equal(Game.debugKindLabel(null).title, 'OFF');
+  assert(Game.debugKindLabel('all').detail.includes('?debug=all'));
+  assert(Game.debugKindLabel('aerial').detail.includes('最終飛距離') && Game.debugKindLabel('aerial').detail.includes('PEAK') && Game.debugKindLabel('aerial').detail.includes('MERCHANT'));
+  assert(Game.debugKindLabel('aerial').detail.includes('?debug=aerial'));
   for (const id of [...IDS, null]) assert(/[ぁ-んァ-ヶ一-龠]/.test(Game.debugKindLabel(id).title + Game.debugKindLabel(id).detail), id);
   // 爆裂斜光 is the witch with the fighter adjacent to her right; 巨神昇天拳 the fighter with the witch.
   assert.equal(c.specials.BOOST.partner, 'BOUNCE'); assert.equal(c.specials.BOUNCE.partner, 'BOOST');
@@ -81,7 +91,11 @@ test('menu: D / DEBUG button open it, number keys / Q W E R / click select, Esc 
     assert.equal(element('debug-status').hidden, false); assert.equal(element('debug-status').textContent, 'DEBUG: ' + Game.debugKindLabel(id).title);
   }
   key('KeyD'); assert(menu.innerHTML.includes(`data-debug-kind="${g.activeDebugKind()}" aria-pressed="true"`), 'active kind is marked');
-  assert.equal((menu.innerHTML.match(/aria-pressed="true"/g) || []).length, 1); key('Digit0');
+  assert(menu.innerHTML.includes('aria-current="true"') && menu.innerHTML.includes('debug-current') && menu.innerHTML.includes('選択中'), 'active kind shows 選択中');
+  assert.equal((menu.innerHTML.match(/aria-pressed="true"/g) || []).length, 1);
+  assert.equal((menu.innerHTML.match(/aria-current="true"/g) || []).length, 1);
+  assert(menu.innerHTML.includes('?debug=boost') && menu.innerHTML.includes('BOOST ·'), 'menu details name type / ?debug=');
+  assert(menu.innerHTML.includes('閉じる（Esc / D）')); key('Digit0');
   assert.equal(g.debug, false); assert.equal(g.activeDebugKind(), null); assert(element('debug-status').hidden);
   // Touch / mouse: the DEBUG button toggles, an item click selects, the backdrop or 閉じる closes.
   element('debug-toggle').listeners.click(); assert(!menu.hidden);
@@ -94,6 +108,17 @@ test('menu: D / DEBUG button open it, number keys / Q W E R / click select, Esc 
   element('debug-toggle').listeners.click(); menu.listeners.click({ target: target('off') }); assert(!g.debug);
   // The stage still has its single pointer listener; the game state never advanced from the menu.
   assert.deepEqual(local(Object.keys(element('stage').listeners)), ['pointerdown']); assert.equal(g.state, 'READY');
+});
+
+test('DEBUG UX CSS: short/narrow panel is single-column with sticky head; active kind has inset bar', () => {
+  const css = fs.readFileSync(path.join(root, 'css/style.css'), 'utf8');
+  assert(/\.debug-item\.active[^}]*box-shadow:\s*inset 3px/.test(css), 'active inset bar');
+  assert(/\.debug-item\.active \.debug-current/.test(css), '選択中 style');
+  assert(/@media \(max-width: 650px\), \(max-height: 500px\)/.test(css), 'short/narrow media');
+  assert(/\.debug-items\s*\{\s*grid-template-columns:\s*1fr/.test(css), 'single-column items on short');
+  assert(/\.debug-menu-head[^}]*position:\s*sticky/.test(css), 'sticky head');
+  assert(/aria-label="DEBUGメニューを開く（Dキー）"/.test(html), 'DEBUG button aria-label');
+  assert(/最終飛距離／PEAK／MERCHANT SUCCESS/.test(html), 'rules help mentions RESULT labels');
 });
 
 test('menu pauses game time while open (main loop passes 0)', () => {

@@ -35,8 +35,23 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 .debug-item b { font-size: 14px; }
 .debug-item small { font-size: 11px; color: #6a6155; }
 .debug-item:hover, .debug-item:focus-visible { border-color: #833b30; outline: 2px solid #833b3055; }
-.debug-item.active { background: #fbeee0; border-color: #833b30; }
+.debug-item.active { background: #fbeee0; border-color: #833b30; box-shadow: inset 3px 0 0 #833b30; }
+.debug-item.active .debug-current { display: inline; font-size: 10px; font-weight: 700; color: #833b30; letter-spacing: 0.04em; white-space: nowrap; }
+.debug-menu-note code { font-size: 11px; background: #f7f0e1; padding: 0 3px; border-radius: 3px; }
 .debug-help { margin: 4px 0; padding-left: 1.2em; }
+/* Short / narrow viewports (cycle 83): single-column DEBUG items, sticky head, less padding so the panel scrolls cleanly. */
+@media (max-width: 650px), (max-height: 500px) {
+  .debug-menu { padding: 8px; align-items: stretch; }
+  .debug-menu-panel { width: 100%; max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); padding: 10px; border-radius: 10px; }
+  .debug-menu-head { position: sticky; top: 0; z-index: 1; background: #fffdf5; padding-bottom: 4px; }
+  .debug-menu-head strong { font-size: 16px; }
+  .debug-menu-note { font-size: 11px; line-height: 1.45; margin: 4px 0 6px; }
+  .debug-group h3 { font-size: 12px; margin: 6px 0 3px; }
+  .debug-items { grid-template-columns: 1fr; gap: 4px; }
+  .debug-item { padding: 8px 10px; align-items: start; }
+  .debug-item b { font-size: 13px; }
+  .debug-item small { font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; }
+}
 .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #bce9f3; touch-action: manipulation; box-shadow: 0 0 0 1px #9bbb9a; }
 canvas { display: block; width: 100%; height: 100%; }
 .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; background: #fff9e5bb; text-align: center; }

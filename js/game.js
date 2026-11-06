@@ -738,17 +738,19 @@ Hop.Game.debugKindFromSearch = search => {
   if (["", "1", "on", "true"].includes(value)) return "all";
   return Hop.Game.debugKind(value)?.id || null;
 };
-// Japanese menu / badge text. title: what is checked, detail: how it is prepared.
+// Japanese menu / badge text. title: what is checked (badge stays short), detail: how + ?debug= id.
 Hop.Game.debugKindLabel = id => {
   const c = Hop.CONFIG, kind = Hop.Game.debugKind(id), cast = type => Hop.CAST?.[type]?.name || type;
+  const q = kind => `?debug=${kind.id}`;
   if (!kind) return { title: "OFF", detail: "通常プレイに戻す（記録はRETRY後から）" };
-  if (kind.id === "all") return { title: "全キャラ順番", detail: "従来のDEBUG：7人を一定間隔で順に配置" };
-  if (kind.empty) return { title: "キャラなし", detail: "AERIAL UP/DOWN・着地・RESULTの確認" };
-  if (kind.merchant) return { title: `商人${kind.merchant} ${c.merchantNames[kind.merchant]}`, detail: `${cast(kind.cast)}を境界扱い・GUARD×1・抽選なし` };
+  if (kind.id === "all") return { title: "全キャラ順番", detail: `従来のDEBUG：7人を一定間隔で順に配置 · ${q(kind)}` };
+  if (kind.empty) return { title: "キャラなし", detail: `AERIAL UP/DOWN・着地・RESULT（最終飛距離・PEAK・MERCHANT SUCCESS/MISS）の確認 · ${q(kind)}` };
+  if (kind.merchant) return { title: `商人${kind.merchant} ${c.merchantNames[kind.merchant]}`, detail: `${cast(kind.cast)}を境界扱い・GUARD×1・抽選なし · ${q(kind)}` };
   const type = kind.special, rule = c.specials[type];
   const how = rule.trigger === "adjacent" ? `${cast(type)}＋${cast(rule.partner)}（合体攻撃）` :
     rule.trigger === "dash" ? `${cast(type)}・DASH準備済み` : rule.trigger === "stopper" ? `${cast(type)}・STOPPER準備済み` :
     rule.trigger === "brake" ? `${cast(type)}・AERIAL DOWN後の状態` : rule.trigger === "chance" ? `${cast(type)}・${Math.round(c.angleSpecialChance * 100)}%抽選なし` :
     `${cast(type)}・GUARD×1から`;
-  return { title: rule.name, detail: how };
+  // Type code first in detail so the menu maps Japanese titles to ?debug=<id> / README keys.
+  return { title: rule.name, detail: `${type} · ${how} · ${q(kind)}` };
 };

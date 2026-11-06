@@ -219,7 +219,7 @@ Hop.UI = class {
     document.getElementById("special-state").textContent = armed.join(" · ");
     document.getElementById("special-state").hidden = !armed.length;
     document.getElementById("guard-status").textContent = `GUARD × ${g.normalGuard}`;
-    // DEBUG badge names the active kind (「DEBUG: 爆裂斜光」); the DEBUG button mirrors the menu state.
+    // DEBUG badge names the active kind (「DEBUG: 爆裂斜光」; type / ?debug= live in the menu detail); the DEBUG button mirrors the menu state.
     const debugStatus = document.getElementById("debug-status");
     debugStatus.hidden = !g.debug;
     const debugText = g.debug ? "DEBUG: " + Hop.Game.debugKindLabel(g.activeDebugKind()).title : "DEBUG";
@@ -615,12 +615,13 @@ Hop.UI = class {
     const esc = text => String(text).replace(/[&<>"']/g, ch => "&#" + ch.charCodeAt(0) + ";");
     const item = (id, key) => {
       const label = Hop.Game.debugKindLabel(id), on = (active || "off") === id;
-      return `<button type="button" class="debug-item${on ? " active" : ""}" data-debug-kind="${id}" aria-pressed="${on}"><kbd>${key}</kbd><b>${esc(label.title)}</b><small>${esc(label.detail)}</small></button>`;
+      // Active kind: .active + aria-pressed + aria-current +「選択中」so the current check is obvious on short screens.
+      return `<button type="button" class="debug-item${on ? " active" : ""}" data-debug-kind="${id}" aria-pressed="${on}"${on ? ' aria-current="true"' : ""}><kbd>${key}</kbd><b>${esc(label.title)}${on ? '<span class="debug-current"> 選択中</span>' : ""}</b><small>${esc(label.detail)}</small></button>`;
     };
     const group = (title, name, extra = "") => `<section class="debug-group"><h3>${title}</h3><div class="debug-items">${extra}${Hop.DEBUG_KINDS.filter(k => k.group === name).map(k => item(k.id, k.key)).join("")}</div></section>`;
-    return `<div class="debug-menu-panel"><div class="debug-menu-head"><strong id="debug-menu-title">DEBUGメニュー</strong><button type="button" class="debug-close" data-debug-close>閉じる（Esc）</button></div>` +
-      `<p class="debug-menu-note">番号キー（商人は Q W E R）かクリックで選択。発射前に選ぶと、発射直後の最初の接触で確認できます。DEBUGを使ったプレイは記録対象外。</p>` +
-      group("基本", "basic", item("off", "0")) + group("SPECIAL（最初の接触で発動）", "special") + group("謎の商人（すぐに出会う）", "merchant") + `</div>`;
+    return `<div class="debug-menu-panel"><div class="debug-menu-head"><strong id="debug-menu-title">DEBUGメニュー</strong><button type="button" class="debug-close" data-debug-close aria-label="DEBUGメニューを閉じる">閉じる（Esc / D）</button></div>` +
+      `<p class="debug-menu-note">Dキー / DEBUGボタンで開く。番号キー（商人は Q W E R）かクリックで選択。Esc・もう一度D・背景で閉じる（開いている間は時間が止まる）。URLの <code>?debug=種類</code> でも直接指定。選択中はハイライト。DEBUGを使ったプレイは記録対象外（OFFにしてRETRYで復帰）。</p>` +
+      group("基本（0 / 1 / 9）", "basic", item("off", "0")) + group("SPECIAL（2〜8・最初の接触）", "special") + group("謎の商人（Q W E R・すぐ出会う）", "merchant") + `</div>`;
   }
   static debugKeyKind(code) {
     const key = /^(?:Digit|Numpad)([0-9])$/.exec(code || "")?.[1] || /^Key([QWER])$/.exec(code || "")?.[1];
