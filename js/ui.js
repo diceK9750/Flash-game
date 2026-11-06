@@ -255,7 +255,8 @@ Hop.UI = class {
     document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : success ? success.detail : Hop.UI.specialMessageDetail(g.specialMessage);
     document.getElementById("special-track").hidden = !g.special;
     document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
-    document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL、BOUNCE→BOOST隣接でBOUNCE SPECIAL（未使用キャラのx順）。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL。BRAKE：AERIAL DOWN成功後、地面・他キャラ・UPなしで接触。ANGLE：接触時10%抽選。GUARD：通常GUARDを持って再GUARD。ごくまれに謎の商人が現れる…？`;
+    const sn = t => c.specials[t].name;
+    document.getElementById("special-rules").textContent = `受付 ${c.specialWindow}秒。BOOST→BOUNCE隣接でBOOST SPECIAL（${sn("BOOST")}）、BOUNCE→BOOST隣接でBOUNCE SPECIAL（${sn("BOUNCE")}）。隣接は未使用キャラのx順。DASH後、BOOST・BOUNCE・STOPPERに触れず再DASHでDASH SPECIAL（${sn("DASH")}）。BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER SPECIAL（${sn("STOPPER")}）。BRAKE（${sn("BRAKE")}）：AERIAL DOWN成功後、地面・他キャラ・UPなしで接触。ANGLE（${sn("ANGLE")}）：接触時10%抽選。GUARD（${sn("GUARD")}）：通常GUARDを持って再GUARD。ごくまれに謎の商人が現れる…？`;
     const chargeText = g.downCharge >= 1 ? "READY" : `${Math.min(99, Math.floor(g.downCharge * 100 + 1e-9))}%`;
     document.getElementById("down-charge").value = g.downCharge;
     set("up-status", `AERIAL ↑ ×${g.upRemaining}`);

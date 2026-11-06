@@ -142,6 +142,9 @@ console.log(JSON.stringify({ merchantRareCastSpacing: 'PASS', cases, playsPerMer
     assert(rulesHtml.includes('ごくまれに謎の商人が現れる…？'));
     for (const bad of ['商人：', 'STOPPER→A', '商人SPECIAL', '商人登場', '商人成功', '8%']) assert(!rulesHtml.includes(bad), bad);
     assert.equal(rulesHtml.replace('ごくまれに謎の商人が現れる…？', '').includes('商人'), false);
+    // Cycle 84: SPECIAL skill names in special-rules (display only; conditions unchanged).
+    for (const name of Object.values(c.specials).map(s => s.name)) assert(rules.includes(name), name);
+    assert(rules.includes('隣接は未使用キャラのx順'));
   });
   test('no marker / zone in normal play even at a guarded boundary approach; DEBUG keeps them', () => {
     const g = isolated(); const ui = new UI(g, element('canvas'));

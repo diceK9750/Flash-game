@@ -119,6 +119,14 @@ test('DEBUG UX CSS: short/narrow panel is single-column with sticky head; active
   assert(/\.debug-menu-head[^}]*position:\s*sticky/.test(css), 'sticky head');
   assert(/aria-label="DEBUGメニューを開く（Dキー）"/.test(html), 'DEBUG button aria-label');
   assert(/最終飛距離／PEAK／MERCHANT SUCCESS/.test(html), 'rules help mentions RESULT labels');
+  // Cycle 84: player-facing 遊び方 catches up to RESULT / HUD copy (c72–c83).
+  const playerRules = html.slice(html.indexOf('<details class="rules">'), html.indexOf('開発用'));
+  assert(playerRules.includes('FINAL DISTANCE / 最終飛距離'), 'player rules: 最終飛距離');
+  assert(playerRules.includes('PEAK HEIGHT / 最高高度') && playerRules.includes('PEAK SPEED / 最高速度'), 'player rules: PEAK');
+  assert(playerRules.includes('NEW RECORD! · 飛距離／高さ／速度'), 'player rules: NEW RECORD types');
+  assert(playerRules.includes('BEST DISTANCE / 自己ベスト'), 'player rules: BEST');
+  assert(playerRules.includes('現在高度') && playerRules.includes('現在速度'), 'player rules: live HUD');
+  assert(playerRules.includes('BRAKE SPECIAL（影すり抜け）') && playerRules.includes('GUARD SPECIAL（聖護結界）'), 'player rules: SPECIAL skill names');
 });
 
 test('menu pauses game time while open (main loop passes 0)', () => {
