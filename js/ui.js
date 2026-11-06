@@ -324,7 +324,11 @@ Hop.UI = class {
     if (g.state === s.RESULT) {
       // Cycle 72: NEW RECORD type labels (飛距離 / 高さ / 速度); flourish for any record key.
       const recordText = Hop.UI.recordStatusText(g);
-      document.getElementById("record-status").textContent = recordText;
+      // Cycle 77 (display only): weight NEW RECORD above FLIGHT RECORD / DEBUG in the panel.
+      const recEl = document.getElementById("record-status");
+      recEl.textContent = recordText;
+      // Exclusive hierarchy class (works in the test harness DOM that has no classList).
+      recEl.className = g.debugUsed ? "is-debug-record" : g.newRecords.length ? "is-new-record" : "is-flight-record";
       // Cycle 74: portrait summary appends merchant Type·name when met (display only; short-screen wrap).
       const metMerchant = g.debugUsed || g.merchantStats.attempts > 0 || g.merchantStats.successes > 0;
       const merchantBit = metMerchant && g.merchantStats.lastType ? ` · 🎒${Hop.UI.merchantTypeLabel(g.merchantStats.lastType)}` : "";

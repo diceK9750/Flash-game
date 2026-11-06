@@ -72,12 +72,18 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 .history, .rules, .result-stats { font-size: 15px; line-height: 1.8; overflow-wrap: anywhere; }
 .result-stats { padding: 18px; border: 1px solid #c7d5bd; background: #fffdf4; border-radius: 12px; }
 .result-stats p { margin: 7px 0; white-space: pre-line; }
-.result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
+.result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 10px 0 8px; }
 .result-grid div { border: 1px solid #dfe5ce; background: #f1f5e6; border-radius: 8px; padding: 10px; min-width: 0; }
-.result-grid span { display: block; font-size: 13px; }
-.result-grid strong { display: block; font-size: clamp(17px, 2.4vw, 27px); color: #2e6946; }
-#record-status { color: #92571e; font-size: 18px; }
-#best-comparison { font-size: 14px; }
+.result-grid span { display: block; font-size: 12px; color: #5b705f; }
+.result-grid strong { display: block; font-size: clamp(15px, 2vw, 22px); color: #3d6b52; font-weight: 700; }
+/* Cycle 77: primary outcome cell (FINAL DISTANCE) leads the panel scan. */
+.result-grid .result-primary { background: #e7f3dc; border-color: #b4cfa0; box-shadow: inset 0 0 0 1px #d5e8c4; }
+.result-grid .result-primary span { color: #2e6946; font-weight: 700; }
+.result-grid .result-primary strong { font-size: clamp(20px, 2.8vw, 32px); color: #1f5c38; font-weight: 900; }
+#record-status { display: block; color: #6b5a3e; font-size: 16px; font-weight: 700; margin: 0 0 2px; letter-spacing: 0.01em; }
+#record-status.is-new-record { color: #c2410c; font-size: clamp(18px, 2.2vw, 22px); font-weight: 900; letter-spacing: 0.02em; }
+#record-status.is-debug-record { color: #833b30; font-size: 15px; font-weight: 700; }
+#best-comparison { font-size: 13px; color: #5b6b58; font-weight: 500; line-height: 1.65; margin: 4px 0 10px; }
 .rules { margin-top: 18px; padding: 12px 15px; border-top: 1px solid #cbd6c2; }
 .rules summary { cursor: pointer; font-weight: 700; }
 .result-summary { display: none; } /* portrait phones only (cycle 48), see the portrait block; the full panel stays below */
@@ -144,10 +150,12 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 .special-panel span { overflow-wrap: anywhere; }
 .special-panel.resolved { inset: auto 5% 13%; padding: 7px; background: #fffbedec; gap: 3px; }
 .special-panel.resolved strong { font-size: clamp(17px, 2vw, 28px); }
-/* RESULT "what helped" (2026-10-16 cycle 09): full per-run tally, static text. */
-#result-end { color: #5a3d0a; font-size: 13px; font-weight: 700; }
-#result-helped { color: #5a3d0a; font-size: 13px; line-height: 1.6; }
-#result-highlights { color: #714815; font-weight: 700; font-size: 13px; line-height: 1.6; }
+/* RESULT "what helped" (2026-10-16 cycle 09): full per-run tally, static text.
+   Cycle 77: mute narrative lines so primary / records / merchant / comparison scan first. */
+#result-end { color: #6a6155; font-size: 12px; font-weight: 600; }
+#result-helped { color: #6a6155; font-size: 12px; line-height: 1.55; font-weight: 400; }
+#result-highlights { color: #6b5a3e; font-weight: 600; font-size: 12px; line-height: 1.55; }
+#contact-totals, #type-counts, #storage-status { color: #6a7366; font-size: 13px; font-weight: 400; }
 /* Tempo feedback: RESULT rank stamp (D/C/B/A/S/SS/SSS; 2-3 letters shrink to fit) and the NEW RECORD flourish (no animation under reduced motion). */
 .rank-stamp { position: absolute; right: 7%; top: 14%; width: clamp(64px, 11vw, 132px); aspect-ratio: 1; display: grid; place-items: center; border: 6px solid currentColor; border-radius: 50%; font: 900 clamp(40px, 7vw, 92px)/1 system-ui, sans-serif; color: #8a5a2b; background: #fffdf3cc; transform: rotate(-14deg); animation: rank-stamp 0.32s cubic-bezier(.2,1.6,.4,1) both; pointer-events: none; }
 .rank-stamp.rank-b { color: #2f6aa3; }
@@ -161,8 +169,10 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 @keyframes rank-stamp { 0% { transform: rotate(-14deg) scale(2.6); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(-14deg) scale(1); opacity: 1; } }
 .overlay.new-record #overlay-title { color: #c2410c; animation: record-pulse 0.9s ease-in-out 2; }
 .overlay.new-record #overlay-label::before { content: "NEW RECORD! · "; color: #c2410c; font-weight: 900; }
-/* Cycle 74 (display only): merchant RESULT flourish. #merchant-totals is outside .overlay. */
+/* Cycle 74 (display only): merchant RESULT flourish. #merchant-totals is outside .overlay.
+   Cycle 77: keep the gold weight, add a light band so merchant sits above muted narrative. */
 #merchant-totals { color: #a16207; font-weight: 700; }
+#merchant-totals:not([hidden]) { margin: 6px 0 2px; padding: 6px 10px; background: #fff8e7; border-left: 3px solid #d4a017; border-radius: 0 6px 6px 0; font-size: 14px; }
 .overlay.merchant-met:not(.new-record) #overlay-label::before { content: "🎒 商人 · "; color: #a16207; font-weight: 900; }
 @keyframes record-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); text-shadow: 0 0 18px #ffd34d; } }
 @media (prefers-reduced-motion: reduce) {
