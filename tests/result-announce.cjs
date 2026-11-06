@@ -14,7 +14,9 @@ function run(seed,kind){const g=new H.Game(rng(seed));g.tempoEnabled=true;g.laun
 let records=0;
 for(const seed of [1,2,3,4,5,6,7,8]){const {g,seen,step}=run(seed);assert.equal(seen.size,1,'announced once');const t=[...seen][0];
  assert.ok(t.startsWith('RESULT '+g.finalDistance.toFixed(1)+' m · ランク '+H.Game.rank(g.finalDistance)),t);
- assert.equal(t.endsWith('NEW RECORD!'),g.newRecords.length>0,'record flag matches the screen: '+t);
+ assert.equal(t.includes('NEW RECORD!'),g.newRecords.length>0,'record flag matches the screen: '+t);
+ assert.equal(element('record-status').textContent, H.UI.recordStatusText(g));
+ if(g.newRecords.length){for(const k of g.newRecords)assert.ok(t.includes(H.UI.RECORD_LABELS[k]),t+' missing '+k);}
  assert.equal(element('record-status').textContent.includes('NEW RECORD'),t.includes('NEW RECORD'));records+=t.includes('NEW RECORD');
  g.act();for(let i=0;i<5;i++)step();assert.ok(!live.textContent.startsWith('RESULT'),'cleared on RETRY');}
 assert.ok(records>0,'some runs set a record');

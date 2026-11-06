@@ -291,7 +291,7 @@ Hop.UI = class {
       rankEl.textContent = rank || ""; if (rankEl.dataset) rankEl.dataset.rank = rank || "";
       rankEl.className = rank ? "rank-stamp rank-" + rank.toLowerCase() + " rank-len" + rank.length : "rank-stamp"; // len2/3: smaller glyphs fit the circle
     }
-    this.overlay.classList?.toggle?.("new-record", g.state === s.RESULT && !g.debugUsed && g.newRecords.includes("distance"));
+    this.overlay.classList?.toggle?.("new-record", g.state === s.RESULT && !g.debugUsed && g.newRecords.length > 0);
     this.lastState = g.state;
     document.getElementById("result-highlights").textContent = g.state === s.RESULT ? "今回のハイライト：" + Hop.UI.highlights(g).join(" · ") : "";
     const helpedEl = document.getElementById("result-helped");
@@ -316,7 +316,8 @@ Hop.UI = class {
     const summaryEl = document.getElementById("result-summary");
     if (summaryEl) { summaryEl.hidden = g.state !== s.RESULT; if (g.state !== s.RESULT) summaryEl.textContent = ""; }
     if (g.state === s.RESULT) {
-      const recordText = g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : "FLIGHT RECORD";
+      // Cycle 72: NEW RECORD type labels (飛距離 / 高さ / 速度); flourish for any record key.
+      const recordText = Hop.UI.recordStatusText(g);
       document.getElementById("record-status").textContent = recordText;
       if (summaryEl) summaryEl.textContent = `${recordText} · DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`;
       document.getElementById("result-distance").textContent = Hop.Graphics?.smooth && !this.visual.reducedMotion ? "0.0 m" : `${g.finalDistance.toFixed(1)} m`; // smooth: counted up in update()
@@ -330,11 +331,7 @@ Hop.UI = class {
       document.getElementById("merchant-totals").textContent = !metMerchant ? "" : `商人SPECIAL発生 ${g.merchantStats.attempts} / 成功 ${g.merchantStats.successes} / 最終Type ${g.merchantStats.lastType || "—"} / 復活 ${g.merchantStats.revives}`;
       const joined = {}; for (const e of g.history) if (e.partner) joined[e.partner] = (joined[e.partner] || 0) + 1;
       document.getElementById("type-counts").textContent = Object.entries(g.counts).map(([type, count]) => `${Hop.CAST[type].name} ${type} ${count}${joined[type] ? `（＋合体参加 ${joined[type]}）` : ""}`).join(" · ");
-      document.getElementById("best-comparison").textContent = [
-        `DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`,
-        `HEIGHT 今回 ${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m / BEST ${g.best.height.toFixed(1)} m`,
-        `SPEED 今回 ${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s / BEST ${g.best.speed.toFixed(1)} m/s`
-      ].join("\n");
+      document.getElementById("best-comparison").textContent = Hop.UI.bestComparisonText(g);
       document.getElementById("storage-status").textContent = g.debugUsed ? "このDEBUGプレイは自己ベストを更新・保存していません。" : g.storageAvailable ? "自己ベストはこのブラウザに保存されます。" : "保存領域を使用できません。自己ベストは今回の起動中のみ保持します。";
     }
   }
@@ -475,6 +472,27 @@ Hop.UI = class {
     if (blocks) out.push(`GUARD BLOCK×${blocks}`);
     return out;
   }
+  // Cycle 72 (display only): which BEST keys this RESULT updated. Order matches Game.finish() score keys.
+  static RECORD_KEYS = ["distance", "height", "speed"];
+  static RECORD_LABELS = { distance: "飛距離", height: "高さ", speed: "速度" };
+  static recordTypeLabels(keys) {
+    const set = new Set(keys || []);
+    return Hop.UI.RECORD_KEYS.filter(k => set.has(k)).map(k => Hop.UI.RECORD_LABELS[k]);
+  }
+  static recordStatusText(g) {
+    if (g.debugUsed) return "DEBUG PLAY / 記録対象外";
+    const labels = Hop.UI.recordTypeLabels(g.newRecords);
+    return labels.length ? "NEW RECORD! · " + labels.join(" · ") : "FLIGHT RECORD";
+  }
+  // BEST comparison grid; ★更新 marks the lines that set a new record this run.
+  static bestComparisonText(g) {
+    const c = Hop.CONFIG, mark = key => g.newRecords.includes(key) ? " ★更新" : "";
+    return [
+      `DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m` + mark("distance"),
+      `HEIGHT 今回 ${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m / BEST ${g.best.height.toFixed(1)} m` + mark("height"),
+      `SPEED 今回 ${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s / BEST ${g.best.speed.toFixed(1)} m/s` + mark("speed")
+    ].join("\n");
+  }
   static highlights(g) {
     const ranked = g.history.map(entry => {
       const merchant = entry.label.match(/MERCHANT TYPE ([A-D])/);
@@ -528,8 +546,9 @@ Hop.UI = class {
     const result = g.state === Hop.STATES.RESULT;
     if (result && !this.notices.result && Number.isFinite(g.finalDistance)) {
       const rank = g.tempoEnabled ? Hop.Game.rank(g.finalDistance) : null;
+      const rec = Hop.UI.recordStatusText(g);
       events.push(["RESULT " + g.finalDistance.toFixed(1) + " m", rank && "ランク " + rank,
-        g.debugUsed ? "DEBUG PLAY / 記録対象外" : g.newRecords.length ? "NEW RECORD!" : null].filter(Boolean).join(" · "));
+        g.debugUsed || g.newRecords.length ? rec : null].filter(Boolean).join(" · "));
     }
     const notice = events.join(" · "), live = el("announcements");
     if (notice && live.textContent !== notice) live.textContent = notice;
