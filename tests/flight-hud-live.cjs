@@ -103,4 +103,14 @@ test('html pins height-label / speed-label; peak SPEED wording', () => {
   assert(html.includes('PEAK / 最高高度'));
 });
 
+// Cycle 81: RESULT grid matches HUD peak wording (PEAK, not MAX).
+test('RESULT peak height/speed labels use PEAK not MAX', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const block = html.match(/<section id="result-stats"[\s\S]*?<\/section>/)[0];
+  assert(block.includes('PEAK HEIGHT / 最高高度'), block);
+  assert(block.includes('PEAK SPEED / 最高速度'), block);
+  assert(!block.includes('MAX HEIGHT'), block);
+  assert(!block.includes('MAX SPEED'), block);
+});
+
 console.log(JSON.stringify({ flightHudLive: 'PASS', cases }));

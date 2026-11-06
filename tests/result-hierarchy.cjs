@@ -43,6 +43,10 @@ test('DOM scan order: record → grid(primary) → merchant → comparison → n
   assert(ids.indexOf('best-comparison') < ids.indexOf('result-highlights'));
   assert(ids.indexOf('best-comparison') < ids.indexOf('contact-totals'));
   assert(/class="result-primary"/.test(block));
+  assert(block.includes('PEAK HEIGHT / 最高高度'));
+  assert(block.includes('PEAK SPEED / 最高速度'));
+  assert(!block.includes('MAX HEIGHT'));
+  assert(!block.includes('MAX SPEED'));
 });
 
 test('CSS hierarchy rules + merchant pin preserved', () => {
