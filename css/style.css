@@ -161,6 +161,9 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
 @keyframes rank-stamp { 0% { transform: rotate(-14deg) scale(2.6); opacity: 0; } 60% { opacity: 1; } 100% { transform: rotate(-14deg) scale(1); opacity: 1; } }
 .overlay.new-record #overlay-title { color: #c2410c; animation: record-pulse 0.9s ease-in-out 2; }
 .overlay.new-record #overlay-label::before { content: "NEW RECORD! · "; color: #c2410c; font-weight: 900; }
+/* Cycle 74 (display only): merchant RESULT flourish. #merchant-totals is outside .overlay. */
+#merchant-totals { color: #a16207; font-weight: 700; }
+.overlay.merchant-met:not(.new-record) #overlay-label::before { content: "🎒 商人 · "; color: #a16207; font-weight: 900; }
 @keyframes record-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); text-shadow: 0 0 18px #ffd34d; } }
 @media (prefers-reduced-motion: reduce) {
   .stage *, .stage { animation: none !important; transition: none !important; }

@@ -224,8 +224,11 @@ Hop.UI = class {
     // expires. MISS / other messages are unchanged. The aria-live announcement is not delayed.
     if (g.specialMessage && g.specialMessage !== this.panelMessage) {
       this.panelMessage = g.specialMessage;
-      this.successPanel = g.specialMessage.label === "SPECIAL SUCCESS" && (g.specialCutin || g.combo)
-        ? { title: "SPECIAL SUCCESS!", detail: g.specialMessage.detail || "", waiting: true, remaining: c.specialMessageDuration, clock: g.phaseTime } : null;
+      // Cycle 74 (display only): merchant successes keep the MERCHANT title (parallel to MERCHANT SPECIAL!).
+      const merchantOk = g.specialMessage.label === "SPECIAL SUCCESS" && (g.specialCutin || g.combo);
+      const mt = merchantOk ? (g.specialCutin?.merchantType || Hop.UI.merchantTypeFromDetail(g.specialMessage.detail)) : null;
+      this.successPanel = merchantOk
+        ? { title: mt ? "MERCHANT SUCCESS!" : "SPECIAL SUCCESS!", detail: g.specialMessage.detail || "", waiting: true, remaining: c.specialMessageDuration, clock: g.phaseTime } : null;
     }
     const held = this.successPanel;
     if (held) {
@@ -240,7 +243,7 @@ Hop.UI = class {
     specialPanel.className = g.special ? "special-panel" : "special-panel resolved";
     specialPanel.hidden = !g.special && success ? success.waiting
       : (g.state !== s.FLYING && !(g.state === s.RESULT && g.specialMessage?.label === "SPECIAL MISS" && Date.now() < this.messageUntil)) || (!g.special && !g.specialMessage);
-    document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : success ? success.title : (g.specialMessage?.label === "SPECIAL SUCCESS" ? "SPECIAL SUCCESS!" : g.specialMessage?.label || "");
+    document.getElementById("special-title").textContent = g.special ? (g.special.merchantType ? "MERCHANT SPECIAL!" : "SPECIAL!") : success ? success.title : (g.specialMessage?.label === "SPECIAL SUCCESS" ? (Hop.UI.merchantTypeFromDetail(g.specialMessage.detail) ? "MERCHANT SUCCESS!" : "SPECIAL SUCCESS!") : g.specialMessage?.label || "");
     document.getElementById("special-detail").textContent = g.special ? (g.special.merchantType ? `商人 Type ${g.special.merchantType} / ${c.merchantNames[g.special.merchantType]}` : `${Hop.CAST[g.special.type].name} / ${c.specials[g.special.type].name}`) + " · タップ / クリック" : success ? success.detail : Hop.UI.specialMessageDetail(g.specialMessage);
     document.getElementById("special-track").hidden = !g.special;
     document.getElementById("special-fill").style.width = `${g.special ? 100 * g.special.remaining / c.specialWindow : 0}%`;
@@ -292,6 +295,9 @@ Hop.UI = class {
       rankEl.className = rank ? "rank-stamp rank-" + rank.toLowerCase() + " rank-len" + rank.length : "rank-stamp"; // len2/3: smaller glyphs fit the circle
     }
     this.overlay.classList?.toggle?.("new-record", g.state === s.RESULT && !g.debugUsed && g.newRecords.length > 0);
+    // Cycle 74 (display only): light merchant-met flourish after meeting the merchant this run (DEBUG excluded).
+    const metMerchantNow = g.state === s.RESULT && !g.debugUsed && (g.merchantStats.attempts > 0 || g.merchantStats.successes > 0);
+    this.overlay.classList?.toggle?.("merchant-met", metMerchantNow);
     this.lastState = g.state;
     document.getElementById("result-highlights").textContent = g.state === s.RESULT ? "今回のハイライト：" + Hop.UI.highlights(g).join(" · ") : "";
     const helpedEl = document.getElementById("result-helped");
@@ -319,16 +325,19 @@ Hop.UI = class {
       // Cycle 72: NEW RECORD type labels (飛距離 / 高さ / 速度); flourish for any record key.
       const recordText = Hop.UI.recordStatusText(g);
       document.getElementById("record-status").textContent = recordText;
-      if (summaryEl) summaryEl.textContent = `${recordText} · DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m`;
+      // Cycle 74: portrait summary appends merchant Type·name when met (display only; short-screen wrap).
+      const metMerchant = g.debugUsed || g.merchantStats.attempts > 0 || g.merchantStats.successes > 0;
+      const merchantBit = metMerchant && g.merchantStats.lastType ? ` · 🎒${Hop.UI.merchantTypeLabel(g.merchantStats.lastType)}` : "";
+      if (summaryEl) summaryEl.textContent = `${recordText} · DISTANCE 今回 ${g.finalDistance.toFixed(1)} m / BEST ${g.best.distance.toFixed(1)} m${merchantBit}`;
       document.getElementById("result-distance").textContent = Hop.Graphics?.smooth && !this.visual.reducedMotion ? "0.0 m" : `${g.finalDistance.toFixed(1)} m`; // smooth: counted up in update()
       document.getElementById("result-best").textContent = `${g.best.distance.toFixed(1)} m`;
       document.getElementById("result-height").textContent = `${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m`;
       document.getElementById("result-speed").textContent = `${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s`;
       document.getElementById("contact-totals").textContent = `接触総数 ${g.history.length} / SPECIAL発生 ${g.specialCount} / 成功 ${g.specialSuccesses}`;
       // Hidden character: merchant totals only after meeting the merchant this run, or in DEBUG plays.
-      const metMerchant = g.debugUsed || g.merchantStats.attempts > 0 || g.merchantStats.successes > 0;
+      // metMerchant already computed above for the portrait summary.
       document.getElementById("merchant-totals").hidden = !metMerchant;
-      document.getElementById("merchant-totals").textContent = !metMerchant ? "" : `商人SPECIAL発生 ${g.merchantStats.attempts} / 成功 ${g.merchantStats.successes} / 最終Type ${g.merchantStats.lastType || "—"} / 復活 ${g.merchantStats.revives}`;
+      document.getElementById("merchant-totals").textContent = !metMerchant ? "" : Hop.UI.merchantTotalsText(g);
       const joined = {}; for (const e of g.history) if (e.partner) joined[e.partner] = (joined[e.partner] || 0) + 1;
       document.getElementById("type-counts").textContent = Object.entries(g.counts).map(([type, count]) => `${Hop.CAST[type].name} ${type} ${count}${joined[type] ? `（＋合体参加 ${joined[type]}）` : ""}`).join(" · ");
       document.getElementById("best-comparison").textContent = Hop.UI.bestComparisonText(g);
@@ -468,9 +477,28 @@ Hop.UI = class {
     if (g.justLaunch) out.push("JUST発射");
     for (const t of Object.keys(Hop.CAST || {})) if (sp[t]) out.push(`${Hop.CAST[t].name} SPECIAL×${sp[t]}${withPartner(t)}`);
     for (const t of Object.keys(sp)) if (!Hop.CAST?.[t]) out.push(`${t} SPECIAL×${sp[t]}`);
-    if (merchant.length) out.push("商人 Type " + merchant.join("→"));
+    if (merchant.length) out.push(Hop.UI.merchantHelpedText(merchant));
     if (blocks) out.push(`GUARD BLOCK×${blocks}`);
     return out;
+  }
+  // Cycle 74 (display only): merchant Type · item-name labels (same · separator as NEW RECORD).
+  static merchantTypeLabel(type) {
+    const name = Hop.CONFIG?.merchantNames?.[type];
+    return name ? `Type ${type} · ${name}` : type ? `Type ${type}` : "";
+  }
+  static merchantTypeFromDetail(detail) {
+    const m = String(detail || "").match(/^商人 Type ([A-D])/);
+    return m ? m[1] : null;
+  }
+  static merchantHelpedText(types) {
+    const names = (types || []).map(t => Hop.CONFIG?.merchantNames?.[t]).filter(Boolean);
+    // Keep "商人 Type X→Y" prefix so older includes()-style checks still match.
+    return "商人 Type " + types.join("→") + (names.length ? " · " + names.join("→") : "");
+  }
+  static merchantTotalsText(g) {
+    const last = g.merchantStats?.lastType;
+    const lastLabel = last ? Hop.UI.merchantTypeLabel(last) : "—";
+    return `商人SPECIAL発生 ${g.merchantStats.attempts} / 成功 ${g.merchantStats.successes} / 最終 ${lastLabel} / 復活 ${g.merchantStats.revives}`;
   }
   // Cycle 72 (display only): which BEST keys this RESULT updated. Order matches Game.finish() score keys.
   static RECORD_KEYS = ["distance", "height", "speed"];
@@ -496,7 +524,7 @@ Hop.UI = class {
   static highlights(g) {
     const ranked = g.history.map(entry => {
       const merchant = entry.label.match(/MERCHANT TYPE ([A-D])/);
-      if (merchant) return { rank: 0, text: "🎒 商人 Type " + merchant[1] };
+      if (merchant) return { rank: 0, text: "🎒 商人 " + Hop.UI.merchantTypeLabel(merchant[1]) };
       if (entry.label === entry.type + " SPECIAL") return { rank: entry.type === "STOPPER" ? 1 : 2, text: entry.type === "STOPPER" ? "⚡ 僧侶「" + Hop.CONFIG.specials[entry.type].name + "」" : "✨ " + Hop.CAST[entry.type].name + " SPECIAL" };
       if (entry.label.includes("GUARDED")) return { rank: 3, text: "🛡 " + Hop.CAST[entry.type].name + "をGUARD BLOCK" };
       return null;
@@ -538,7 +566,7 @@ Hop.UI = class {
     // Announce edges only: never percent, seconds or a repeated frame.
     const events = [];
     if (g.specialMessage && g.specialMessage !== this.notices.message) this.messageUntil = Date.now() + g.specialMessage.remaining * 1000;
-    if (g.special && g.special !== this.notices.special) events.push((g.special.merchantType ? "商人 Type " + g.special.merchantType : Hop.CAST[g.special.type].name) + " SPECIAL受付開始");
+    if (g.special && g.special !== this.notices.special) events.push((g.special.merchantType ? "商人 " + Hop.UI.merchantTypeLabel(g.special.merchantType) : Hop.CAST[g.special.type].name) + " SPECIAL受付開始");
     else if (g.specialMessage && g.specialMessage !== this.notices.message && (g.specialMessage.label !== this.notices.message?.label || g.specialMessage.detail !== this.notices.message?.detail)) { const detail = Hop.UI.specialMessageDetail(g.specialMessage); events.push(g.specialMessage.label + (detail ? " · " + detail : "")); } // MISS: same reason line as the panel (cycle 26)
     if (flying && g.guardSpecial.active !== this.notices.guard) events.push(g.guardSpecial.active ? "GUARD SPECIAL開始" : "GUARD SPECIAL終了");
     if (flying && g.downCharge >= 1 && this.notices.charge < 1) events.push("AERIAL DOWN READY");
