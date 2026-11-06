@@ -1,0 +1,78 @@
+// Cycle 78 (display only): FLYING readouts show live height/speed; idle/RESULT keep peaks.
+// aria-live for merchant SUCCESS matches the on-screen MERCHANT SUCCESS title (c74 leftover).
+const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+const elements = new Map();
+function element(id) {
+  if (!elements.has(id)) elements.set(id, {
+    setAttribute(k, v) { this[k] = v; }, textContent: '', innerHTML: '', hidden: false, style: {}, dataset: {},
+    classList: { _set: new Set(), toggle(name, on) { if (on) this._set.add(name); else this._set.delete(name); }, contains(name) { return this._set.has(name); } },
+    addEventListener() {},
+    getContext() { return new Proxy({}, { get: (o, k) => o[k] || (() => {}), set: (o, k, v) => (o[k] = v, true) }); }
+  });
+  return elements.get(id);
+}
+const store = {};
+const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {},
+  localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } } };
+scope.window = scope; vm.createContext(scope);
+for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input'])
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8').replace(/\r\n?/g, '\n'), scope, { filename: name });
+const H = scope.Hop, { Game, UI, CONFIG: c, STATES: S } = H;
+let cases = 0;
+function test(name, fn) { try { fn(); cases++; } catch (e) { e.message = name + ': ' + e.message; throw e; } }
+
+test('specialOutcomeLabel mirrors panel title', () => {
+  assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL SUCCESS', detail: `商人 Type A / ${c.merchantNames.A}` }), 'MERCHANT SUCCESS');
+  assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL SUCCESS', detail: '爆裂斜光' }), 'SPECIAL SUCCESS');
+  assert.equal(UI.specialOutcomeLabel({ label: 'SPECIAL MISS', detail: 'x' }), 'SPECIAL MISS');
+  assert.equal(UI.specialOutcomeLabel(null), '');
+});
+
+test('FLYING shows live height/speed; labels switch; peaks restored off-flight', () => {
+  const g = new Game(() => 0.99);
+  g.launchCutinEnabled = false; g.comboEnabled = false;
+  const ui = new UI(g, element('canvas'));
+  g.act(); g.angle = 40; g.act(); g.power = 0.9; g.act();
+  assert.equal(g.state, S.FLYING);
+  g.body.y = 240; g.body.vx = 600; g.body.vy = 300;
+  g.maxHeight = 900; g.maxSpeed = 2000;
+  ui.update();
+  const ppm = c.pixelsPerMeter;
+  assert.equal(element('height').textContent, (240 / ppm).toFixed(1) + ' m');
+  assert.equal(element('speed').textContent, (Math.hypot(600, 300) / ppm).toFixed(1) + ' m/s');
+  assert.equal(element('height-label').textContent, 'HEIGHT / 現在高度');
+  assert.equal(element('speed-label').textContent, 'SPEED / 現在速度');
+  g.body.stopped = true; g.finish(); ui.update();
+  assert.equal(g.state, S.RESULT);
+  assert.equal(element('height').textContent, (900 / ppm).toFixed(1) + ' m');
+  assert.equal(element('speed').textContent, (2000 / ppm).toFixed(1) + ' m/s');
+  assert.equal(element('height-label').textContent, 'PEAK / 最高高度');
+  assert.equal(element('speed-label').textContent, 'PEAK / 最高速度');
+  assert.equal(element('result-height').textContent, (900 / ppm).toFixed(1) + ' m');
+  assert.equal(element('result-speed').textContent, (2000 / ppm).toFixed(1) + ' m/s');
+});
+
+test('merchant SUCCESS announce uses MERCHANT SUCCESS', () => {
+  const g = new Game(() => 0.99);
+  g.launchCutinEnabled = false; g.comboEnabled = false;
+  g.act(); g.angle = 40; g.act(); g.power = 0.9; g.act();
+  const ui = new UI(g, element('canvas')); ui.update();
+  g.specialMessage = { label: 'SPECIAL SUCCESS', detail: `商人 Type B / ${c.merchantNames.B}`, remaining: c.specialMessageDuration };
+  ui.notices = { special: null, message: null, charge: g.downCharge, guard: false, result: false };
+  ui.updateQuality();
+  const live = element('announcements').textContent;
+  assert(live.includes('MERCHANT SUCCESS'), live);
+  assert(live.includes(c.merchantNames.B), live);
+  assert(!live.startsWith('SPECIAL SUCCESS'), live);
+});
+
+test('html pins height-label / speed-label; peak SPEED wording', () => {
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert(html.includes('id="height-label"'));
+  assert(html.includes('id="speed-label"'));
+  assert(html.includes('PEAK / 最高速度'));
+  assert(html.includes('PEAK / 最高高度'));
+});
+
+console.log(JSON.stringify({ flightHudLive: 'PASS', cases }));

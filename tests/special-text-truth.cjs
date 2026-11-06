@@ -39,6 +39,7 @@ for(const e of rec){const name=e.merchantType?c.merchantNames[e.merchantType]:c.
   if(s.includes('効果なし'))C(Math.abs(e.post.vx-e.pre.vx)<1e-9&&Math.abs(e.post.vy-e.pre.vy)<1e-9,'says no effect but velocity changed',e);
   if(s.includes('通常の効果のみ'))C(!/GUARDED/.test(e.entryLabel||''),'says normal effect but was guarded',e);}
  C(e.live.includes(e.success?'SUCCESS':'MISS')||e.live==='','live notice outcome',e);
+ if(e.merchantType&&e.success&&e.live.includes('SUCCESS'))C(e.live.includes('MERCHANT SUCCESS'),'merchant live title',e);
  if(!e.success&&e.live.includes('SPECIAL MISS'))C(e.live.includes('SPECIAL MISS · '+e.shown),'MISS notice carries the panel reason',e);}
 const misses=rec.filter(e=>!e.success&&e.live.includes('SPECIAL MISS')).length;
 assert.ok(rec.length>50&&misses>5,'enough resolves / announced misses: '+rec.length+'/'+misses);

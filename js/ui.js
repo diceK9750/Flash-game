@@ -202,8 +202,16 @@ Hop.UI = class {
     set("state", g.state); set("angle", `${g.angle.toFixed(1)}°`);
     set("power", `${Math.round(g.power * 100)}%`);
     set("distance", `${(g.body.x / c.pixelsPerMeter).toFixed(1)} m`);
-    set("height", `${(g.maxHeight / c.pixelsPerMeter).toFixed(1)} m`);
-    set("speed", `${(g.maxSpeed / c.pixelsPerMeter).toFixed(1)} m/s`);
+    // Cycle 78 (display only): while FLYING show live altitude / speed (labels switch too); peaks stay for RESULT / idle.
+    const flyingReadout = g.state === s.FLYING;
+    const heightM = (flyingReadout ? g.body.y : g.maxHeight) / c.pixelsPerMeter;
+    const speedM = (flyingReadout ? Math.hypot(g.body.vx, g.body.vy) : g.maxSpeed) / c.pixelsPerMeter;
+    set("height", `${heightM.toFixed(1)} m`);
+    set("speed", `${speedM.toFixed(1)} m/s`);
+    const heightLabel = document.getElementById("height-label");
+    const speedLabel = document.getElementById("speed-label");
+    if (heightLabel) heightLabel.textContent = flyingReadout ? "HEIGHT / 現在高度" : "PEAK / 最高高度";
+    if (speedLabel) speedLabel.textContent = flyingReadout ? "SPEED / 現在速度" : "PEAK / 最高速度";
     set("final", g.finalDistance === null ? "—" : `${g.finalDistance.toFixed(1)} m`);
     const airborne = g.airborne();
     const floating = g.merchant?.type === "C";
@@ -420,6 +428,12 @@ Hop.UI = class {
     return g.state === Hop.STATES.FLYING && !g.launchCutin && !g.combo && !g.special && g.merchant?.type !== "C" &&
       g.airborne() && g.aerialMode === "DOWN" && g.downCharge >= 1;
   }
+  // Cycle 78 (display only): aria-live outcome matches the on-screen SUCCESS title (MERCHANT vs SPECIAL).
+  static specialOutcomeLabel(m) {
+    if (!m) return "";
+    if (m.label === "SPECIAL SUCCESS" && Hop.UI.merchantTypeFromDetail(m.detail)) return "MERCHANT SUCCESS";
+    return m.label;
+  }
   // SPECIAL panel detail after resolve. MISS adds why (no tap within the window) and what happened instead.
   static specialMessageDetail(m) {
     if (!m) return "";
@@ -571,7 +585,7 @@ Hop.UI = class {
     const events = [];
     if (g.specialMessage && g.specialMessage !== this.notices.message) this.messageUntil = Date.now() + g.specialMessage.remaining * 1000;
     if (g.special && g.special !== this.notices.special) events.push((g.special.merchantType ? "商人 " + Hop.UI.merchantTypeLabel(g.special.merchantType) : Hop.CAST[g.special.type].name) + " SPECIAL受付開始");
-    else if (g.specialMessage && g.specialMessage !== this.notices.message && (g.specialMessage.label !== this.notices.message?.label || g.specialMessage.detail !== this.notices.message?.detail)) { const detail = Hop.UI.specialMessageDetail(g.specialMessage); events.push(g.specialMessage.label + (detail ? " · " + detail : "")); } // MISS: same reason line as the panel (cycle 26)
+    else if (g.specialMessage && g.specialMessage !== this.notices.message && (g.specialMessage.label !== this.notices.message?.label || g.specialMessage.detail !== this.notices.message?.detail)) { const detail = Hop.UI.specialMessageDetail(g.specialMessage); events.push(Hop.UI.specialOutcomeLabel(g.specialMessage) + (detail ? " · " + detail : "")); } // SUCCESS/MISS: same wording as the panel (cycle 26 / 78 merchant)
     if (flying && g.guardSpecial.active !== this.notices.guard) events.push(g.guardSpecial.active ? "GUARD SPECIAL開始" : "GUARD SPECIAL終了");
     if (flying && g.downCharge >= 1 && this.notices.charge < 1) events.push("AERIAL DOWN READY");
     // RESULT edge (2026-10-17 cycle 25): screen readers hear the outcome once (text only; same values as on screen).
