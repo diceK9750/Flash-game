@@ -11,7 +11,7 @@ Hop.Sprites = {
         animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, enabled: true
       },
       FLIGHT_LOOP: {
-        src: "assets/sprites/hero/hero_flight_comic_v1/hero_flight_loop_sheet_288x288.png",
+        src: "assets/sprites/hero/hero_flight_comic_v1/hero_flight_loop_sheet_384x288.png",
         metadata: "assets/sprites/hero/hero_flight_comic_v1/hero_flight_loop.json",
         animation: "FLIGHT_LOOP", fps: 8, loop: true, scale: 1.25
       },
