@@ -6,7 +6,7 @@ const code = fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8');
 // Legacy 96 bundles (kept) drive the mock loader/draw behaviour checks; the shipped HD comic
 // bundles are checked in the asset block below.
 const dirs = { UP: 'assets/sprites/hero/hero_aerial_up_v1_bundle/', DOWN: 'assets/sprites/hero/hero_aerial_down_v1_bundle/' };
-const hd = { UP: { dir: 'assets/sprites/hero/hero_aerial_up_comic_v1/', w: 288 }, DOWN: { dir: 'assets/sprites/hero/hero_aerial_down_comic_v1/', w: 384 } };
+const hd = { UP: { dir: 'assets/sprites/hero/hero_aerial_up_comic_v1/', w: 384 }, DOWN: { dir: 'assets/sprites/hero/hero_aerial_down_comic_v1/', w: 384 } };
 const meta = {
   UP: JSON.parse(fs.readFileSync(path.join(root, dirs.UP, 'hero_aerial_up.json'))),
   DOWN: JSON.parse(fs.readFileSync(path.join(root, dirs.DOWN, 'hero_aerial_down.json'))),
