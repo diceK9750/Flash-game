@@ -19,7 +19,7 @@ Hop.Sprites = {
       // HD comic stills (8 identical cells, 288 high; DOWN uses a 384-wide cell for the dive).
       // The 96 v1 bundles are kept in hero_aerial_{up,down}_v1_bundle/.
       AERIAL_UP: {
-        src: "assets/sprites/hero/hero_aerial_up_comic_v1/hero_aerial_up_sheet_288x288.png",
+        src: "assets/sprites/hero/hero_aerial_up_comic_v1/hero_aerial_up_sheet_384x288.png",
         metadata: "assets/sprites/hero/hero_aerial_up_comic_v1/hero_aerial_up.json",
         animation: "AERIAL_UP", fps: 12, loop: false, scale: 1.25
       },
