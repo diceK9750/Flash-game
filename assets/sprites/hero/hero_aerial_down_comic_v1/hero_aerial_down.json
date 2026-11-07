@@ -13,6 +13,6 @@
   "displayScale": 1.25,
   "smoothing": true,
   "nextAnimation": "FLIGHT_LOOP",
-  "sourceImage": "hero_comic_aerial_down_r1b_hs.jpg",
-  "notes": "HD comic AERIAL_DOWN dive still (r1b, head shrunk x0.70 in PIL about the chin; cape behind the old hair inpainted; cape hue +5deg). 頭身 5.08 as head+torso+legs straight segments / head (the straight hair->boot axis reads 4.66 because the legs are bent and foreshortened and the head is tilted back). Soft-alpha cyan cutout at grid 10.55 (on-screen head = idle head) into a 384x288 cell (unit 3, wide dive), lowest point (shield) on the pivot, bbox centred on the pivot x. 8 identical frames; fps/next kept from v1. The game still adds the vy tilt. Previous 96 sheet kept in ../hero_aerial_down_v1_bundle/. Display only."
+  "sourceImage": "hero_comic_aerial_down_gag_r1b_fix.jpg",
+  "notes": "HD comic gag AERIAL_DOWN nosedive still (r1b_fix, らんま1/2-style head-down flailing dive, adopted 2026-11-07). r1a rejected (three arms); raw r1b had a loose shield so one correction pass attached it to the left arm. Soft-alpha cyan cutout at grid 8.83 into a 384x288 cell (unit 3, wide pose), lowest point (head) on the pivot (192,264), body trailing up-left. 8 identical frames; fps/next kept from previous HD still. The game still adds the vy tilt. Not a sleek horizontal Superman dive and not the head-up-right FLIGHT_LOOP gag pose. Display only."
 }
