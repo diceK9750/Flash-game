@@ -1,7 +1,7 @@
 {
   "id": "HERO",
   "animation": "GROUND_BOUNCE",
-  "cellW": 288,
+  "cellW": 384,
   "cellH": 288,
   "frames": 8,
   "fps": 12,
@@ -17,12 +17,12 @@
     7
   ],
   "pivot": {
-    "x": 144,
+    "x": 192,
     "y": 264
   },
   "displayScale": 1.25,
   "smoothing": true,
   "nextAnimation": "FLIGHT_LOOP",
-  "sourceImage": "hero_comic_bounce_r1b_hs.jpg",
-  "notes": "HD comic ground-bounce crouch still (r1b, head shrunk x0.76 in PIL about the chin so torso/head matches the idle: 0.98 vs 0.99, 5頭身-equivalent 4.96). Soft-alpha cyan cutout at grid 10.5 (on-screen head = idle head), boot soles on the pivot, body centre over the pivot x. 8 identical frames; sequence/fps kept from v1 (0.67 s, then FLIGHT_LOOP). suppressTilt stays on. Previous 96 sheet kept in ../hero_ground_bounce_v1_bundle/. Display only."
+  "sourceImage": "hero_comic_ground_bounce_gag_r1b.jpg",
+  "notes": "HD comic gag GROUND_BOUNCE landing still (r1b, らんま1/2-style squash crouch, adopted 2026-11-07). Soft-alpha cyan cutout at grid 8.11 into a 384x288 cell (288 clipped the sword/cape), boot soles on the pivot (192,264). 8 identical frames; sequence/fps kept from v1 (4,4,5,5,6,6,7,7). suppressTilt stays on. Display only."
 }
