@@ -33,7 +33,7 @@ Hop.Sprites = {
       // HD comic crouch delivered (288 cell; 96 v1 kept in hero_ground_bounce_v1_bundle/): enabled.
       // tests/sprites-ground-bounce.cjs enforces flag == files present.
       GROUND_BOUNCE: {
-        src: "assets/sprites/hero/hero_ground_bounce_comic_v1/hero_ground_bounce_sheet_288x288.png",
+        src: "assets/sprites/hero/hero_ground_bounce_comic_v1/hero_ground_bounce_sheet_384x288.png",
         metadata: "assets/sprites/hero/hero_ground_bounce_comic_v1/hero_ground_bounce.json",
         animation: "GROUND_BOUNCE", fps: 12, loop: false, scale: 1.25, enabled: true,
         // Display tuning (no game effect). Detection happens after the rebound, so the JSON

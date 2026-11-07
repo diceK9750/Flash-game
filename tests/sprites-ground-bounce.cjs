@@ -60,7 +60,7 @@ if (process.argv.includes('--loader')) {
     assert(!/^(?:\/|[a-z]+:)/i.test(ref)); assert(ref.startsWith(dir));
     assert(new URL(ref, 'https://example.test/Flash-game/').pathname.startsWith('/Flash-game/' + dir));
   }
-  assert.equal(def.src, dir + 'hero_ground_bounce_sheet_288x288.png'); assert.equal(def.metadata, dir + 'hero_ground_bounce.json');
+  assert.equal(def.src, dir + 'hero_ground_bounce_sheet_384x288.png'); assert.equal(def.metadata, dir + 'hero_ground_bounce.json');
   assert.deepEqual([def.animation, def.fps, def.loop, def.scale], ['GROUND_BOUNCE', 12, false, 1.25]);
   const present = fs.existsSync(path.join(root, def.src)) && fs.existsSync(path.join(root, def.metadata));
   assert.equal(def.enabled !== false, present, present
@@ -70,10 +70,10 @@ if (process.argv.includes('--loader')) {
     const m = JSON.parse(fs.readFileSync(path.join(root, def.metadata)));
     // HD comic sheet: 8 identical 288 cells, pivot (cell/2, cell*88/96), v1 timing/sequence kept.
     assert.deepEqual({ id: m.id, animation: m.animation, w: m.cellW, h: m.cellH, frames: m.frames, fps: m.fps, loop: m.loop, pivot: { x: m.pivot?.x, y: m.pivot?.y }, next: m.nextAnimation, smoothing: m.smoothing },
-      { id: 'HERO', animation: 'GROUND_BOUNCE', w: 288, h: 288, frames: 8, fps: 12, loop: false, pivot: { x: 144, y: 264 }, next: 'FLIGHT_LOOP', smoothing: true });
+      { id: 'HERO', animation: 'GROUND_BOUNCE', w: 384, h: 288, frames: 8, fps: 12, loop: false, pivot: { x: 192, y: 264 }, next: 'FLIGHT_LOOP', smoothing: true });
     assert.deepEqual(m.sequence, [4, 4, 5, 5, 6, 6, 7, 7]);
     const png = fs.readFileSync(path.join(root, def.src));
-    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    assert.equal(png.readUInt32BE(16), 384 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
   }
   assert.equal(c.playerRadius, 18);
 
