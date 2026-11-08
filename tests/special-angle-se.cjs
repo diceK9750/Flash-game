@@ -1,3 +1,4 @@
+// C120: authorized GUARD main-drone waveform/attack snapshot refresh only; all assertions retained.
 // C119: matched pyon color/attack only; exact roll, rising pitches and cymbal.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const s={Hop:{},window:{localStorage:{getItem:()=>null}}};vm.createContext(s);vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/audio.js'),'utf8'),s);const A=s.Hop.Audio,r=A.specialRecipes.SPECIAL_ANGLE,J=x=>JSON.parse(JSON.stringify(x));
@@ -6,5 +7,5 @@ assert.deepEqual(J(r.slice(0,8)),roll,'eight-hit snare roll tuple-exact with ori
 assert.deepEqual(J(r.map(v=>[v[0],v[1],v[2],v[3]])),[...roll.map(v=>[v[0],v[1],v[2],v[3]]),['tone',.36,.14,.055],['tone',.52,.16,.055],['noise',.7,.25,.03]],'all eleven starts/durations/amplitudes exact');
 assert.deepEqual(J(r.slice(8,10).map(v=>[v[5],v[6]])),[[400,1200],[600,1800]],'both rising pyon endpoints exact');assert(r.every(v=>Math.min(v[5],v[6])>=400),'no lower floor');assert.equal(r.length,11);assert(Math.abs(Math.max(...r.map(v=>v[1]+v[2]))-.95)<1e-9,'full tail .95, no extension');assert.equal(A.specialPeakCap,.16);assert(Math.abs(A.peakSum(r)-.058)<1e-9,'original overlap budget/master');
 for(const i of [8,9])assert(r[i][4]==='triangle'&&r[i][7]>0&&r[i][7]<=.005,'comic non-sine and no slower attack');assert.deepEqual(J([r[8][4],r[8][7]]),J([r[9][4],r[9][7]]),'same treatment for both pyons');
-const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_ANGLE')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'05f48ed274e069d411cd96264b3256ac239aa271780b5e032d3a1e9074eb809f','all other recipes exact');
+const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_ANGLE')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'490590c33d4b2bd9aee858e4fe465184c61a7538576acd59bc9b30a6f73f5e09','all other recipes exact');
 console.log('special-angle-se PASS: matched pyon wave/attack only; exact roll, pitches, cymbal, eleven beats/tail/cap/budget');
