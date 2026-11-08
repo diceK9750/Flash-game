@@ -103,7 +103,7 @@ Hop.Audio = {
         [["noise", S + 1.15, 0.45, 0.06, "bandpass", 400, 5000, 1.0], ["tone", S + 1.15, 1.1, 0.04, "sine", 1046.5, 1046.5, 0.005], ["tone", S + 1.15, 1.1, 0.025, "sine", 1568, 1568, 0.005]],
         chime(S + 1.3, [1568, 2093, 2637, 3136], 0.07, 0.016)),
       // 盗賊: dark swell -> four shadow swishes -> final cross slash + vanish puff
-      BRAKE: [["tone", S, 0.9, 0.03, "sine", 70, 55, 0.2], ["noise", S, 0.4, 0.02, "lowpass", 300, 200, 0.9]]
+      BRAKE: [["tone", S, 0.9, 0.03, "triangle", 70, 55, 0.2], ["noise", S, 0.4, 0.02, "lowpass", 300, 200, 0.9]]
         .concat([0, 1, 2, 3].map(i => ["noise", S + 0.2 + i * 0.2, 0.18, 0.05, "bandpass", 3000 - i * 300, 900, 1.3]),
           [["noise", S + 1.2, 0.08, 0.07, "highpass", 4000, 4000, 0.8], ["noise", S + 1.27, 0.08, 0.06, "highpass", 5000, 5000, 0.8], ["tone", S + 1.2, 0.4, 0.04, "sawtooth", 880, 220, 0.003]],
           boom(S + 1.2, 0.7), [["noise", S + 1.35, 0.5, 0.025, "lowpass", 1200, 300, 0.8]]),
