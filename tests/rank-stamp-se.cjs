@@ -1,4 +1,4 @@
-// C111 normal stamp contract retained; C112 changes S opening only, keeping its ring and SS unchanged.
+// C111 normal / C112 S contracts retained; C113 changes only SS opening, retaining its full arpeggio/shimmer.
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const scope = { Hop: {}, window: { localStorage: { getItem: () => null } } };
 vm.createContext(scope); vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/audio.js'), 'utf8'), scope);
@@ -20,9 +20,21 @@ assert.deepEqual(J(sRank.slice(2)), [
   ['tone', 0.06, 0.7, 0.03, 'triangle', 1318.5, 1318.5, 0.004], ['tone', 0.06, 0.7, 0.02, 'triangle', 1975.5, 1975.5, 0.004],
   ['noise', 0.08, 0.5, 0.015, 'highpass', 6000, 9000, 0.7]
 ], 'S two-note ring and shimmer identity stays exact');
-assert.deepEqual(J(A.fxRecipes.RANK_STAMP_SS), [
-  ['tone', 0, 0.32, 0.1, 'sine', 150, 42, 0.002], ['noise', 0, 0.16, 0.07, 'lowpass', 2800, 400, 0.8],
+assert.deepEqual(J(sRank), [
+  ['tone', 0, 0.3, 0.1, 'triangle', 1450, 680, 0.0015], ['noise', 0, 0.14, 0.07, 'bandpass', 3600, 1250, 0.9],
+  ['tone', 0.06, 0.7, 0.03, 'triangle', 1318.5, 1318.5, 0.004], ['tone', 0.06, 0.7, 0.02, 'triangle', 1975.5, 1975.5, 0.004],
+  ['noise', 0.08, 0.5, 0.015, 'highpass', 6000, 9000, 0.7]
+], 'full c112 S recipe remains exact');
+const ssRank = A.fxRecipes.RANK_STAMP_SS;
+assert.deepEqual(J(ssRank.map(v => [v[0], v[1], v[2]])), [
+  ['tone', 0, 0.32], ['noise', 0, 0.16], ...[0, 1, 2, 3].map(i => ['tone', 0.06 + i * 0.07, 0.8 - i * 0.08]), ['noise', 0.1, 0.8]
+], 'all seven SS starts/durations unchanged');
+assert(Math.abs(Math.max(...ssRank.map(v => v[1] + v[2])) - 0.90) < 1e-9 && ssRank.every(v => v[1] + v[2] <= 0.90 + 1e-9), 'SS full tail remains 0.90s');
+assert(A.peakSum(ssRank) <= 0.235 + 1e-9, 'no larger SS overlap budget');
+assert(ssRank.every(v => v[3] > 0 && Math.min(v[5], v[6]) >= 42), 'never deepen the old SS 42Hz floor');
+assert(ssRank[0][4] === 'triangle' && ssRank[0][5] > ssRank[0][6] && ssRank[0][6] >= 300 && ssRank[0][7] > 0 && ssRank[0][7] <= 0.003 && ssRank[1][4] === 'bandpass' && ssRank[1][6] >= 500, 'comic wood/paper opening, not heavy sine bass');
+assert.deepEqual(J(ssRank.slice(2)), [
   ...[1318.5, 1661.2, 1975.5, 2637].map((f, i) => ['tone', 0.06 + i * 0.07, 0.8 - i * 0.08, 0.025, 'triangle', f, f, 0.004]),
   ['noise', 0.1, 0.8, 0.015, 'highpass', 6000, 10000, 0.7]
-], 'SS recipe untouched by the normal-stamp change');
-console.log('rank-stamp-se PASS: normal/SS exact, S wood-paper opening with original beats/tail/cap and exact S ring');
+], 'all four SS arpeggio tones and highpass shimmer remain exact');
+console.log('rank-stamp-se PASS: normal/S exact, SS comic opening with original beats/tail/cap and exact arpeggio/shimmer');
