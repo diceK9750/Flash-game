@@ -114,7 +114,7 @@ Hop.Audio = {
       // 賢者: magic circle arpeggio -> barrier hum -> crystal impact
       GUARD: [["tone", S + 0.1, 1.0, 0.025, "triangle", 220, 220, 0.3], ["tone", S + 0.1, 1.0, 0.018, "triangle", 330, 330, 0.3]]
         .concat(chime(S + 0.15, [880, 1108.7, 1318.5, 1760, 2217.5, 2637], 0.13, 0.016), boom(S + 1.0, 0.8),
-          [["tone", S + 1.0, 1.2, 0.035, "triangle", 440, 446, 0.02], ["tone", S + 1.0, 1.2, 0.025, "sine", 1760, 1772, 0.01]], chime(S + 1.05, [3520, 2960, 4186], 0.06, 0.014))
+          [["tone", S + 1.0, 1.2, 0.035, "triangle", 440, 446, 0.02], ["tone", S + 1.0, 1.2, 0.025, "triangle", 1760, 1772, 0.01]], chime(S + 1.05, [3520, 2960, 4186], 0.06, 0.014))
     };
     // afterglow tail (rings out through the end of the scene, like the combo explosions)
     const tail = (t, f) => [["tone", t, 1.7, 0.016, "sine", f, f * 1.01, 0.08], ["noise", t, 1.2, 0.012, "lowpass", 1400, 200, 0.7]];
