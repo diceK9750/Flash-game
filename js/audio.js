@@ -72,7 +72,7 @@ Hop.Audio = {
       .concat([["tone", S + 0.15, 1.45, 0.03, "triangle", 220, 330, 0.25], ["tone", S + 0.15, 1.45, 0.018, "triangle", 331, 497, 0.25], // chant drone
         ["noise", S + 0.4, 1.2, 0.012, "highpass", 5000, 8000, 0.7]])                                     // gathering sparkle hiss
       .concat(Array.from({ length: 14 }, (_, i) => hit(S + 0.30 + i * 0.093)).flat())                       // rush x14
-      .concat([["tone", S + 1.60, 0.28, 0.08, "sine", 130, 40, 0.003], ["noise", S + 1.60, 0.3, 0.07, "lowpass", 2600, 300, 0.9], // finisher
+      .concat([["tone", S + 1.60, 0.28, 0.08, "triangle", 130, 40, 0.003], ["noise", S + 1.60, 0.3, 0.07, "lowpass", 2600, 300, 0.9], // finisher
         ["noise", S + 1.64, 0.3, 0.04, "bandpass", 500, 3000, 1.0],                                       // launch whoosh up
         ["tone", S + 1.90, 0.26, 0.04, "sawtooth", 200, 1100, 0.02],                                      // fireball charge
         ["noise", S + 2.15, 0.95, 0.11, "lowpass", 3200, 140, 0.8], ["tone", S + 2.15, 0.7, 0.08, "sine", 95, 28, 0.004], // big explosion
