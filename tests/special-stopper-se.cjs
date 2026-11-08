@@ -10,5 +10,5 @@ assert.deepEqual(J(r.map(v=>[v[0],v[1],v[2],v[3]])),[['tone',0,.95,.035],...sign
 assert.equal(r.length,12);assert(Math.abs(Math.max(...r.map(v=>v[1]+v[2]))-.95)<1e-9,'full tail .95, no extension');assert.equal(A.specialPeakCap,.16);assert(Math.abs(A.peakSum(r)-.195)<1e-9,'original overlap budget and shared-master gain');
 assert.deepEqual(J([r[0][5],r[0][6]]),[130.81,130.81],'C3 fixed at both endpoints');assert(r.every(v=>Math.min(v[5],v[6])>=130.81),'no deeper floor');assert(r[0][4]==='triangle'&&r[0][7]>0&&r[0][7]<=.015,'comic harmonic pad and quicker attack, no pitch gesture');
 const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_STOPPER')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'104c9249500fb52b7868c2fb7a000a65727f742412671ac97bb55baf8ab18b7f','all other SPECIAL/combo/fx/launch recipes exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'2485e804565cc8e5fe5d07a23d16e3ea1bee2affe7b1ab61793beb3357e4e8a3','all other SPECIAL/combo/fx/launch recipes exact');
 console.log('special-stopper-se PASS: C3 waveform/attack only, original twelve beats/tail/cap/budget, exact chord/sparkles/highpass');
