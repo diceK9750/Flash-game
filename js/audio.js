@@ -110,7 +110,7 @@ Hop.Audio = {
       // 遊び人: comic pipe run while spinning -> pop + confetti crackle + whistle
       ANGLE: [0, 1, 2, 3, 4, 5, 6, 7].map(i => ["tone", S + 0.3 + i * 0.11, 0.1, 0.022, "square", [523.3, 659.3, 784, 1046.5, 784, 659.3, 784, 1046.5][i], [523.3, 659.3, 784, 1046.5, 784, 659.3, 784, 1046.5][i], 0.003])
         .concat([["tone", S + 0.3, 0.9, 0.02, "triangle", 300, 900, 0.05]], boom(S + 1.2, 0.6),
-          [["tone", S + 1.2, 0.5, 0.03, "sine", 1400, 2800, 0.01]], Array.from({ length: 10 }, (_, i) => ["noise", S + 1.25 + i * 0.05, 0.04, 0.02, "highpass", 6000 + i * 300, 6000, 0.7])),
+          [["tone", S + 1.2, 0.5, 0.03, "triangle", 1400, 2800, 0.01]], Array.from({ length: 10 }, (_, i) => ["noise", S + 1.25 + i * 0.05, 0.04, 0.02, "highpass", 6000 + i * 300, 6000, 0.7])),
       // 賢者: magic circle arpeggio -> barrier hum -> crystal impact
       GUARD: [["tone", S + 0.1, 1.0, 0.025, "triangle", 220, 220, 0.3], ["tone", S + 0.1, 1.0, 0.018, "sine", 330, 330, 0.3]]
         .concat(chime(S + 0.15, [880, 1108.7, 1318.5, 1760, 2217.5, 2637], 0.13, 0.016), boom(S + 1.0, 0.8),
