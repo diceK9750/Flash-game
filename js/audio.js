@@ -40,7 +40,7 @@ Hop.Audio = {
       ["tone", 0, 0.42, 0.02, "triangle", 587, 575, 0.002], ["tone", 0, 0.26, 0.08, "triangle", 1250, 620, 0.0015],
       ["noise", 0.08, 0.62, 0.06, "bandpass", 380, 3200, 0.8]],
     // 聖光反転 (僧侶): bright major chord with a low pad + twinkling sparkles (grander than the old STOPPER)
-    SPECIAL_STOPPER: [["tone", 0, 0.95, 0.035, "sine", 130.81, 130.81, 0.06]]
+    SPECIAL_STOPPER: [["tone", 0, 0.95, 0.035, "triangle", 130.81, 130.81, 0.008]]
       .concat([523.25, 659.25, 783.99, 1046.5].map((f, i) => ["tone", i * 0.05, 0.9 - i * 0.05, 0.028, "triangle", f, f, 0.04]))
       .concat([2093, 2637, 3136, 2349, 3520, 4186].map((f, i) => ["tone", 0.18 + i * 0.1, 0.16, 0.018, "sine", f, f * 1.01, 0.005]))
       .concat([["noise", 0.15, 0.7, 0.012, "highpass", 6000, 9000, 0.7]]),
