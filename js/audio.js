@@ -52,7 +52,7 @@ Hop.Audio = {
       .concat([["tone", 0.36, 0.14, 0.055, "triangle", 400, 1200, 0.002], ["tone", 0.52, 0.16, 0.055, "triangle", 600, 1800, 0.002],
         ["noise", 0.7, 0.25, 0.03, "highpass", 5000, 7000, 0.7]]),
     // 聖護結界 (賢者): humming barrier "buun" (beating low drone rising) + two bell strikes with inharmonic partials
-    SPECIAL_GUARD: [["tone", 0, 0.75, 0.055, "sine", 110, 220, 0.05], ["tone", 0, 0.75, 0.025, "triangle", 223, 446, 0.05],
+    SPECIAL_GUARD: [["tone", 0, 0.75, 0.055, "triangle", 110, 220, 0.008], ["tone", 0, 0.75, 0.025, "triangle", 223, 446, 0.05],
       ["tone", 0.15, 0.6, 0.03, "sine", 1318.5, 1318.5, 0.003], ["tone", 0.15, 0.45, 0.012, "sine", 3639, 3639, 0.003],
       ["tone", 0.3, 0.6, 0.03, "sine", 1975.5, 1975.5, 0.003], ["tone", 0.3, 0.45, 0.012, "sine", 5452, 5452, 0.003]],
     // 商人: "chirin" coin — two bright strikes with metallic partials, a smaller second coin, a tiny click
