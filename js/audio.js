@@ -185,7 +185,10 @@ Hop.Audio = {
     // Same 0.21 s tail and opening beat; no larger summed peak budget or extra success/impact cue.
     SPECIAL_OPEN: [["tone", 0, 0.045, 0.032, "square", 1450, 700, 0.002], ["tone", 0, 0.03, 0.013, "triangle", 2100, 1600, 0.001],
       ["tone", 0.085, 0.055, 0.047, "triangle", 650, 2500, 0.002], ["tone", 0.14, 0.07, 0.045, "triangle", 2500, 1100, 0.002]],
-    SLIDE_STOP: [["tone", 0, 0.16, 0.05, "sine", 120, 60, 0.002], ["noise", 0, 0.14, 0.035, "lowpass", 1100, 250, 0.7]],
+    // Comic "kyup": a nasal skid bends into a small deflating finish, with a light wooden tick / puff.
+    // Same 0.16 s beat/tail; no real tire squeal, heavier bass, late low note or extra RESULT cue.
+    SLIDE_STOP: [["tone", 0, 0.06, 0.032, "triangle", 820, 430, 0.002], ["tone", 0.06, 0.10, 0.035, "sine", 430, 140, 0.002],
+      ["tone", 0, 0.035, 0.012, "triangle", 1350, 850, 0.001], ["noise", 0, 0.11, 0.011, "bandpass", 1600, 500, 0.8]],
     RANK_STAMP: [["tone", 0, 0.22, 0.09, "sine", 150, 50, 0.002], ["noise", 0, 0.12, 0.06, "lowpass", 2400, 400, 0.8]],
     RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
       ["tone", 0.06, 0.7, 0.03, "triangle", 1318.5, 1318.5, 0.004], ["tone", 0.06, 0.7, 0.02, "triangle", 1975.5, 1975.5, 0.004], ["noise", 0.08, 0.5, 0.015, "highpass", 6000, 9000, 0.7]],

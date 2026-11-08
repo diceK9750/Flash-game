@@ -12,6 +12,15 @@ scope.window = scope; vm.createContext(scope);
 for (const n of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(fs.readFileSync(path.join(root, 'js', n + '.js'), 'utf8'), scope, { filename: n });
 const H = scope.Hop, A = H.Audio, G = H.Graphics, rng = seed => () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
 assert(A.fxRecipes.SLIDE_STOP?.length >= 2); assert(A.peakSum(A.fxRecipes.SLIDE_STOP) <= A.peakSum(A.fxRecipes.RANK_STAMP), 'quieter than the stamp');
+// C106 comic brake: change timbre/pitch only, never prolong the RESULT beat or add a low after-hit.
+const recipe = A.fxRecipes.SLIDE_STOP, tones = recipe.filter(v => v[0] === 'tone');
+assert.equal(Math.min(...recipe.map(v => v[1])), 0, 'same RESULT slide-stop beat');
+assert(Math.abs(Math.max(...recipe.map(v => v[1] + v[2])) - 0.16) < 1e-9, 'same 0.16s tail');
+assert.equal(A.specialPeakCap, 0.16); assert(A.peakSum(recipe) <= 0.085, 'do not raise the old summed-peak budget');
+for (const [type, t, d, peak,, f0, f1, attack] of recipe) { assert(['tone', 'noise'].includes(type) && t >= 0 && d > 0 && t + d <= 0.16 + 1e-9 && peak > 0 && f0 > f1 && f1 >= 60, 'bounded descending gesture, never deeper than the old 60Hz floor'); if (type === 'tone') { assert(attack > 0 && attack < d); if (t > 0) assert(Math.min(f0, f1) >= 120, 'no added late low-bass note'); } }
+const first = tones.find(v => tones.some(w => v !== w && v[6] === w[5] && Math.abs(v[1] + v[2] - w[1]) < 1e-9));
+const finish = tones.find(v => first && v[5] === first[6] && Math.abs(v[1] - first[1] - first[2]) < 1e-9);
+assert(first && finish && first[5] / finish[6] >= 4, 'connected exaggerated comic descent, not merely a quieter old thud');
 // skidDust: 3 arcs, alpha follows skid, deterministic
 { const c = ctx2d(); arcs = 0; G.skidDust(c, 100, 500, 1.234, 0.5); assert.equal(arcs, 3); }
 const played = []; A.play = k => { played.push(k); };
