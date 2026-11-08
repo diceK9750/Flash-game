@@ -83,7 +83,12 @@ Hop.UI = class {
     const unmuted = this.audioWasMuted && !Hop.Audio?.muted; this.audioWasMuted = !!Hop.Audio?.muted;
     // Scene SE track: combo (witch / fighter) or grand solo (cycle 34: GRAND_<type>, short = GRAND_SHORT; no voice).
     const sceneTrack = k => k.solo ? (k.short ? "GRAND_SHORT" : `GRAND_${k.type}`) : `COMBO_${k.type === "BOOST" ? "WITCH" : "FIGHTER"}${k.short ? "_SHORT" : ""}`;
-    if (unmuted && g.combo && g.combo === this.comboSeen) {
+    if (unmuted && g.combo && g.combo === this.comboSeen) this.comboResumePending = g.combo;
+    if (this.comboResumePending && (Hop.Audio?.muted || g.combo !== this.comboResumePending || g.state !== s.FLYING)) this.comboResumePending = null;
+    // unlock() resumes asynchronously after a muted hidden tab. Keep only this scene's request until ready;
+    // use the current scene time, and never restart a preserved track on an ordinary visibility resume.
+    if (this.comboResumePending && Hop.Audio?.context?.state === "running") {
+      this.comboResumePending = null;
       try { Hop.Audio?.resumeCombo?.(sceneTrack(g.combo), g.combo.elapsed, g.combo.rate || 1); } catch { /* SE is optional. */ }
     }
     if (g.combo && g.combo !== this.comboSeen) {
