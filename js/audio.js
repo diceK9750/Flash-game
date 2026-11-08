@@ -126,7 +126,7 @@ Hop.Audio = {
       GRAND_SHORT: [["tone", R, 0.4, 0.03, "triangle", 330, 660, 0.03], ["noise", R + 0.05, 0.4, 0.05, "lowpass", 2400, 160, 0.8]],
       COMBO_WITCH: witch, COMBO_FIGHTER: fighter,
       COMBO_WITCH_SHORT: [["tone", R, 0.3, 0.025, "triangle", 220, 330, 0.08]].concat(hit(R + 0.05)).concat([["noise", R + 0.3, 0.45, 0.06, "lowpass", 2000, 160, 0.8]]),
-      COMBO_FIGHTER_SHORT: [["tone", R, 0.25, 0.03, "triangle", 300, 900, 0.03], ["tone", R + 0.3, 0.4, 0.07, "sine", 105, 34, 0.003], ["noise", R + 0.3, 0.4, 0.06, "lowpass", 2200, 120, 0.8]]
+      COMBO_FIGHTER_SHORT: [["tone", R, 0.25, 0.03, "triangle", 300, 900, 0.03], ["tone", R + 0.3, 0.4, 0.07, "triangle", 105, 34, 0.003], ["noise", R + 0.3, 0.4, 0.06, "lowpass", 2200, 120, 0.8]]
     };
   })(),
   // Launch cut-in impact (truck x hero): comic wooden whack + rubber recoil; MAX adds a second elastic bend.
