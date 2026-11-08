@@ -86,7 +86,7 @@ Hop.Audio = {
         ["tone", S + 1.22, 0.18, 0.07, "triangle", 95, 38, 0.004], ["noise", S + 1.22, 0.2, 0.05, "lowpass", 900, 150, 0.8], // thud into the ground
         ["noise", S + 1.25, 0.5, 0.05, "lowpass", 120, 260, 0.9], ["tone", S + 1.25, 0.5, 0.045, "sine", 42, 58, 0.15], // rumble (ゴゴゴ…)
         ["noise", S + 1.70, 0.22, 0.06, "bandpass", 400, 3400, 1.1],                                        // whoosh up
-        ["tone", S + 1.90, 0.85, 0.12, "sine", 110, 26, 0.003], ["noise", S + 1.90, 0.9, 0.1, "lowpass", 3000, 100, 0.8], // massive impact
+        ["tone", S + 1.90, 0.85, 0.12, "triangle", 110, 26, 0.003], ["noise", S + 1.90, 0.9, 0.1, "lowpass", 3000, 100, 0.8], // massive impact
         ["noise", S + 1.90, 0.08, 0.06, "highpass", 2500, 2500, 0.7], ["tone", S + 1.90, 0.3, 0.04, "sawtooth", 70, 40, 0.003],
         ["noise", S + 2.02, 0.35, 0.045, "bandpass", 500, 3000, 1.0]]);                                     // hero launched up
     // Grand solo SPECIAL scenes (2026-10-17 cycle 34): times from the success, scene from S; climax = config grandClimax.
