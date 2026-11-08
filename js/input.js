@@ -16,7 +16,10 @@ Hop.bindInput = function (game, ui) {
   document.getElementById("se-toggle").addEventListener("click", () => {
     Hop.Audio.setMuted(!Hop.Audio.muted);
     try { Hop.Voice?.syncMute(); } catch { /* Optional voice must never affect the mute control. */ }
-    if (!Hop.Audio.muted) Hop.Audio.unlock();
+    if (!Hop.Audio.muted) {
+      Hop.Audio.unlock();
+      try { Hop.Voice?.unlock(game.debug); } catch { /* Optional voice loading must never affect the mute control. */ }
+    }
     ui.update();
   });
   // DEBUG menu: D key or the DEBUG button opens it; number keys (merchants Q W E R) or a click pick a kind;
