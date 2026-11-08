@@ -203,6 +203,14 @@ for (const seed of [2, 9, 21, 33]) {
   for (const kind of ['CHAIN', 'MILESTONE', 'MILESTONE_BIG', 'NEW_RECORD', 'RANK_STAMP', 'RANK_STAMP_S', 'RANK_STAMP_SS']) {
     assert(A.fxRecipes[kind]?.length >= 2, kind); assert(A.peakSum(A.fxRecipes[kind]) > 0);
   }
+  // C107: two bouncy comic syllables, not a held chord / extra-note victory fanfare.
+  const mile = A.fxRecipes.MILESTONE;
+  assert.equal(mile.length, 2, 'keep exactly two syllables');
+  assert.deepEqual(J(mile.map(v => [v[0], v[1], v[2]])), [['tone', 0, 0.12], ['tone', 0.07, 0.18]], 'same onsets and 0.25s tail');
+  assert.equal(A.specialPeakCap, 0.16); assert(A.peakSum(mile) <= 0.08, 'original overlap budget');
+  assert(mile.every(v => ['triangle', 'sine'].includes(v[4]) && v[3] > 0 && v[7] > 0 && v[7] < v[2] && Math.min(v[5], v[6]) >= 500 && Math.max(v[5], v[6]) <= 2000), 'light, short, bounded tones only');
+  assert(mile[0][6] / mile[0][5] >= 1.8 && mile[1][5] / mile[1][6] >= 1.8, 'opposing exaggerated bounce bends, not static fanfare notes');
+  assert(mile[0][4] !== mile[1][4], 'contrasting pin / softer pon timbres');
   const made = [];
   const param = () => ({ setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime(v) { assert(Number.isFinite(v) && v > 0); } });
   const node = () => ({ connect() {}, disconnect() {}, gain: param(), frequency: param(), Q: param(), start(t) { made.push(t); }, stop() {} });
