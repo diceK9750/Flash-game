@@ -147,8 +147,9 @@ Hop.Audio = {
   })(),
   // Tempo feedback SE (same voice format; no files, no voices). CHAIN / MILESTONE are pitched per event (opts.pitch).
   fxRecipes: {
-    // hit chain "2HIT! 3HIT!": a punchy tick + a bright blip whose pitch climbs with the chain (opts.pitch)
-    CHAIN: [["noise", 0, 0.05, 0.05, "bandpass", 2200, 1400, 1.2], ["tone", 0, 0.14, 0.06, "square", 660, 990, 0.003], ["tone", 0.05, 0.16, 0.035, "sine", 1320, 1320, 0.004]],
+    // Comic "pok-pyong": a light wooden tick dips, then a round elastic reply springs upward.
+    // Keep both beats / 0.21 s tail; opts.pitch still raises every tone and filter with the HIT chain.
+    CHAIN: [["noise", 0, 0.05, 0.02, "bandpass", 1800, 900, 1.1], ["tone", 0, 0.14, 0.045, "triangle", 900, 450, 0.0015], ["tone", 0.05, 0.16, 0.035, "sine", 700, 1400, 0.003]],
     // every 100 m: a light two-note chime
     // Comic springy "pin-pon": a quick upward bend answers with a softer falling bubble, not a fanfare.
     // Keep both beats, the 0.25 s tail and the original 0.08 overlapping peak budget.
