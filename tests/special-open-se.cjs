@@ -7,6 +7,17 @@ const sc={document:{getElementById:element,addEventListener(){}},requestAnimatio
 for(const n of['config','physics','game','sprites','graphics','ui','audio','voice','input'])vm.runInContext(fs.readFileSync(path.join(root,'js',n+'.js'),'utf8'),sc,{filename:n});
 const H=sc.Hop,A=H.Audio,rng=s=>()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296);
 assert.ok(A.peakSum(A.fxRecipes.SPECIAL_OPEN)<A.peakSum(A.fxRecipes.RANK_STAMP),'quieter than RANK_STAMP');
+// Comic timbre contract: preserve the opening beat / total tail, not the old fixed-pitch pi-pin.
+const recipe=A.fxRecipes.SPECIAL_OPEN,tones=recipe.filter(v=>v[0]==='tone');
+assert.equal(Math.min(...recipe.map(v=>v[1])),0,'same window-opening beat');
+assert(Math.abs(Math.max(...recipe.map(v=>v[1]+v[2]))-0.21)<1e-9,'same 0.21s recipe tail');
+assert.equal(A.specialPeakCap,0.16,'do not raise the shared cap');
+assert(A.peakSum(recipe)<=0.05,'do not raise the former summed voice-peak budget');
+const lift=tones.find(v=>v[6]/v[5]>=3),rebound=tones.find(v=>lift&&Math.abs(v[1]-lift[1]-lift[2])<1e-9&&v[5]===lift[6]&&v[6]<v[5]);
+assert(lift&&rebound,'exaggerated rising squeak bends back down');
+const first=tones.filter(v=>v[1]===0);assert(first.some(v=>v[6]<v[5]),'short descending anticipation');
+assert(lift[1]-Math.max(...first.map(v=>v[1]+v[2]))>=0.03,'a real comic pause before the reply');
+for(const [type,t,d,peak,,f0,f1,attack]of recipe)assert(type==='tone'&&t>=0&&d>0&&peak>0&&f0>0&&f1>0&&attack>0&&attack<d,'valid short synthesized tones');
 let sounds=[];A.play=k=>sounds.push(k);A.playCombo=()=>{};A.stopCombo=()=>{};H.Voice.play=()=>{};
 let windows=0,merchant=0;
 function play(seed,kind,withUi){const g=new H.Game(rng(seed));g.tempoEnabled=true;g.launchCutinEnabled=true;if(kind)g.setDebugKind(kind);const ui=withUi?new H.UI(g,element('canvas')):null;
