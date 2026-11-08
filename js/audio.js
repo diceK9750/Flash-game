@@ -83,7 +83,7 @@ Hop.Audio = {
         .concat([1568, 2093, 2637].map((f, i) => ["tone", S + 0.45 + i * 0.12, 0.2, 0.018, "sine", f, f * 1.02, 0.004])))
       .concat([["tone", S + 0.85, 0.22, 0.03, "triangle", 180, 360, 0.05],                                  // crouch (charge)
         ["noise", S + 1.05, 0.2, 0.05, "bandpass", 2600, 400, 1.0],                                         // whoosh down
-        ["tone", S + 1.22, 0.18, 0.07, "sine", 95, 38, 0.004], ["noise", S + 1.22, 0.2, 0.05, "lowpass", 900, 150, 0.8], // thud into the ground
+        ["tone", S + 1.22, 0.18, 0.07, "triangle", 95, 38, 0.004], ["noise", S + 1.22, 0.2, 0.05, "lowpass", 900, 150, 0.8], // thud into the ground
         ["noise", S + 1.25, 0.5, 0.05, "lowpass", 120, 260, 0.9], ["tone", S + 1.25, 0.5, 0.045, "sine", 42, 58, 0.15], // rumble (ゴゴゴ…)
         ["noise", S + 1.70, 0.22, 0.06, "bandpass", 400, 3400, 1.1],                                        // whoosh up
         ["tone", S + 1.90, 0.85, 0.12, "sine", 110, 26, 0.003], ["noise", S + 1.90, 0.9, 0.1, "lowpass", 3000, 100, 0.8], // massive impact
