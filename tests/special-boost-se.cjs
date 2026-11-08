@@ -1,3 +1,4 @@
+// C116: only the authorized DASH impact snapshot changes; every existing assertion is retained.
 // C115 refreshes only the authorized BOUNCE snapshot; all original BOOST assertions remain.
 // C114: change only the BOOST opening color; retain every scene beat and signature.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
@@ -9,5 +10,5 @@ assert(r.every(v=>Math.min(v[5],v[6])>=45),'no deeper floor');
 assert(r[0][4]==='bandpass'&&r[0][6]>=500&&r[1][4]==='triangle'&&r[1][5]>r[1][6]&&r[1][6]>=300,'light comic burst, not low sine explosion');
 assert.deepEqual(J(r.slice(2)),[['tone',.06,.55,.045,'sawtooth',180,1500,.03],['tone',.46,.30,.03,'sine',1760,2350,.01]],'rising sweep and sparkle tuple-exact');
 const protectedTables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_BOOST')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(protectedTables)).digest('hex'),'5dd1eb1139e1377483ce84b4be286bb86174a4bb7829d1ca797995d84b306a95','every other SPECIAL/combo/fx/launch recipe exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(protectedTables)).digest('hex'),'814edb8078c9e053325058fa6a340a6601a009f4b550dace4eea752a48b40014','every other SPECIAL/combo/fx/launch recipe exact');
 console.log('special-boost-se PASS: comic opening, original four beats/tail/cap/budget, exact sweep/sparkle and all other recipes');

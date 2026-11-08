@@ -35,9 +35,9 @@ Hop.Audio = {
     // 巨神昇天拳 (武闘家): three identical comic paper/wood strikes; original two rising hops retained
     SPECIAL_BOUNCE: [0, 0.09, 0.18].flatMap(t => [["noise", t, 0.06, 0.07, "bandpass", 2600, 1200, 1.1], ["tone", t, 0.09, 0.06, "triangle", 980, 490, 0.0015]])
       .concat([["tone", 0.3, 0.26, 0.035, "square", 300, 900, 0.01], ["tone", 0.46, 0.3, 0.035, "square", 450, 1350, 0.01]]),
-    // 戦陣突破 (戦士): heavy metallic clang (inharmonic partials) + low impact + wind rush
+    // 戦陣突破 (戦士): original metallic clang + comic midrange impact + original wind rush
     SPECIAL_DASH: [["tone", 0, 0.55, 0.03, "triangle", 220, 214, 0.002], ["tone", 0, 0.5, 0.025, "square", 331, 322, 0.002],
-      ["tone", 0, 0.42, 0.02, "triangle", 587, 575, 0.002], ["tone", 0, 0.26, 0.08, "sine", 95, 38, 0.003],
+      ["tone", 0, 0.42, 0.02, "triangle", 587, 575, 0.002], ["tone", 0, 0.26, 0.08, "triangle", 1250, 620, 0.0015],
       ["noise", 0.08, 0.62, 0.06, "bandpass", 380, 3200, 0.8]],
     // 聖光反転 (僧侶): bright major chord with a low pad + twinkling sparkles (grander than the old STOPPER)
     SPECIAL_STOPPER: [["tone", 0, 0.95, 0.035, "sine", 130.81, 130.81, 0.06]]
