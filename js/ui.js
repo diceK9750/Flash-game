@@ -94,6 +94,7 @@ Hop.UI = class {
     if (g.combo && g.combo !== this.comboSeen) {
       this.comboSeen = g.combo;
       Hop.Audio?.playCombo?.(sceneTrack(g.combo), g.combo.elapsed, g.combo.rate || 1);
+      if (!Hop.Audio?.muted && Hop.Audio?.context?.state === "suspended") this.comboResumePending = g.combo;
       this.comboFinishVoicePlayed = !!g.combo.solo;
       const kind = g.combo.type === "BOOST" ? "witch" : "fighter";
       if (!g.combo.solo) {

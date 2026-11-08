@@ -54,14 +54,14 @@ const settle = () => new Promise(resolve=>setImmediate(resolve));
     if(action==='remute') h.click();
     if(action==='skip') {g.skipCombo();ui.update();}
     if(action==='retry') {g.finish();g.act();ui.update();}
-    if(action==='replace') {g.combo={...scene};ui.update();}
+    if(action==='replace') {g.combo={...scene,solo:true,type:'DASH'};ui.update();}
     const snapshot=JSON.stringify(g);
     h.finish(); await settle(); ui.update();
     assert.equal(JSON.stringify(g),snapshot,'audio readiness never changes game state');
-    if(action==='resume') {
+    if(action==='resume' || action==='replace') {
       assert(ctx.starts.length>0,'remaining scene voices are scheduled after async resume');
       assert(ctx.starts.every(t=>t>=ctx.currentTime-1e-9),'past cues are not replayed');
-      const recipe=A.comboRecipes.COMBO_WITCH;
+      const recipe=A.comboRecipes[action==='replace'?'GRAND_DASH':'COMBO_WITCH'];
       assert.equal(ctx.starts.length,recipe.filter(v=>v[1]>=1.8-1e-9).length,'uses latest elapsed time');
       const count=ctx.starts.length; ui.update(); assert.equal(ctx.starts.length,count,'resumes only once');
     } else assert.equal(ctx.starts.length,0,action+' cancels stale resume');
