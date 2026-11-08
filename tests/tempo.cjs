@@ -211,6 +211,14 @@ for (const seed of [2, 9, 21, 33]) {
   assert(mile.every(v => ['triangle', 'sine'].includes(v[4]) && v[3] > 0 && v[7] > 0 && v[7] < v[2] && Math.min(v[5], v[6]) >= 500 && Math.max(v[5], v[6]) <= 2000), 'light, short, bounded tones only');
   assert(mile[0][6] / mile[0][5] >= 1.8 && mile[1][5] / mile[1][6] >= 1.8, 'opposing exaggerated bounce bends, not static fanfare notes');
   assert(mile[0][4] !== mile[1][4], 'contrasting pin / softer pon timbres');
+  // C109: four increasingly high cartoon springs, not a static major-chord victory fanfare.
+  const big = A.fxRecipes.MILESTONE_BIG, steps = big.slice(0, 4);
+  assert.equal(big.length, 6, 'retain four steps and two light tail sources');
+  steps.forEach((v, i) => { assert.equal(v[0], 'tone'); assert(Math.abs(v[1] - i * 0.07) < 1e-9 && Math.abs(v[2] - (0.35 - i * 0.04)) < 1e-9, 'original four beats and durations'); assert(['triangle', 'sine'].includes(v[4]) && v[6] / v[5] >= 1.6 && v[5] >= 500, 'light bending spring, no static square fanfare or bass'); if (i) assert(v[5] > steps[i - 1][5] && v[6] > steps[i - 1][6], 'four-step ascending identity'); });
+  assert(Math.abs(Math.max(...big.map(v => v[1] + v[2])) - 0.68) < 1e-9 && big.every(v => v[1] >= 0 && v[2] > 0 && v[1] + v[2] <= 0.68 + 1e-9), 'same 0.68s tail, never extend the celebration');
+  assert.deepEqual(J(big.slice(4).map(v => [v[0], v[1], v[2]])), [['noise', 0.2, 0.4], ['tone', 0.28, 0.4]], 'same tail-source beats');
+  assert.equal(A.specialPeakCap, 0.16); assert(A.peakSum(big) <= 0.205, 'old overlap budget');
+  assert(big.filter(v => v[0] === 'tone').length > mile.length && Math.max(...big.map(v => v[1] + v[2])) > Math.max(...mile.map(v => v[1] + v[2])), 'larger, richer identity than normal MILESTONE');
   // C108: wooden comic dip / spring reply; keep chain count transposition and timing intact.
   const chain = A.fxRecipes.CHAIN, chainTones = chain.filter(v => v[0] === 'tone');
   assert.deepEqual(J(chainTones.map(v => [v[1], v[2]])), [[0, 0.14], [0.05, 0.16]], 'unchanged two tone beats / 0.21s tail');

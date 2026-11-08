@@ -154,9 +154,10 @@ Hop.Audio = {
     // Comic springy "pin-pon": a quick upward bend answers with a softer falling bubble, not a fanfare.
     // Keep both beats, the 0.25 s tail and the original 0.08 overlapping peak budget.
     MILESTONE: [["tone", 0, 0.12, 0.04, "triangle", 740, 1480, 0.003], ["tone", 0.07, 0.18, 0.04, "sine", 1220, 610, 0.003]],
-    // every 500 m: rising fanfare arpeggio + shimmer
-    MILESTONE_BIG: [523.25, 659.25, 783.99, 1046.5].map((f, i) => ["tone", i * 0.07, 0.35 - i * 0.04, 0.04, "square", f, f, 0.005])
-      .concat([["noise", 0.2, 0.4, 0.015, "highpass", 6000, 9000, 0.7], ["tone", 0.28, 0.4, 0.03, "sine", 2093, 2093, 0.01]]),
+    // Every 500 m: four springy cartoon steps, then an airy "pyop" instead of a held heroic fanfare.
+    // Same six sources / beats / 0.68 s tail; richer than the small two-note MILESTONE, never louder by budget.
+    MILESTONE_BIG: [560, 760, 1030, 1390].map((f, i) => ["tone", i * 0.07, 0.35 - i * 0.04, 0.038, i % 2 ? "sine" : "triangle", f, f * 1.8, 0.003])
+      .concat([["noise", 0.2, 0.4, 0.012, "bandpass", 3000, 1300, 0.8], ["tone", 0.28, 0.4, 0.026, "sine", 2500, 1250, 0.006]]),
     // passing the best distance in flight
     NEW_RECORD: [783.99, 987.77, 1174.66, 1567.98].map((f, i) => ["tone", i * 0.09, 0.3, 0.045, "triangle", f, f * 1.005, 0.006])
       .concat([["noise", 0.3, 0.6, 0.02, "highpass", 5000, 8000, 0.7], ["tone", 0.3, 0.6, 0.03, "sine", 3136, 3200, 0.01]]),
