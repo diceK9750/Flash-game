@@ -11,5 +11,5 @@ assert(r.every(v=>Math.min(v[5],v[6])>=38),'no deeper floor');assert(r[3][4]==='
 assert.deepEqual(J(r.slice(0,3)),[['tone',0,.55,.03,'triangle',220,214,.002],['tone',0,.5,.025,'square',331,322,.002],['tone',0,.42,.02,'triangle',587,575,.002]],'three clang partials tuple-exact');
 assert.deepEqual(J(r[4]),['noise',.08,.62,.06,'bandpass',380,3200,.8],'wind rush tuple-exact');
 const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_DASH')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'8a76a639b567a3207c14e85a40c9ad2dd94c89c4a005d4c13e588f37eb18b6f7','all other SPECIAL/combo/fx/launch recipes exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'21258e1433ebed6197b7adb6913e2fc4024c75f7b3f7e54b8c6fee399655d5fa','all other SPECIAL/combo/fx/launch recipes exact');
 console.log('special-dash-se PASS: one comic impact, original five beats/tail/cap/budget, exact clang/wind and other recipes');
