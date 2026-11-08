@@ -177,9 +177,10 @@ Hop.Audio = {
     // A tiny double rubber squeak, separated by a gap: readiness, not a second dive / landing.
     DOWN_READY: [["tone", 0, 0.055, 0.018, "triangle", 900, 1500, 0.002],
       ["tone", 0.075, 0.095, 0.016, "triangle", 1550, 680, 0.002]],
-    // GUARD SPECIAL end (2026-10-17 cycle 29): soft falling shimmer (bell partials gliding down), quieter than RANK_STAMP.
-    GUARD_END: [["tone", 0, 0.32, 0.03, "sine", 1975.5, 1318.5, 0.004], ["tone", 0.04, 0.3, 0.015, "sine", 3951, 2637, 0.004],
-      ["tone", 0, 0.28, 0.025, "triangle", 440, 220, 0.01]],
+    // GUARD end: a little air leak and a comic deflating whistle, not a solemn bell / success jingle.
+    // Same opening beat and 0.34 s tail; both whistle legs keep falling as the shield shrivels away.
+    GUARD_END: [["tone", 0, 0.21, 0.028, "sine", 1450, 300, 0.004], ["tone", 0.21, 0.13, 0.023, "sine", 300, 95, 0.003],
+      ["tone", 0.04, 0.30, 0.010, "triangle", 720, 125, 0.003], ["noise", 0, 0.20, 0.012, "bandpass", 2100, 400, 1.1]],
     // SPECIAL window open: comic "kyu...pyoin!" — a short knock/squeak, a gap, then an elastic pitch overshoot.
     // Same 0.21 s tail and opening beat; no larger summed peak budget or extra success/impact cue.
     SPECIAL_OPEN: [["tone", 0, 0.045, 0.032, "square", 1450, 700, 0.002], ["tone", 0, 0.03, 0.013, "triangle", 2100, 1600, 0.001],

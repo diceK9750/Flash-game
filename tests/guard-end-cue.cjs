@@ -8,6 +8,15 @@ for(const n of['config','physics','game','sprites','graphics','ui','audio','voic
 const H=sc.Hop,G=H.Graphics,A=H.Audio,rng=s=>()=>((s=(Math.imul(s,1664525)+1013904223)>>>0)/4294967296);
 let sounds=[];A.play=k=>sounds.push(k);A.playCombo=()=>{};A.stopCombo=()=>{};H.Voice.play=()=>{};
 assert.ok(A.peakSum(A.fxRecipes.GUARD_END)<A.peakSum(A.fxRecipes.RANK_STAMP),'quieter than RANK_STAMP');
+// Comic deflation changes timbre only: the shield still ends on exactly its existing beat.
+const recipe=A.fxRecipes.GUARD_END,whistle=recipe.filter(v=>v[0]==='tone'&&v[4]==='sine');
+assert.equal(Math.min(...recipe.map(v=>v[1])),0,'same in-flight end beat');
+assert(Math.abs(Math.max(...recipe.map(v=>v[1]+v[2]))-0.34)<1e-9,'same 0.34s tail');
+assert.equal(A.specialPeakCap,0.16);assert(A.peakSum(recipe)<=0.07,'do not raise the former voice-peak budget');
+assert.equal(whistle.length,2);assert(whistle[0][5]/whistle[1][6]>=12,'exaggerated deflation, not a falling bell interval');
+assert.equal(whistle[0][6],whistle[1][5]);assert(Math.abs(whistle[0][1]+whistle[0][2]-whistle[1][1])<1e-9,'continuous downward pitch bend');
+for(const [type,t,d,peak,,f0,f1,attack]of recipe){assert(['tone','noise'].includes(type)&&t>=0&&d>0&&peak>0&&f0>f1&&f1>=80,'all components descend, no reward upsweep or sub-bass');if(type==='tone')assert(attack>0&&attack<d);}
+assert(recipe.some(v=>v[0]==='noise'&&v[2]>=0.12&&v[3]<=0.02),'a quiet leak, not an impact burst');
 let curG=null,curUi=null,draws=0;const gc=G.guardEndCue;G.guardEndCue=function(ctx,x,y,age){if(age>=0&&age<0.45){draws++;assert.equal(curG.state,'FLYING');}return gc.apply(this,arguments);};
 let ends=0,cues=0;
 for(const [seed,kind] of [...Array.from({length:300},(_,i)=>[i+1,null]),...Array.from({length:40},(_,i)=>[1000+i,'guard'])]){
