@@ -211,6 +211,14 @@ for (const seed of [2, 9, 21, 33]) {
   assert(mile.every(v => ['triangle', 'sine'].includes(v[4]) && v[3] > 0 && v[7] > 0 && v[7] < v[2] && Math.min(v[5], v[6]) >= 500 && Math.max(v[5], v[6]) <= 2000), 'light, short, bounded tones only');
   assert(mile[0][6] / mile[0][5] >= 1.8 && mile[1][5] / mile[1][6] >= 1.8, 'opposing exaggerated bounce bends, not static fanfare notes');
   assert(mile[0][4] !== mile[1][4], 'contrasting pin / softer pon timbres');
+  // C110: four ascending-register surprise chirps; FULL tail includes both 0.3..0.90s sources.
+  const record = A.fxRecipes.NEW_RECORD, chirps = record.slice(0, 4);
+  assert.equal(record.length, 6, 'same four primary notes and two tail sources');
+  chirps.forEach((v, i) => { assert.equal(v[0], 'tone'); assert(Math.abs(v[1] - i * 0.09) < 1e-9 && v[2] === 0.3, 'original four onsets/durations'); assert(['sine', 'triangle'].includes(v[4]) && v[5] / v[6] >= 1.4 && v[6] >= 700, 'light bending surprise, not static heroic triad or bass'); if (i) assert(v[5] > chirps[i - 1][5] && v[6] > chirps[i - 1][6], 'four ascending registers remain'); });
+  assert.deepEqual(J(record.slice(4).map(v => [v[0], v[1], v[2]])), [['noise', 0.3, 0.6], ['tone', 0.3, 0.6]], 'both tail sources still start at 0.3');
+  assert(Math.abs(Math.max(...record.map(v => v[1] + v[2])) - 0.90) < 1e-9 && record.every(v => v[1] >= 0 && v[2] > 0 && v[1] + v[2] <= 0.90 + 1e-9), 'whole recipe ends at 0.90, not 0.57, never extend it');
+  assert.equal(A.specialPeakCap, 0.16); assert(A.peakSum(record) <= 0.185, 'old maximum simultaneous peak budget');
+  assert(record.slice(4).every(v => v[5] > v[6]), 'falling airy surprise tail, not sustained sports shimmer');
   // C109: four increasingly high cartoon springs, not a static major-chord victory fanfare.
   const big = A.fxRecipes.MILESTONE_BIG, steps = big.slice(0, 4);
   assert.equal(big.length, 6, 'retain four steps and two light tail sources');
