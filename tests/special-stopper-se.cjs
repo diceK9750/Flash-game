@@ -1,3 +1,4 @@
+// C118: authorized BRAKE waveform/attack snapshot refresh only; every existing assertion retained.
 // C117: C3 pad waveform/attack only; exact twelve beats, chord, sparkles and shimmer.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const s={Hop:{},window:{localStorage:{getItem:()=>null}}};vm.createContext(s);vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/audio.js'),'utf8'),s);const A=s.Hop.Audio,r=A.specialRecipes.SPECIAL_STOPPER,J=x=>JSON.parse(JSON.stringify(x));
@@ -7,5 +8,5 @@ assert.deepEqual(J(r.map(v=>[v[0],v[1],v[2],v[3]])),[['tone',0,.95,.035],...sign
 assert.equal(r.length,12);assert(Math.abs(Math.max(...r.map(v=>v[1]+v[2]))-.95)<1e-9,'full tail .95, no extension');assert.equal(A.specialPeakCap,.16);assert(Math.abs(A.peakSum(r)-.195)<1e-9,'original overlap budget and shared-master gain');
 assert.deepEqual(J([r[0][5],r[0][6]]),[130.81,130.81],'C3 fixed at both endpoints');assert(r.every(v=>Math.min(v[5],v[6])>=130.81),'no deeper floor');assert(r[0][4]==='triangle'&&r[0][7]>0&&r[0][7]<=.015,'comic harmonic pad and quicker attack, no pitch gesture');
 const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_STOPPER')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'5fa0d5363ff6059539155dbe40522f1e43de4cba932aa3035bdf58c447435e62','all other SPECIAL/combo/fx/launch recipes exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'7e0dcdf97a9f0c1ea3424dabed23a349df587b2bfd36d52e84cfeade96cf2cb8','all other SPECIAL/combo/fx/launch recipes exact');
 console.log('special-stopper-se PASS: C3 waveform/attack only, original twelve beats/tail/cap/budget, exact chord/sparkles/highpass');

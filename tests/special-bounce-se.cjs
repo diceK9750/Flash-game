@@ -1,3 +1,4 @@
+// C118: authorized BRAKE waveform/attack snapshot refresh only; every existing assertion retained.
 // C117: authorized STOPPER waveform/attack snapshot refresh only; every existing assertion retained.
 // C116: only the authorized DASH impact snapshot changes; every existing assertion is retained.
 // C115: three identical comic strikes, original two hops, no scene retiming.
@@ -10,5 +11,5 @@ for(const i of [2,4])for(const n of [0,1])assert.deepEqual(J(r[i+n].slice(2)),J(
 assert(r[0][4]==='bandpass'&&r[0][6]>=800&&r[1][4]==='triangle'&&r[1][5]>r[1][6]&&r[1][6]>=300,'light midrange paper/wood strikes, not sine thuds');
 assert.deepEqual(J(r.slice(6)),[['tone',.3,.26,.035,'square',300,900,.01],['tone',.46,.3,.035,'square',450,1350,.01]],'two rising hops tuple-exact');
 const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_BOUNCE')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'91a16c10095dd7e289de925344567e46faca0117bfd7f67a46c0c59cc81195c5','all other SPECIAL/combo/fx/launch recipes exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'c9fa461eb4aa9894daf72c8e5ab67204a7e1c0d07568cb2e04002d447ece6f47','all other SPECIAL/combo/fx/launch recipes exact');
 console.log('special-bounce-se PASS: three identical comic strikes, eight original beats, tail/cap/budget, exact hops and other recipes');

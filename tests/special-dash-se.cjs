@@ -1,3 +1,4 @@
+// C118: authorized BRAKE waveform/attack snapshot refresh only; every existing assertion retained.
 // C117: authorized STOPPER waveform/attack snapshot refresh only; every existing assertion retained.
 // C116: one comic impact; original clang triplet and wind, all scene timing retained.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
@@ -8,5 +9,5 @@ assert(r.every(v=>Math.min(v[5],v[6])>=38),'no deeper floor');assert(r[3][4]==='
 assert.deepEqual(J(r.slice(0,3)),[['tone',0,.55,.03,'triangle',220,214,.002],['tone',0,.5,.025,'square',331,322,.002],['tone',0,.42,.02,'triangle',587,575,.002]],'three clang partials tuple-exact');
 assert.deepEqual(J(r[4]),['noise',.08,.62,.06,'bandpass',380,3200,.8],'wind rush tuple-exact');
 const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_DASH')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'3c781ca84b0d63968356d993353e700946aa8f96d4a83da4a363978cb76e0183','all other SPECIAL/combo/fx/launch recipes exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'ea14a34def07b7e40b9d26c24dbea02735863bda6d88207b0be407298bee8a27','all other SPECIAL/combo/fx/launch recipes exact');
 console.log('special-dash-se PASS: one comic impact, original five beats/tail/cap/budget, exact clang/wind and other recipes');

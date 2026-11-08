@@ -45,7 +45,7 @@ Hop.Audio = {
       .concat([2093, 2637, 3136, 2349, 3520, 4186].map((f, i) => ["tone", 0.18 + i * 0.1, 0.16, 0.018, "sine", f, f * 1.01, 0.005]))
       .concat([["noise", 0.15, 0.7, 0.012, "highpass", 6000, 9000, 0.7]]),
     // 影すり抜け (盗賊): low "hyun" whoosh sliding down + a soft tick as the shadow passes
-    SPECIAL_BRAKE: [["noise", 0, 0.5, 0.07, "bandpass", 2600, 240, 2.2], ["tone", 0, 0.46, 0.05, "sine", 720, 105, 0.02],
+    SPECIAL_BRAKE: [["noise", 0, 0.5, 0.07, "bandpass", 2600, 240, 2.2], ["tone", 0, 0.46, 0.05, "triangle", 720, 105, 0.004],
       ["tone", 0.5, 0.06, 0.03, "square", 150, 120, 0.002]],
     // 水平曲芸 (遊び人): snare-ish drum roll, two comic "pyon" boings, a light cymbal tap
     SPECIAL_ANGLE: Array.from({ length: 8 }, (_, i) => ["noise", i * 0.04, 0.035, 0.03 + i * 0.004, "highpass", 1500, 1500, 0.7])
