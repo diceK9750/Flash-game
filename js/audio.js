@@ -198,7 +198,9 @@ Hop.Audio = {
     // Comic "pashi!": a crisp wooden stamp and a light paper snap, not a deeper victory thud.
     // Same simultaneous beat / 0.22 s tail; S and SS retain their separate celebration recipes.
     RANK_STAMP: [["tone", 0, 0.22, 0.075, "triangle", 1350, 650, 0.0015], ["noise", 0, 0.12, 0.045, "bandpass", 3400, 1200, 0.9]],
-    RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "sine", 150, 45, 0.002], ["noise", 0, 0.14, 0.07, "lowpass", 2600, 400, 0.8],
+    // S keeps its two-note ring / shimmer exactly; only the opening becomes a comic wood-and-paper "pashi".
+    // Same amplitudes and 0.235 overlap budget preserve the shared-master gain of that S signature.
+    RANK_STAMP_S: [["tone", 0, 0.3, 0.1, "triangle", 1450, 680, 0.0015], ["noise", 0, 0.14, 0.07, "bandpass", 3600, 1250, 0.9],
       ["tone", 0.06, 0.7, 0.03, "triangle", 1318.5, 1318.5, 0.004], ["tone", 0.06, 0.7, 0.02, "triangle", 1975.5, 1975.5, 0.004], ["noise", 0.08, 0.5, 0.015, "highpass", 6000, 9000, 0.7]],
     // SS / SSS: the S stamp plus a rising major arpeggio and a longer shimmer (same format, scaled by specialPeakCap)
     RANK_STAMP_SS: [["tone", 0, 0.32, 0.1, "sine", 150, 42, 0.002], ["noise", 0, 0.16, 0.07, "lowpass", 2800, 400, 0.8],
