@@ -211,12 +211,24 @@ for (const seed of [2, 9, 21, 33]) {
   assert(mile.every(v => ['triangle', 'sine'].includes(v[4]) && v[3] > 0 && v[7] > 0 && v[7] < v[2] && Math.min(v[5], v[6]) >= 500 && Math.max(v[5], v[6]) <= 2000), 'light, short, bounded tones only');
   assert(mile[0][6] / mile[0][5] >= 1.8 && mile[1][5] / mile[1][6] >= 1.8, 'opposing exaggerated bounce bends, not static fanfare notes');
   assert(mile[0][4] !== mile[1][4], 'contrasting pin / softer pon timbres');
-  const made = [];
-  const param = () => ({ setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime(v) { assert(Number.isFinite(v) && v > 0); } });
-  const node = () => ({ connect() {}, disconnect() {}, gain: param(), frequency: param(), Q: param(), start(t) { made.push(t); }, stop() {} });
+  // C108: wooden comic dip / spring reply; keep chain count transposition and timing intact.
+  const chain = A.fxRecipes.CHAIN, chainTones = chain.filter(v => v[0] === 'tone');
+  assert.deepEqual(J(chainTones.map(v => [v[1], v[2]])), [[0, 0.14], [0.05, 0.16]], 'unchanged two tone beats / 0.21s tail');
+  assert(chain.every(v => v[1] >= 0 && v[1] + v[2] <= 0.21 + 1e-9));
+  assert.equal(A.specialPeakCap, 0.16); assert(A.peakSum(chain) <= 0.11, 'old overlap budget');
+  assert.equal(chain.length, 3); assert.deepEqual(J(chain.filter(v => v[0] === 'noise').map(v => [v[1], v[2]])), [[0, 0.05]], 'same short tick onset/tail');
+  assert(chainTones.every(v => ['triangle', 'sine'].includes(v[4]) && Math.min(v[5], v[6]) >= 400 && v[7] > 0 && v[7] < v[2]), 'light pitches, no square punch or added bass');
+  assert(chainTones[0][5] / chainTones[0][6] >= 1.8 && chainTones[1][6] / chainTones[1][5] >= 1.8, 'comic dip then elastic upward reply');
+  const counts = [2, 3, 5, 8, 10], pitches = counts.map(n => A.chainPitch(n));
+  counts.forEach((n, i) => assert.equal(pitches[i], 2 ** (Math.min(16, Math.max(0, (n - 2) * 2)) / 12), 'original count transposition'));
+  assert(pitches.every((pitch, i) => !i || pitch > pitches[i - 1]), 'higher chains still audibly transpose upward');
+  const made = [], frequencies = [];
+  const param = (capture = false) => ({ setValueAtTime(v) { if (capture) frequencies.push(v); }, linearRampToValueAtTime() {}, exponentialRampToValueAtTime(v) { assert(Number.isFinite(v) && v > 0); if (capture) frequencies.push(v); } });
+  const node = () => ({ connect() {}, disconnect() {}, gain: param(), frequency: param(true), Q: param(), start(t) { made.push(t); }, stop() {} });
   const ctx = { currentTime: 0, sampleRate: 8000, state: 'running', destination: {}, createGain: node, createOscillator: node, createBiquadFilter: node,
     createBufferSource: node, createBuffer: (ch, len) => ({ getChannelData: () => new Float32Array(len) }) };
   assert(A.render(ctx, 'CHAIN', 0, { pitch: A.chainPitch(5) }));
+  for (const pitch of pitches) { frequencies.length = 0; A.render(ctx, 'CHAIN', 0, { pitch }); assert.deepEqual(frequencies, J(chain.flatMap(v => [v[5] * pitch, v[6] * pitch])), 'chain transposition reaches every tone AND noise-filter frequency'); }
   made.length = 0; A.render(ctx, 'COMBO_WITCH', 0, { rate: 1.6 });
   assert(Math.max(...made) < Math.max(...A.comboRecipes.COMBO_WITCH.map(v => v[1])) / 1.5, 'repeat combo SE follows the faster scene');
   checks++;
