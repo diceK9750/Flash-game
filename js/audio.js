@@ -100,7 +100,7 @@ Hop.Audio = {
       // 僧侶: choir pad -> descending shimmer (pillar) -> reversal bell + upward whoosh
       STOPPER: [["tone", S, 1.2, 0.025, "triangle", 392, 392, 0.3], ["tone", S, 1.2, 0.02, "triangle", 493.9, 493.9, 0.3], ["tone", S, 1.2, 0.018, "triangle", 587.3, 587.3, 0.3],
         ["noise", S + 0.3, 0.75, 0.025, "highpass", 9000, 4000, 0.7]].concat(chime(S + 0.35, [3136, 2637, 2349, 1976, 1568], 0.12, 0.015), boom(S + 1.15, 0.9),
-        [["noise", S + 1.15, 0.45, 0.06, "bandpass", 400, 5000, 1.0], ["tone", S + 1.15, 1.1, 0.04, "sine", 1046.5, 1046.5, 0.005], ["tone", S + 1.15, 1.1, 0.025, "sine", 1568, 1568, 0.005]],
+        [["noise", S + 1.15, 0.45, 0.06, "bandpass", 400, 5000, 1.0], ["tone", S + 1.15, 1.1, 0.04, "triangle", 1046.5, 1046.5, 0.005], ["tone", S + 1.15, 1.1, 0.025, "sine", 1568, 1568, 0.005]],
         chime(S + 1.3, [1568, 2093, 2637, 3136], 0.07, 0.016)),
       // 盗賊: dark swell -> four shadow swishes -> final cross slash + vanish puff
       BRAKE: [["tone", S, 0.9, 0.03, "triangle", 70, 55, 0.2], ["noise", S, 0.4, 0.02, "lowpass", 300, 200, 0.9]]

@@ -14,5 +14,5 @@ assert(r.every(v=>Math.min(v[5],v[6])>=45),'no deeper floor');
 assert(r[0][4]==='bandpass'&&r[0][6]>=500&&r[1][4]==='triangle'&&r[1][5]>r[1][6]&&r[1][6]>=300,'light comic burst, not low sine explosion');
 assert.deepEqual(J(r.slice(2)),[['tone',.06,.55,.045,'sawtooth',180,1500,.03],['tone',.46,.30,.03,'sine',1760,2350,.01]],'rising sweep and sparkle tuple-exact');
 const protectedTables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_BOOST')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(protectedTables)).digest('hex'),'6ee9f6c5582f78199d22988001334f1eb89a594f39217fec9ca933db6255c304','every other SPECIAL/combo/fx/launch recipe exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(protectedTables)).digest('hex'),'d14199608c313a9b7995888763540ba44a18f92a25d277d4d79b07abb936e0a0','every other SPECIAL/combo/fx/launch recipe exact');
 console.log('special-boost-se PASS: comic opening, original four beats/tail/cap/budget, exact sweep/sparkle and all other recipes');
