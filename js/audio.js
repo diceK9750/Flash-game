@@ -150,7 +150,9 @@ Hop.Audio = {
     // hit chain "2HIT! 3HIT!": a punchy tick + a bright blip whose pitch climbs with the chain (opts.pitch)
     CHAIN: [["noise", 0, 0.05, 0.05, "bandpass", 2200, 1400, 1.2], ["tone", 0, 0.14, 0.06, "square", 660, 990, 0.003], ["tone", 0.05, 0.16, 0.035, "sine", 1320, 1320, 0.004]],
     // every 100 m: a light two-note chime
-    MILESTONE: [["tone", 0, 0.12, 0.04, "triangle", 1046.5, 1046.5, 0.004], ["tone", 0.07, 0.18, 0.04, "triangle", 1568, 1568, 0.004]],
+    // Comic springy "pin-pon": a quick upward bend answers with a softer falling bubble, not a fanfare.
+    // Keep both beats, the 0.25 s tail and the original 0.08 overlapping peak budget.
+    MILESTONE: [["tone", 0, 0.12, 0.04, "triangle", 740, 1480, 0.003], ["tone", 0.07, 0.18, 0.04, "sine", 1220, 610, 0.003]],
     // every 500 m: rising fanfare arpeggio + shimmer
     MILESTONE_BIG: [523.25, 659.25, 783.99, 1046.5].map((f, i) => ["tone", i * 0.07, 0.35 - i * 0.04, 0.04, "square", f, f, 0.005])
       .concat([["noise", 0.2, 0.4, 0.015, "highpass", 6000, 9000, 0.7], ["tone", 0.28, 0.4, 0.03, "sine", 2093, 2093, 0.01]]),
