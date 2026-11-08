@@ -62,7 +62,7 @@ Hop.Audio = {
       // 2026-10-16 grander merchant: low fanfare swell + coin cascade + long shimmer (scaled to specialPeakCap)
       ["tone", 0.02, 0.9, 0.035, "triangle", 523.25, 523.25, 0.02], ["tone", 0.02, 0.9, 0.025, "triangle", 783.99, 783.99, 0.02],
       ...[2349.3, 2793.8, 3520, 2637, 3951, 3136, 4186].map((f, i) => ["tone", 0.4 + i * 0.07, 0.16, 0.02, "square", f, f, 0.002]),
-      ["noise", 0.4, 0.9, 0.012, "highpass", 7000, 11000, 0.7], ["tone", 0.9, 0.7, 0.025, "sine", 3136, 3200, 0.01]]
+      ["noise", 0.4, 0.9, 0.012, "highpass", 7000, 11000, 0.7], ["tone", 0.9, 0.7, 0.025, "triangle", 3136, 3200, 0.002]]
   },
   // Combo SPECIAL scene tracks (display-synced, times from the success; the scene starts at S = 0.77 s, when the
   // cut-in begins its fade). Same voice format and peak cap. Skip stops the whole track (stopCombo).
