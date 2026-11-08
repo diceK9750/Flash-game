@@ -20,7 +20,7 @@ for(const kind of Object.keys(A.comboRecipes))for(const rate of [1,1.5])for(cons
  assert.ok(part.starts.every(t=>t>=10-1e-9),kind+' nothing replays from the past');
  assert.equal(part.gains[0],full.gains[0],kind+' same master level');}
 // 2) UI: unmute mid-scene resumes once at the scene time; never outside a scene
-const calls=[];A.resumeCombo=(k,off,r)=>calls.push({k,off,r});A.playCombo=()=>{};A.stopCombo=()=>{};A.play=()=>{};H.Voice.play=()=>{};
+const calls=[];A.context={state:'running'};A.resumeCombo=(k,off,r)=>calls.push({k,off,r});A.playCombo=()=>{};A.stopCombo=()=>{};A.play=()=>{};H.Voice.play=()=>{};
 let scenes=0;
 for(const [seed,kind] of [[1,'boost'],[2,'bounce'],[3,'boost'],[4,'bounce']]){const g=new H.Game(rng(seed));g.tempoEnabled=true;g.launchCutinEnabled=true;g.setDebugKind(kind);const ui=new H.UI(g,element('canvas'));
  const step=()=>{g.update(1/60);ui.update();};g.act();for(let i=0;i<30;i++)step();g.act();for(let i=0;i<20;i++)step();g.act();
