@@ -1,3 +1,4 @@
+// C116: only the authorized DASH impact snapshot changes; every existing assertion is retained.
 // C115: three identical comic strikes, original two hops, no scene retiming.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const s={Hop:{},window:{localStorage:{getItem:()=>null}}};vm.createContext(s);vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/audio.js'),'utf8'),s);const A=s.Hop.Audio,r=A.specialRecipes.SPECIAL_BOUNCE,J=x=>JSON.parse(JSON.stringify(x));
@@ -8,5 +9,5 @@ for(const i of [2,4])for(const n of [0,1])assert.deepEqual(J(r[i+n].slice(2)),J(
 assert(r[0][4]==='bandpass'&&r[0][6]>=800&&r[1][4]==='triangle'&&r[1][5]>r[1][6]&&r[1][6]>=300,'light midrange paper/wood strikes, not sine thuds');
 assert.deepEqual(J(r.slice(6)),[['tone',.3,.26,.035,'square',300,900,.01],['tone',.46,.3,.035,'square',450,1350,.01]],'two rising hops tuple-exact');
 const tables={specialRecipes:Object.fromEntries(Object.entries(A.specialRecipes).filter(([k])=>k!=='SPECIAL_BOUNCE')),comboRecipes:A.comboRecipes,fxRecipes:A.fxRecipes,launchRecipes:A.launchRecipes};
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'9fa9485b661950e5caa85a7e4c37f9b8803c58eda3d28d34765b3427094a31d6','all other SPECIAL/combo/fx/launch recipes exact');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(tables)).digest('hex'),'8b1b0ed3c779242273797bc11dc5fe5728c83b3428a8c3496c60f459bf788f73','all other SPECIAL/combo/fx/launch recipes exact');
 console.log('special-bounce-se PASS: three identical comic strikes, eight original beats, tail/cap/budget, exact hops and other recipes');
