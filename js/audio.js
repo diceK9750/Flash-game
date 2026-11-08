@@ -49,7 +49,7 @@ Hop.Audio = {
       ["tone", 0.5, 0.06, 0.03, "square", 150, 120, 0.002]],
     // 水平曲芸 (遊び人): snare-ish drum roll, two comic "pyon" boings, a light cymbal tap
     SPECIAL_ANGLE: Array.from({ length: 8 }, (_, i) => ["noise", i * 0.04, 0.035, 0.03 + i * 0.004, "highpass", 1500, 1500, 0.7])
-      .concat([["tone", 0.36, 0.14, 0.055, "sine", 400, 1200, 0.005], ["tone", 0.52, 0.16, 0.055, "sine", 600, 1800, 0.005],
+      .concat([["tone", 0.36, 0.14, 0.055, "triangle", 400, 1200, 0.002], ["tone", 0.52, 0.16, 0.055, "triangle", 600, 1800, 0.002],
         ["noise", 0.7, 0.25, 0.03, "highpass", 5000, 7000, 0.7]]),
     // 聖護結界 (賢者): humming barrier "buun" (beating low drone rising) + two bell strikes with inharmonic partials
     SPECIAL_GUARD: [["tone", 0, 0.75, 0.055, "sine", 110, 220, 0.05], ["tone", 0, 0.75, 0.025, "triangle", 223, 446, 0.05],
