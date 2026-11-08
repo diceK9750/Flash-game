@@ -129,15 +129,20 @@ Hop.Audio = {
       COMBO_FIGHTER_SHORT: [["tone", R, 0.25, 0.03, "triangle", 300, 900, 0.03], ["tone", R + 0.3, 0.4, 0.07, "sine", 105, 34, 0.003], ["noise", R + 0.3, 0.4, 0.06, "lowpass", 2200, 120, 0.8]]
     };
   })(),
-  // Launch cut-in impact (truck x hero): sub thump + crunch + debris crackle + whoosh; MAX adds a deeper boom and ring.
+  // Launch cut-in impact (truck x hero): comic wooden whack + rubber recoil; MAX adds a second elastic bend.
   launchRecipes: (() => {
-    const base = [["tone", 0, 0.42, 0.11, "sine", 120, 32, 0.002], ["noise", 0, 0.5, 0.10, "lowpass", 3800, 180, 0.8],
-      ["noise", 0, 0.09, 0.06, "highpass", 2600, 2600, 0.7], ["tone", 0.005, 0.12, 0.04, "square", 260, 90, 0.002],
-      ["noise", 0.06, 0.32, 0.03, "bandpass", 4200, 1800, 1.6], ["noise", 0.14, 0.55, 0.05, "bandpass", 600, 3200, 1.0]];
+    // Cartoon whack + wooden clack + rubber recoil, rather than a realistic crash / sub-bass boom.
+    const base = [["tone", 0, 0.11, 0.060, "triangle", 230, 90, 0.002],
+      ["tone", 0, 0.055, 0.032, "triangle", 920, 610, 0.001], ["tone", 0, 0.04, 0.020, "square", 1430, 1100, 0.001],
+      ["noise", 0, 0.065, 0.035, "bandpass", 2100, 900, 1.0],
+      ["tone", 0.055, 0.075, 0.035, "sine", 170, 680, 0.003], ["tone", 0.13, 0.23, 0.035, "sine", 680, 145, 0.003],
+      ["tone", 0.36, 0.33, 0.012, "triangle", 440, 180, 0.004]];
     return {
       LAUNCH_IMPACT: base,
-      LAUNCH_IMPACT_MAX: base.concat([["tone", 0, 0.7, 0.09, "sine", 80, 24, 0.003], ["noise", 0.02, 0.8, 0.06, "lowpass", 1800, 90, 0.9],
-        ["tone", 0.1, 0.5, 0.02, "triangle", 1568, 1520, 0.004], ["tone", 0.1, 0.5, 0.015, "triangle", 2349, 2290, 0.004]])
+      // MAX doubles down on the elastic overshoot, not volume or low-frequency weight.
+      LAUNCH_IMPACT_MAX: base.concat([["tone", 0.04, 0.07, 0.018, "square", 1700, 1250, 0.001],
+        ["tone", 0.12, 0.12, 0.035, "sine", 100, 480, 0.003], ["tone", 0.24, 0.36, 0.035, "sine", 480, 95, 0.004],
+        ["tone", 0.60, 0.22, 0.010, "triangle", 370, 185, 0.003]])
     };
   })(),
   // Tempo feedback SE (same voice format; no files, no voices). CHAIN / MILESTONE are pitched per event (opts.pitch).
@@ -157,15 +162,21 @@ Hop.Audio = {
       ["tone", 0.05, 0.3, 0.03, "sine", 5274, 5274, 0.003], ["noise", 0.04, 0.18, 0.02, "highpass", 7000, 10000, 0.7]],
     // RESULT rank stamp: a thud + paper slap (S adds a ring)
     // Final slide stop (2026-10-16 cycle 14): soft low thud + short scrape, quieter than RANK_STAMP.
-    // Landing impact (2026-10-17 cycle 15): soft dull tap / hard low thud + grit; both quieter than RANK_STAMP.
-    LAND_SOFT: [["tone", 0, 0.09, 0.03, "sine", 170, 90, 0.002], ["noise", 0, 0.06, 0.02, "lowpass", 900, 300, 0.7]],
-    LAND_HARD: [["tone", 0, 0.2, 0.06, "sine", 110, 42, 0.002], ["noise", 0, 0.14, 0.04, "lowpass", 1600, 260, 0.8]],
-    // AERIAL DOWN dive (2026-10-17 cycle 17): falling band-passed whoosh + low falling tone, quieter than RANK_STAMP.
-    AERIAL_DIVE: [["noise", 0, 0.22, 0.04, "bandpass", 2600, 500, 1.4], ["tone", 0, 0.2, 0.03, "triangle", 660, 180, 0.004]],
-    // AERIAL UP (2026-10-17 cycle 18): short rising chirp + airy puff, quieter than RANK_STAMP.
-    AERIAL_RISE: [["tone", 0, 0.18, 0.03, "triangle", 330, 990, 0.004], ["noise", 0, 0.12, 0.025, "bandpass", 900, 2600, 1.2]],
-    // AERIAL ↓ READY (2026-10-17 cycle 27): soft two-note "pin-pon" falling a fourth, quieter than RANK_STAMP.
-    DOWN_READY: [["tone", 0, 0.1, 0.028, "triangle", 1318.5, 1318.5, 0.003], ["tone", 0.08, 0.18, 0.024, "triangle", 987.8, 987.8, 0.003]],
+    // Comic landing: a hollow wooden knock over a small rubber up/down rebound (same impact tiers).
+    LAND_SOFT: [["tone", 0, 0.045, 0.010, "triangle", 950, 730, 0.001],
+      ["tone", 0, 0.025, 0.022, "sine", 180, 470, 0.002], ["tone", 0.025, 0.065, 0.020, "sine", 470, 210, 0.002]],
+    LAND_HARD: [["tone", 0, 0.045, 0.028, "triangle", 780, 560, 0.001], ["tone", 0, 0.065, 0.016, "triangle", 1290, 1010, 0.001],
+      ["tone", 0, 0.035, 0.040, "sine", 95, 390, 0.002], ["tone", 0.035, 0.165, 0.045, "sine", 390, 85, 0.003],
+      ["noise", 0, 0.035, 0.012, "bandpass", 1800, 900, 1.0]],
+    // Falling slide whistle: exaggerated pitch descent, with only a little air (no premature impact).
+    AERIAL_DIVE: [["tone", 0, 0.22, 0.027, "sine", 1800, 420, 0.004],
+      ["tone", 0, 0.20, 0.006, "triangle", 3300, 770, 0.004], ["noise", 0, 0.16, 0.012, "bandpass", 3000, 900, 1.1]],
+    // Springy rising whistle overshoots, then bends back down; paired with the comic AERIAL UP pose.
+    AERIAL_RISE: [["tone", 0, 0.12, 0.025, "sine", 320, 1800, 0.004],
+      ["tone", 0.10, 0.08, 0.018, "triangle", 1800, 900, 0.003], ["noise", 0, 0.07, 0.009, "bandpass", 900, 3000, 1.2]],
+    // A tiny double rubber squeak, separated by a gap: readiness, not a second dive / landing.
+    DOWN_READY: [["tone", 0, 0.055, 0.018, "triangle", 900, 1500, 0.002],
+      ["tone", 0.075, 0.095, 0.016, "triangle", 1550, 680, 0.002]],
     // GUARD SPECIAL end (2026-10-17 cycle 29): soft falling shimmer (bell partials gliding down), quieter than RANK_STAMP.
     GUARD_END: [["tone", 0, 0.32, 0.03, "sine", 1975.5, 1318.5, 0.004], ["tone", 0.04, 0.3, 0.015, "sine", 3951, 2637, 0.004],
       ["tone", 0, 0.28, 0.025, "triangle", 440, 220, 0.01]],
