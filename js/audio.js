@@ -187,13 +187,14 @@ Hop.Audio = {
   peakSum(voices) {
     return Math.max(...voices.map(([, t]) => voices.reduce((sum, v) => sum + (v[1] <= t && t < v[1] + v[2] ? v[3] : 0), 0)));
   },
-  noiseBuffer(ctx) {
-    if (this.noise?.ctx === ctx) return this.noise.buffer;
-    const length = Math.max(1, Math.floor((ctx.sampleRate || 44100) * 1.0));
+  noiseBuffer(ctx, seconds = 1) {
+    seconds = Math.max(1, seconds);
+    if (this.noise?.ctx === ctx && this.noise.seconds >= seconds) return this.noise.buffer;
+    const length = Math.max(1, Math.ceil((ctx.sampleRate || 44100) * seconds));
     const buffer = ctx.createBuffer(1, length, ctx.sampleRate || 44100), data = buffer.getChannelData(0);
     let seed = 0x2f6b1d; // deterministic noise (same sound every time; offline renders match)
     for (let i = 0; i < length; i++) { seed = (seed * 1664525 + 1013904223) >>> 0; data[i] = seed / 2147483648 - 1; }
-    this.noise = { ctx, buffer };
+    this.noise = { ctx, buffer, seconds };
     return buffer;
   },
   // Schedule a special recipe on ctx at time `at` (also used for offline WAV renders). Returns the master gain.
@@ -230,7 +231,7 @@ Hop.Audio = {
         nodes = [source, gain];
         source.connect(gain);
       } else {
-        source = ctx.createBufferSource(); source.buffer = this.noiseBuffer(ctx);
+        source = ctx.createBufferSource(); source.buffer = this.noiseBuffer(ctx, duration + 0.02);
         const filter = ctx.createBiquadFilter(); filter.type = a; filter.Q.setValueAtTime(d, start);
         filter.frequency.setValueAtTime(b, start);
         if (c !== b) filter.frequency.exponentialRampToValueAtTime(c, end);
