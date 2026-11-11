@@ -91,7 +91,7 @@ Hop.Graphics = {
   // Truck entrance after the launch cut-in (display only): rush-in time (s) and start offset (px, left of its spot).
   truckRushIn: 0.22, truckRushInPx: 420,
   truck(ctx, x, ground, view = null) {
-    if (Hop.Sprites?.drawTruck?.(ctx, x, ground, view)) return; // HD truck still when loaded (display only), else the Canvas truck
+    if (Hop.Sprites?.drawTruck?.(ctx, x, ground, view)) return true; // HD truck still when loaded (display only), else the Canvas truck
     ctx.save(); this.lcViewClip(ctx, view); ctx.translate(x, ground); ctx.scale(1.12, 1.12);
     ctx.fillStyle = "#faf3da"; ctx.fillRect(-110, -91, 91, 70);
     ctx.fillStyle = "#e79748"; ctx.fillRect(-17, -72, 48, 51);
@@ -99,7 +99,7 @@ Hop.Graphics = {
     ctx.fillStyle = "#687886"; ctx.fillRect(-112, -24, 149, 10);
     this.circle(ctx, -80, -12, 15, "#344655"); this.circle(ctx, 12, -12, 15, "#344655");
     this.circle(ctx, -80, -12, 6, "#e8e5d7"); this.circle(ctx, 12, -12, 6, "#e8e5d7");
-    ctx.fillStyle = "#fff8ba"; ctx.fillRect(24, -35, 9, 8); ctx.restore();
+    ctx.fillStyle = "#fff8ba"; ctx.fillRect(24, -35, 9, 8); ctx.restore(); return false;
   },
   contactEffect(ctx, type, x, y, age) {
     const color = Hop.CAST[type]?.color || "#8d622f";
@@ -443,8 +443,9 @@ Hop.Graphics = {
       A.truck(pose, g.state, g.phaseTime, Math.max(0, truckAge), rm);
       if (truckAge < 0) { const u = 1 - launchAge / rush; pose.dx -= this.truckRushInPx * u * u; pose.dy = 0; pose.rot = 0; }
       ctx.save(); ctx.translate(tx + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.translate(-tx, -ground);
-      this.truck(ctx, tx, ground);
-      if (D && !rm) this.truckMotion(ctx, tx, ground, truckAge, D.time);
+      const truckSpriteDrawn = this.truck(ctx, tx, ground);
+      if (truckSpriteDrawn && D && !rm) Hop.Sprites?.drawTruckHubs?.(ctx, tx, ground, g.phaseTime);
+      if (D && !rm) this.truckMotion(ctx, tx, ground, truckAge, D.time, !truckSpriteDrawn);
       ctx.restore();
       if (!rm && truckAge >= 0 && truckAge < 0.45) this.dustPuffs(ctx, anim, tx + 40, ground, truckAge, 1.2);
     }
@@ -460,7 +461,7 @@ Hop.Graphics = {
       A.cast(pose, object.type, g.phaseTime, !!ready && !object.used, A.usedAge(anim, object, g.phaseTime), rm, D && !object.used ? Hop.Smooth.near(bodyX - object.x, bodyY) : 0,
         A.specialNear(anim, object, g.phaseTime), g.state === "FLYING" ? A.overhead(bodyX - object.x, bodyY) : 0, A.seedOf(object));
       ctx.save(); ctx.translate(ox + pose.dx, ground + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.scale(pose.sx, pose.sy); ctx.translate(-ox, -ground);
-      if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
+      if (!Hop.Sprites?.drawCast?.(ctx, object.type, ox, ground, object.used ? 1 : 0, g.phaseTime, rm)) this.character(ctx, object.type, ox, ground, 1.365, object.used ? 1 : 0);
       ctx.restore();
       // Name / READY labels step aside while the combo camera is zoomed (they would be huge).
       if (cam.w > 0) ctx.globalAlpha *= 1 - cam.w;
@@ -532,6 +533,9 @@ Hop.Graphics = {
         Hop.Smooth.noteLayer(D, layer); const f = Hop.Smooth.layerFade(D);
         if (f) { const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * f.alpha; Hop.Sprites.draw(ctx, f.asset, f.time, 0, c.playerRadius, f.scale); ctx.globalAlpha = a0; }
       }
+      if (layer.name === "FLIGHT_LOOP" && g.state === "FLYING" && !g.body.grounded && !rm && !scene && Hop.Sprites?.drawFlightCape) {
+        return Hop.Sprites.drawFlightCape(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
+      }
       return Hop.Sprites.draw(ctx, layer.asset, layer.time, 0, c.playerRadius, layer.scale);
     };
     const spriteDrawn = ((comboHero?.hit || sceneHero?.hit) && !!Hop.Sprites?.drawHeroHit?.(ctx, 0, c.playerRadius)) || !!Hop.Sprites?.stopLayers?.(visual, g.phaseTime).some(drawLayer) ||
@@ -557,7 +561,7 @@ Hop.Graphics = {
       const mx = Math.max(90, Math.min(c.width - 100, x + 105));
       A.cast(pose, "SPECIAL_ONLY", g.phaseTime, false, Infinity, rm);
       ctx.save(); ctx.translate(mx + pose.dx, y + 20 + pose.dy); if (pose.rot) ctx.rotate(pose.rot); ctx.scale(pose.sx, pose.sy); ctx.translate(-mx, -(y + 20));
-      if (!Hop.Sprites?.drawCast?.(ctx, "SPECIAL_ONLY", mx, y + 20)) this.character(ctx, "SPECIAL_ONLY", mx, y + 20, 1.25);
+      if (!Hop.Sprites?.drawCast?.(ctx, "SPECIAL_ONLY", mx, y + 20, 0, g.phaseTime, rm)) this.character(ctx, "SPECIAL_ONLY", mx, y + 20, 1.25);
       ctx.restore();
       const lift = visual.reducedMotion ? 25 : 25 + (1 - Math.min(1, g.merchantVisual.remaining / c.specialMessageDuration)) * 20;
       this.circle(ctx, mx + 35, y - lift, 12, "#ffd867");
@@ -2191,10 +2195,10 @@ Hop.Graphics = {
   },
   objectColor(type) { return Hop.CAST[type]?.color || "#304c60"; },
   // Truck exhaust puffs + wheel spin (display only, deterministic in truckAge; called inside the truck transform).
-  truckMotion(ctx, tx, ground, truckAge, time) {
+  truckMotion(ctx, tx, ground, truckAge, time, drawWheelLines = true) {
     const k = 1.12, spin = (truckAge < 0 ? 40 : 18 * Math.exp(-4 * truckAge)) * (truckAge + 1) + time * 2;
     ctx.save(); ctx.strokeStyle = "#e8e5d7"; ctx.lineWidth = 3;
-    for (const wx of this.WHEELS) {
+    for (const wx of drawWheelLines ? this.WHEELS : []) {
       const cx = tx + wx * k, cy = ground - 12 * k;
       ctx.beginPath(); ctx.moveTo(cx - Math.cos(spin) * 13, cy - Math.sin(spin) * 13); ctx.lineTo(cx + Math.cos(spin) * 13, cy + Math.sin(spin) * 13);
       ctx.moveTo(cx + Math.sin(spin) * 13, cy - Math.cos(spin) * 13); ctx.lineTo(cx - Math.sin(spin) * 13, cy + Math.cos(spin) * 13); ctx.stroke();

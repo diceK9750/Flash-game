@@ -1,0 +1,16 @@
+{
+  "id": "STOPPER",
+  "animation": "HAIR_BACK",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 5,
+  "loop": true,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "notes": "Optional dark-blue hair lock behind the original cleric idle; original character and feet stay in front."
+}

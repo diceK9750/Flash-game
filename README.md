@@ -91,6 +91,12 @@ A/BのSPECIAL対象はBOOST・BOUNCE・DASH・STOPPERのみ。BRAKE・ANGLE・GU
 
 ## 職業と描画
 
+**現在の画像表示について：** この節の後半には以前の96px素材を導入した際の記録が残っています。現在使用する素材のパス・寸法・有効状態は `js/sprites.js` の `definitions` を参照してください。勇者と仲間は現行のコミック調画像を使用し、AERIALなどの専用ポーズは引き続き優先されます。画像を読み込めない場合は既存の代替表示に戻ります。
+
+仲間の待機時には、遊び人のループ画像と、他7人の元画像に重ねる背面の髪・布のアニメーションを使用します。勇者の通常飛行では元画像のマント先端を描画時だけ小さく動かします。いずれも表示専用で、座標・接触判定・ゲームルールには影響しません。動きを減らす設定では元の静止画像を使用します。
+
+発射後のトラックは、元画像の車体を保ったまま車輪の中心だけを回します。画像が使えない場合は従来のCanvas車体と演出に戻ります。`work/sprite-pipeline/` はローカルの試作・比較用であり、ゲームの実行には不要です。
+
 | ID | 表示 | 特徴 |
 | --- | --- | --- |
 | HERO | 勇者（男） | 剣・盾・マント |
@@ -139,7 +145,7 @@ Node.jsがある場合は `node tests/release.cjs --serve` でもプレビュー
 
 公開URL：[異世界Truck Crash!!](https://dicek9750.github.io/Flash-game/)
 
-GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設定変更を行っていないため、ローカルの未コミット改善は公開URLへ未反映です。
+GitHub Pagesで公開しています。ローカルの変更は、公開元のブランチに反映されてから配信されます。
 
 相対パスでサブパス配信に対応し、ルートの `.nojekyll` を維持します。共有用のタイトル・説明・theme-colorと、外部素材を使わない `favicon.svg` を用意しています。OGP画像はありません。再公開時は既存の公開設定を維持し、公開URLで発射・スマホ操作・SPECIAL・RETRY・記録保存を確認してください。
 
@@ -147,7 +153,7 @@ GitHub Pagesで公開済みです。この作業ではcommit・push・Pages設�
 
 `.github/workflows/test.yml` はpush / pull_requestでubuntu-latestとNode LTSを使用します。`node tests/release.cjs` が `tests/*.cjs` を列挙し、共有の前提テストをCommonJSキャッシュで重複実行せず、最後に公開回帰チェックを実行します。npm install・secrets・デプロイ処理は不要です。
 
-ワークフローはローカルに追加した段階です。GitHub上での初回実行結果は、後日commit・pushした後に確認してください。
+GitHub上の実行結果とPagesの配信結果は、それぞれ確認してください。
 
 ## テスト
 

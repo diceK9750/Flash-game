@@ -1,0 +1,16 @@
+{
+  "id": "ANGLE",
+  "animation": "IDLE_LOOP",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 5,
+  "loop": true,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "notes": "Optional generated jester idle loop; original IDLE remains fallback and reduced-motion still. Foot baseline anchored to source."
+}

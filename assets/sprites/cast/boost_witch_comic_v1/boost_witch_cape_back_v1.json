@@ -1,0 +1,13 @@
+{
+  "id": "BOOST",
+  "animation": "CAPE_BACK",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 5,
+  "loop": true,
+  "pivot": { "x": 144, "y": 264 },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "notes": "Optional plain back-cloth loop; draw behind the approved witch idle so face, equipment and feet remain unchanged. Source and normalized candidates under work/sprite-pipeline/boost-witch."
+}

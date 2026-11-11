@@ -1,0 +1,16 @@
+{
+  "id": "BOUNCE",
+  "animation": "SCARF_BACK",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 5,
+  "loop": true,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.25,
+  "smoothing": true,
+  "notes": "Optional back-scarf loop; original fighter idle remains in front and owns the foot anchor."
+}

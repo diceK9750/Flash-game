@@ -17,10 +17,14 @@ const root = path.resolve(__dirname, '..');
   vm.runInContext(fs.readFileSync(path.join(root, 'js/sprites.js'), 'utf8'), scope, { filename: 'sprites.js' });
   const S = scope.Hop.Sprites, C = S.definitions.CAST;
   const faces = Object.values(C).map(s => s.CUTIN_FACE).filter(d => d && d.enabled !== false).map(d => d.metadata);
+  const optionalNames = ['WITCH_CAPE_BACK', 'FIGHTER_SCARF_BACK', 'THIEF_HAIR_BACK', 'WARRIOR_CAPE_BACK', 'SAGE_CAPE_BACK', 'CLERIC_HAIR_BACK', 'MERCHANT_HAIR_BACK', 'JESTER_IDLE_LOOP'];
+  const optional = optionalNames.map(name => S.definitions[name]).filter(d => d && d.enabled !== false);
+  assert.equal(optional.length, 8, 'eight optional character animations');
   assert.equal(faces.length, 8, 'eight cut-in plates');
   for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0));
   assert(held.length >= 2, 'truck + hero idle requested first: ' + held.length);
   assert.equal(faces.filter(f => log.includes(f)).length, 0, 'no cut-in plate requested while truck / hero idle are loading');
+  assert(optional.every(d => !log.includes(d.metadata) && !log.includes(d.src)), 'no optional animation requested before title assets settle');
   // Grand-scene poses (cycle 36, 11 stills ~0.8 MB, drawn only inside a SPECIAL scene) are deferred like the plates.
   const grand = Object.values(C).flatMap(s => Object.values(s)).filter(d => d.grandPose === true && d.enabled !== false).map(d => d.metadata);
   assert.equal(grand.length, 11, 'eleven grand-scene poses'); assert.equal(grand.filter(f => log.includes(f)).length, 0, 'no grand pose requested while truck / hero idle are loading');
@@ -28,6 +32,10 @@ const root = path.resolve(__dirname, '..');
   assert(bodies.every(b => log.includes(b)), 'cast body sprites (drawn in flight) are not deferred');
   held.splice(0).forEach(f => f());
   const all = await S.castReady;
+  await Promise.all([S.witchCapeBackReady, S.fighterScarfBackReady, S.thiefHairBackReady, S.warriorCapeBackReady,
+    S.sageCapeBackReady, S.clericHairBackReady, S.merchantHairBackReady, S.jesterIdleLoopReady]);
+  assert(optional.every(d => log.includes(d.metadata)), 'optional animations requested after title assets settle');
+  assert(optional.every(d => log.indexOf(d.metadata) > log.findIndex(gate)), 'optional animations follow title requests');
   assert(faces.every(f => log.includes(f)), 'plates requested after the title-screen sprites');
   assert(grand.every(f => log.includes(f)) && Math.min(...grand.map(f => log.indexOf(f))) > log.findIndex(gate), 'grand poses requested after the title-screen sprites');
   assert(log.indexOf(faces[0]) > log.findIndex(gate), 'plates after truck');

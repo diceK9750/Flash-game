@@ -1,0 +1,16 @@
+{
+  "id": "SPECIAL_ONLY",
+  "animation": "HAIR_BACK",
+  "cellW": 288,
+  "cellH": 288,
+  "frames": 8,
+  "fps": 5,
+  "loop": true,
+  "pivot": {
+    "x": 144,
+    "y": 264
+  },
+  "displayScale": 1.1446886446886446,
+  "smoothing": true,
+  "notes": "Optional magenta ponytail-tip loop behind the approved merchant sprite, using the merchant display scale."
+}

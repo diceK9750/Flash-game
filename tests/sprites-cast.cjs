@@ -106,6 +106,58 @@ if (process.argv.includes('--loader')) {
     for (const [label, m] of bad) { meta = () => m; assert.equal((await s.load(def)).ready, false, label); }
     meta = () => still('BOOST', 'IDLE'); width = 768; assert.equal((await s.load(def)).ready, false, 'sheet width must be 96 x 1');
     width = 96; assert.equal((await s.load(def)).ready, true, 'recovery');
+    // The optional back-cloth declares its own eight-frame loop; bad dimensions or metadata fail closed.
+    const animated = { ...s.definitions.WITCH_CAPE_BACK, enabled: true };
+    const beforeDisabled = requested.length;
+    assert.equal((await s.load({ ...animated, enabled: false })).ready, false);
+    assert.equal(requested.length, beforeDisabled, 'disabled cape never requests assets');
+    meta = () => still('BOOST', 'CAPE_BACK', { frames: 8, fps: 5, loop: true }); width = 768;
+    assert.equal((await s.load(animated)).ready, true, '8-frame witch loop accepted');
+    width = 96; assert.equal((await s.load(animated)).ready, false, 'witch loop rejects truncated sheet');
+    width = 768; meta = () => still('BOOST', 'CAPE_BACK', { frames: 8, fps: 5, loop: false });
+    assert.equal((await s.load(animated)).ready, false, 'witch loop rejects incompatible metadata');
+    const scarf = { ...s.definitions.FIGHTER_SCARF_BACK, enabled: true };
+    meta = () => still('BOUNCE', 'SCARF_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(scarf)).ready, true, '8-frame fighter scarf accepted');
+    width = 96; assert.equal((await s.load(scarf)).ready, false, 'fighter scarf rejects truncated sheet');
+    width = 768; meta = () => still('BOOST', 'SCARF_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(scarf)).ready, false, 'fighter scarf rejects wrong character');
+    const hair = { ...s.definitions.THIEF_HAIR_BACK, enabled: true };
+    meta = () => still('BRAKE', 'HAIR_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(hair)).ready, true, '8-frame thief hair accepted');
+    width = 96; assert.equal((await s.load(hair)).ready, false, 'thief hair rejects truncated sheet');
+    width = 768; meta = () => still('BOOST', 'HAIR_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(hair)).ready, false, 'thief hair rejects wrong character');
+    const warriorCape = { ...s.definitions.WARRIOR_CAPE_BACK, enabled: true };
+    meta = () => still('DASH', 'CAPE_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(warriorCape)).ready, true, '8-frame warrior cape accepted');
+    width = 96; assert.equal((await s.load(warriorCape)).ready, false, 'warrior cape rejects truncated sheet');
+    width = 768; meta = () => still('BOOST', 'CAPE_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(warriorCape)).ready, false, 'warrior cape rejects wrong character');
+    const sageCape = { ...s.definitions.SAGE_CAPE_BACK, enabled: true };
+    meta = () => still('GUARD', 'CAPE_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(sageCape)).ready, true, '8-frame sage cape accepted');
+    width = 96; assert.equal((await s.load(sageCape)).ready, false, 'sage cape rejects truncated sheet');
+    width = 768; meta = () => still('BOOST', 'CAPE_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(sageCape)).ready, false, 'sage cape rejects wrong character');
+    const clericHair = { ...s.definitions.CLERIC_HAIR_BACK, enabled: true };
+    meta = () => still('STOPPER', 'HAIR_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(clericHair)).ready, true, '8-frame cleric hair accepted');
+    width = 96; assert.equal((await s.load(clericHair)).ready, false, 'cleric hair rejects truncated sheet');
+    width = 768; meta = () => still('BRAKE', 'HAIR_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(clericHair)).ready, false, 'cleric hair rejects wrong character');
+    const merchantHair = { ...s.definitions.MERCHANT_HAIR_BACK, enabled: true };
+    meta = () => still('SPECIAL_ONLY', 'HAIR_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(merchantHair)).ready, true, '8-frame merchant hair accepted');
+    width = 96; assert.equal((await s.load(merchantHair)).ready, false, 'merchant hair rejects truncated sheet');
+    width = 768; meta = () => still('STOPPER', 'HAIR_BACK', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(merchantHair)).ready, false, 'merchant hair rejects wrong character');
+    const jesterLoop = { ...s.definitions.JESTER_IDLE_LOOP, enabled: true };
+    meta = () => still('ANGLE', 'IDLE_LOOP', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(jesterLoop)).ready, true, '8-frame jester loop accepted');
+    width = 96; assert.equal((await s.load(jesterLoop)).ready, false, 'jester loop rejects truncated sheet');
+    width = 768; meta = () => still('BOOST', 'IDLE_LOOP', { frames: 8, fps: 5, loop: true });
+    assert.equal((await s.load(jesterLoop)).ready, false, 'jester loop rejects wrong character');
     // HERO keeps its 8-frame requirement: a 1-frame HERO sheet is rejected.
     meta = () => ({ ...still('HERO', 'FLIGHT_LOOP'), fps: 8, loop: true }); width = 96;
     assert.equal((await s.load(s.definitions.HERO.FLIGHT_LOOP)).ready, false, 'HERO still needs 8 frames');
@@ -215,6 +267,8 @@ if (process.argv.includes('--loader')) {
   H.Anim.enabled = false;
   // Rendering: recording context. drawImage records the sprite, character() records Canvas figures.
   const fake = (id, animation) => ({ ready: true, image: { complete: true, naturalWidth: 96, id, animation }, data: still(id, animation) });
+  const fakeHD = (id, animation) => ({ ready: true, image: { complete: true, naturalWidth: 288, naturalHeight: 288, id, animation },
+    data: s.normalizeCell({ id, animation, cellW: 288, cellH: 288, frames: 1, fps: 1, loop: false, pivot: { x: 144, y: 264 }, smoothing: true }) });
   const graphics = H.Graphics, origChar = graphics.character;
   let log = [];
   graphics.character = function (ctx, id, x, feet, scale, pose) { log.push({ kind: 'canvas', id, x, feet, scale, pose, alpha: ctx.globalAlpha }); return origChar.apply(this, arguments); };
@@ -222,7 +276,7 @@ if (process.argv.includes('--loader')) {
     const stack = []; let state = { globalAlpha: 1, tx: 0, sx: 1 };
     const o = { save() { stack.push({ ...state }); }, restore() { state = stack.pop() || state; },
       translate(x) { state.tx += x * state.sx; }, scale(x) { state.sx *= x; }, rotate() {},
-      drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh) { if (img.id) log.push({ kind: 'sprite', id: img.id, animation: img.animation, dx: state.tx + dx * state.sx, dy, dw: dw * state.sx, dh, alpha: state.globalAlpha, smoothing: o.imageSmoothingEnabled }); },
+      drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh) { if (img.id) log.push({ kind: 'sprite', id: img.id, animation: img.animation, srcX: sx, srcY: sy, srcW: sw, srcH: sh, dx: state.tx + dx * state.sx, dy, dw: dw * state.sx, dh, alpha: state.globalAlpha, smoothing: o.imageSmoothingEnabled }); },
       measureText: () => ({ width: 0 }), fillText(t) { log.push({ kind: 'text', t }); } };
     const dummy = new Proxy(function () {}, { get: () => dummy, apply: () => dummy });
     return new Proxy(o, { get: (t, k) => k === 'globalAlpha' ? state.globalAlpha : k in t ? t[k] : () => dummy, set: (t, k, v) => { if (k === 'globalAlpha') state.globalAlpha = v; else t[k] = v; return true; } });
@@ -236,6 +290,300 @@ if (process.argv.includes('--loader')) {
   };
   const render = (game, ui) => { log = []; const before = JSON.stringify(game); graphics.draw(ctx(), game, ui.visual); assert.equal(JSON.stringify(game), before, 'drawing never mutates game state'); return log; };
   const ground = c.groundY, sxOf = (game, o) => c.launchX + o.x - game.cameraX;
+  // Test-only canvas records atomic offscreen composition separately from the single on-screen draw.
+  const oldCreateElement = scope.document.createElement, stages = [];
+  scope.document.createElement = () => {
+    const canvas = { width: 0, height: 0, id: 'COMPOSITE', animation: 'IDLE' };
+    const scratch = { clearRect() {}, drawImage(image, sx) { stages.push({ id: image.id, sx }); if (IDS.includes(image.id)) { canvas.id = image.id; canvas.animation = image.animation; } } };
+    canvas.getContext = () => scratch;
+    return canvas;
+  };
+  // Optional witch back-cloth: the approved character is always drawn over it.
+  {
+    const def = s.definitions.WITCH_CAPE_BACK;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['BOOST', 'CAPE_BACK', 288, 288, 8, 5, true, 144, 264]);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    s.witchCapeBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'CAPE_BACK', animation: 'CAPE_BACK' }, data };
+    install({ BOOST: { IDLE: fakeHD('BOOST', 'IDLE'), USED: fake('BOOST', 'USED') } });
+    const { game, ui } = scene(); game.objects = [{ x: game.body.x + 150, type: 'BOOST', used: false }];
+    game.phaseTime = 0.375; H.Anim.enabled = true; ui.visual.reducedMotion = false;
+    let sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['BOOST'], 'one atomic composed draw');
+    assert.deepEqual(stages.slice(-2).map(e => [e.id, e.sx]), [['CAPE_BACK', 288], ['BOOST', 0]], 'cloth is behind original character');
+    game.phaseTime = 1.8; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.equal(stages.at(-2).sx, 288, 'loop wraps after eight frames');
+    ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOOST'], 'reduced motion draws original only');
+    ui.visual.reducedMotion = false; s.witchCapeBack = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOOST'], 'unavailable cloth keeps original');
+    s.witchCapeBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'CAPE_BACK' }, data };
+    game.objects[0].used = true;
+    sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['BOOST']); assert.equal(sprites[0].animation, 'USED', 'contact still takes priority');
+    game.objects[0].type = 'BOUNCE'; game.objects[0].used = false;
+    install({ BOUNCE: { IDLE: fake('BOUNCE', 'IDLE') } });
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOUNCE'], 'other cast unaffected');
+    s.witchCapeBack = null;
+    H.Anim.enabled = false;
+  }
+  // Fighter back-scarf follows the same timing and fallback rules without affecting KICK or the witch.
+  {
+    const def = s.definitions.FIGHTER_SCARF_BACK;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['BOUNCE', 'SCARF_BACK', 288, 288, 8, 5, true, 144, 264]);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    s.fighterScarfBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'SCARF_BACK', animation: 'SCARF_BACK' }, data };
+    install({ BOUNCE: { IDLE: fakeHD('BOUNCE', 'IDLE'), KICK: fake('BOUNCE', 'KICK') }, BOOST: { IDLE: fake('BOOST', 'IDLE') } });
+    const { game, ui } = scene(); game.objects = [{ x: game.body.x + 150, type: 'BOUNCE', used: false }];
+    game.phaseTime = 0.375; H.Anim.enabled = true; ui.visual.reducedMotion = false;
+    let sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['BOUNCE'], 'one atomic composed draw');
+    assert.deepEqual(stages.slice(-2).map(e => [e.id, e.sx]), [['SCARF_BACK', 288], ['BOUNCE', 0]], 'scarf behind original fighter');
+    game.phaseTime = 1.8; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.equal(stages.at(-2).sx, 288, 'scarf loop wraps');
+    ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOUNCE'], 'reduced motion draws original only');
+    ui.visual.reducedMotion = false; s.fighterScarfBack = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOUNCE'], 'missing scarf keeps original');
+    s.fighterScarfBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'SCARF_BACK' }, data };
+    game.objects[0].used = true; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['BOUNCE']); assert.equal(sprites[0].animation, 'KICK');
+    game.objects[0].type = 'BOOST'; game.objects[0].used = false;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOOST'], 'witch never gets fighter scarf');
+    s.fighterScarfBack = null; H.Anim.enabled = false;
+  }
+  // Thief hair is also behind the original, and appears only for an unused roadside IDLE.
+  {
+    const def = s.definitions.THIEF_HAIR_BACK;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['BRAKE', 'HAIR_BACK', 288, 288, 8, 5, true, 144, 264]);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    s.thiefHairBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'HAIR_BACK', animation: 'HAIR_BACK' }, data };
+    install({ BRAKE: { IDLE: fakeHD('BRAKE', 'IDLE'), USED: fake('BRAKE', 'USED') }, BOOST: { IDLE: fake('BOOST', 'IDLE') }, BOUNCE: { IDLE: fake('BOUNCE', 'IDLE') } });
+    const { game, ui } = scene(); game.objects = [{ x: game.body.x + 150, type: 'BRAKE', used: false }];
+    game.phaseTime = 0.375; H.Anim.enabled = true; ui.visual.reducedMotion = false;
+    let sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['BRAKE'], 'one atomic composed draw');
+    assert.deepEqual(stages.slice(-2).map(e => [e.id, e.sx]), [['HAIR_BACK', 288], ['BRAKE', 0]], 'hair behind original thief');
+    game.phaseTime = 1.8; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.equal(stages.at(-2).sx, 288, 'hair loop wraps');
+    ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BRAKE'], 'reduced motion draws original only');
+    ui.visual.reducedMotion = false; s.thiefHairBack = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BRAKE'], 'missing hair keeps original');
+    s.thiefHairBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'HAIR_BACK' }, data };
+    log = []; assert(s.drawCastScaled(ctx(), 'BRAKE', 100, 500, 'IDLE'));
+    assert.deepEqual(log.filter(e => e.kind === 'sprite').map(e => e.id), ['BRAKE'], 'scene rendering does not add roadside hair');
+    game.objects[0].used = true; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['BRAKE']); assert.equal(sprites[0].animation, 'USED');
+    for (const type of ['BOOST', 'BOUNCE']) {
+      game.objects[0].type = type; game.objects[0].used = false;
+      assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), [type], 'other cast never gets thief hair');
+    }
+    s.thiefHairBack = null; H.Anim.enabled = false;
+  }
+  // Warrior is mirrored: the cape and the original use the same transformed pivot and remain independent of scenes.
+  {
+    const def = s.definitions.WARRIOR_CAPE_BACK;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['DASH', 'CAPE_BACK', 288, 288, 8, 5, true, 144, 264]);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    s.warriorCapeBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'WARRIOR_CAPE', animation: 'CAPE_BACK' }, data };
+    install({ DASH: { IDLE: fakeHD('DASH', 'IDLE') }, BOOST: { IDLE: fake('BOOST', 'IDLE') } });
+    log = []; assert(s.drawCast(ctx(), 'DASH', 300, 500, 0, 0.375));
+    let sprites = log.filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['DASH'], 'one atomic composed draw');
+    assert.deepEqual(stages.slice(-2).map(e => [e.id, e.sx]), [['WARRIOR_CAPE', 288], ['DASH', 0]], 'cape is behind the original');
+    for (const sprite of sprites) {
+      assert.equal(sprite.dx, 360); assert.equal(sprite.dy, 390);
+      assert.equal(sprite.dw, -120); assert.equal(sprite.dh, 120);
+    }
+    const { game, ui } = scene(); game.objects = [{ x: game.body.x + 150, type: 'DASH', used: false }];
+    game.phaseTime = 0.375; H.Anim.enabled = true; ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['DASH'], 'reduced motion draws original only');
+    ui.visual.reducedMotion = false; s.warriorCapeBack = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['DASH'], 'missing cape keeps original');
+    s.warriorCapeBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'WARRIOR_CAPE' }, data };
+    game.objects[0].used = true; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['DASH']); assert.equal(sprites[0].alpha, 0.35, 'used IDLE remains faded without cape');
+    log = []; assert(s.drawCastScaled(ctx(), 'DASH', 100, 500, 'IDLE'));
+    assert.deepEqual(log.filter(e => e.kind === 'sprite').map(e => e.id), ['DASH'], 'SPECIAL scene has no roadside cape');
+    game.objects[0].type = 'BOOST'; game.objects[0].used = false;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOOST'], 'other cast never gets warrior cape');
+    s.warriorCapeBack = null; H.Anim.enabled = false;
+  }
+  // Sage is mirrored like the warrior; the original and the optional cloak share one foot anchor.
+  {
+    const def = s.definitions.SAGE_CAPE_BACK;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['GUARD', 'CAPE_BACK', 288, 288, 8, 5, true, 144, 264]);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    s.sageCapeBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'SAGE_CAPE', animation: 'CAPE_BACK' }, data };
+    install(Object.fromEntries(['GUARD', 'BOOST', 'BOUNCE', 'BRAKE', 'DASH'].map(id => [id, { IDLE: id === 'GUARD' ? fakeHD(id, 'IDLE') : fake(id, 'IDLE') }])));
+    log = []; assert(s.drawCast(ctx(), 'GUARD', 300, 500, 0, 0.375));
+    let sprites = log.filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['GUARD'], 'one atomic composed draw');
+    assert.deepEqual(stages.slice(-2).map(e => [e.id, e.sx]), [['SAGE_CAPE', 288], ['GUARD', 0]], 'cloak behind original sage');
+    for (const sprite of sprites) {
+      assert.equal(sprite.dx, 360); assert.equal(sprite.dy, 390);
+      assert.equal(sprite.dw, -120); assert.equal(sprite.dh, 120);
+    }
+    const { game, ui } = scene(); game.objects = [{ x: game.body.x + 150, type: 'GUARD', used: false }];
+    game.phaseTime = 0.375; H.Anim.enabled = true; ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['GUARD'], 'reduced motion draws original only');
+    ui.visual.reducedMotion = false; s.sageCapeBack = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['GUARD'], 'missing cloak keeps original');
+    s.sageCapeBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'SAGE_CAPE' }, data };
+    game.objects[0].used = true; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['GUARD']); assert.equal(sprites[0].alpha, 0.35, 'used IDLE remains faded without cloak');
+    log = []; assert(s.drawCastScaled(ctx(), 'GUARD', 100, 500, 'IDLE'));
+    assert.deepEqual(log.filter(e => e.kind === 'sprite').map(e => e.id), ['GUARD'], 'SPECIAL scene has no roadside cloak');
+    for (const type of ['BOOST', 'BOUNCE', 'BRAKE', 'DASH']) {
+      game.objects[0].type = type; game.objects[0].used = false;
+      assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), [type], 'other cast never gets sage cloak');
+    }
+    s.sageCapeBack = null; H.Anim.enabled = false;
+  }
+  // Cleric hair remains behind the unchanged original and stays out of SPECIAL scenes.
+  {
+    const def = s.definitions.CLERIC_HAIR_BACK;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['STOPPER', 'HAIR_BACK', 288, 288, 8, 5, true, 144, 264]);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    s.clericHairBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'CLERIC_HAIR', animation: 'HAIR_BACK' }, data };
+    install(Object.fromEntries(['STOPPER', 'BOOST', 'BOUNCE', 'BRAKE', 'DASH', 'GUARD'].map(id => [id, { IDLE: id === 'STOPPER' ? fakeHD(id, 'IDLE') : fake(id, 'IDLE') }])));
+    log = []; assert(s.drawCast(ctx(), 'STOPPER', 300, 500, 0, 0.375));
+    let sprites = log.filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['STOPPER'], 'one atomic composed draw');
+    assert.deepEqual(stages.slice(-2).map(e => [e.id, e.sx]), [['CLERIC_HAIR', 288], ['STOPPER', 0]], 'hair behind original cleric');
+    for (const sprite of sprites) {
+      assert.equal(sprite.dx, 240); assert.equal(sprite.dy, 390);
+      assert.equal(sprite.dw, 120); assert.equal(sprite.dh, 120);
+    }
+    const { game, ui } = scene(); game.objects = [{ x: game.body.x + 150, type: 'STOPPER', used: false }];
+    game.phaseTime = 0.375; H.Anim.enabled = true; ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['STOPPER'], 'reduced motion draws original only');
+    ui.visual.reducedMotion = false; s.clericHairBack = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['STOPPER'], 'missing hair keeps original');
+    s.clericHairBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'CLERIC_HAIR' }, data };
+    game.objects[0].used = true; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['STOPPER']); assert.equal(sprites[0].alpha, 0.35, 'used IDLE remains faded without hair');
+    log = []; assert(s.drawCastScaled(ctx(), 'STOPPER', 100, 500, 'IDLE'));
+    assert.deepEqual(log.filter(e => e.kind === 'sprite').map(e => e.id), ['STOPPER'], 'SPECIAL scene has no roadside hair');
+    for (const type of ['BOOST', 'BOUNCE', 'BRAKE', 'DASH', 'GUARD']) {
+      game.objects[0].type = type; game.objects[0].used = false;
+      assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), [type], 'other cast never gets cleric hair');
+    }
+    s.clericHairBack = null; H.Anim.enabled = false;
+  }
+  // The merchant only appears as a SPECIAL overlay, at its own scale; no game timers are changed by drawing.
+  {
+    const def = s.definitions.MERCHANT_HAIR_BACK;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['SPECIAL_ONLY', 'HAIR_BACK', 288, 288, 8, 5, true, 144, 264]);
+    assert.equal(metadata.displayScale, C.SPECIAL_ONLY.IDLE.scale);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    s.merchantHairBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'MERCHANT_HAIR', animation: 'HAIR_BACK' }, data };
+    install({ SPECIAL_ONLY: { IDLE: fakeHD('SPECIAL_ONLY', 'IDLE') }, BOOST: { IDLE: fake('BOOST', 'IDLE') } });
+    log = []; assert(s.drawCast(ctx(), 'SPECIAL_ONLY', 300, 500, 0, 0.375));
+    let sprites = log.filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['SPECIAL_ONLY'], 'one atomic composed draw');
+    assert.deepEqual(stages.slice(-2).map(e => [e.id, e.sx]), [['MERCHANT_HAIR', 288], ['SPECIAL_ONLY', 0]], 'hair behind original merchant');
+    for (const sprite of sprites) {
+      assert(Math.abs(sprite.dx - (300 - 48 * C.SPECIAL_ONLY.IDLE.scale)) < 1e-9);
+      assert(Math.abs(sprite.dy - (500 - 88 * C.SPECIAL_ONLY.IDLE.scale)) < 1e-9);
+      assert(Math.abs(sprite.dw - 96 * C.SPECIAL_ONLY.IDLE.scale) < 1e-9);
+      assert(Math.abs(sprite.dh - 96 * C.SPECIAL_ONLY.IDLE.scale) < 1e-9);
+    }
+    const { game, ui } = scene(); game.objects = []; game.phaseTime = 0.375;
+    H.Anim.enabled = true; ui.visual.reducedMotion = false;
+    for (const type of ['A', 'B', 'C', 'D']) {
+      game.merchantVisual = { type, remaining: 0.6 };
+      sprites = render(game, ui).filter(e => e.kind === 'sprite');
+      assert.deepEqual(sprites.map(e => e.id), ['SPECIAL_ONLY'], 'merchant type ' + type);
+      assert.deepEqual(stages.slice(-2).map(e => e.id), ['MERCHANT_HAIR', 'SPECIAL_ONLY'], 'composed merchant hair behind original');
+      assert.equal(game.merchantVisual.remaining, 0.6, 'drawing does not change merchant timer');
+    }
+    ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['SPECIAL_ONLY'], 'reduced motion draws original only');
+    ui.visual.reducedMotion = false; s.merchantHairBack = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['SPECIAL_ONLY'], 'missing hair keeps original');
+    s.merchantHairBack = { ready: true, image: { complete: true, naturalWidth: 2304, naturalHeight: 288, id: 'MERCHANT_HAIR' }, data };
+    game.merchantVisual = null; game.objects = [{ x: game.body.x + 150, type: 'BOOST', used: false }];
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['BOOST'], 'other cast never gets merchant hair');
+    log = []; assert(s.drawCastScaled(ctx(), 'SPECIAL_ONLY', 100, 500, 'IDLE'));
+    assert.deepEqual(log.filter(e => e.kind === 'sprite').map(e => e.id), ['SPECIAL_ONLY'], 'scene and cut-in fallback stay unchanged');
+    s.merchantHairBack = null; H.Anim.enabled = false;
+  }
+  if (oldCreateElement === undefined) delete scope.document.createElement;
+  else scope.document.createElement = oldCreateElement;
+  s.castCompositeCache = null;
+  // Jester uses only generated loop frames in ordinary roadside idle, including at time zero.
+  {
+    const def = s.definitions.JESTER_IDLE_LOOP;
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, def.metadata), 'utf8'));
+    assert.deepEqual([metadata.id, metadata.animation, metadata.cellW, metadata.cellH, metadata.frames, metadata.fps, metadata.loop, metadata.pivot.x, metadata.pivot.y],
+      ['ANGLE', 'IDLE_LOOP', 288, 288, 8, 5, true, 144, 264]);
+    const png = fs.readFileSync(path.join(root, def.src));
+    assert.equal(png.readUInt32BE(16), 288 * 8); assert.equal(png.readUInt32BE(20), 288); assert.equal(png[25], 6, 'RGBA PNG');
+    const data = s.normalizeCell({ ...metadata });
+    const loop = { ready: true, image: { complete: true, naturalWidth: 2304, id: 'JESTER_LOOP', animation: 'IDLE_LOOP' }, data };
+    s.jesterIdleLoop = loop;
+    install(Object.fromEntries(IDS.map(id => [id, { IDLE: fake(id, 'IDLE'), ...(id === 'ANGLE' ? { USED: fake('ANGLE', 'USED') } : {}) }])));
+    const { game, ui } = scene(); game.objects = [{ x: game.body.x + 150, type: 'ANGLE', used: false }];
+    H.Anim.enabled = true; ui.visual.reducedMotion = false;
+    game.phaseTime = 0;
+    let sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['JESTER_LOOP'], 'time zero uses loop frame zero, not original');
+    assert.equal(sprites[0].srcX, 0);
+    game.phaseTime = 0.4; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['JESTER_LOOP']); assert.equal(sprites[0].srcX, 2 * 288);
+    game.phaseTime = 1.6; sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.equal(sprites[0].srcX, 0, 'loop wraps to generated frame zero');
+    ui.visual.reducedMotion = true;
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['ANGLE'], 'reduced motion uses original');
+    ui.visual.reducedMotion = false; s.jesterIdleLoop = { ready: false };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['ANGLE'], 'missing loop uses original');
+    s.jesterIdleLoop = { ...loop, data: { ...data, pivot: { x: 100, y: 264 } } };
+    assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), ['ANGLE'], 'invalid pivot uses original');
+    s.jesterIdleLoop = loop;
+    const badLoopCtx = ctx(), originalDraw = badLoopCtx.drawImage;
+    badLoopCtx.drawImage = (image, ...args) => { if (image.id === 'JESTER_LOOP') throw Error('decode lost'); return originalDraw(image, ...args); };
+    log = []; assert(s.drawCast(badLoopCtx, 'ANGLE', 300, 500, 0, 0.4));
+    assert.deepEqual(log.filter(e => e.kind === 'sprite').map(e => e.id), ['ANGLE'], 'failed loop drawing falls back to original');
+    game.objects[0].used = true;
+    sprites = render(game, ui).filter(e => e.kind === 'sprite');
+    assert.deepEqual(sprites.map(e => e.id), ['ANGLE']); assert.equal(sprites[0].animation, 'USED'); assert.equal(sprites[0].alpha, 0.35);
+    log = []; assert(s.drawCastScaled(ctx(), 'ANGLE', 100, 500, 'IDLE'));
+    assert.deepEqual(log.filter(e => e.kind === 'sprite').map(e => e.id), ['ANGLE'], 'SPECIAL scenes retain original');
+    for (const type of IDS.filter(id => id !== 'ANGLE' && id !== 'SPECIAL_ONLY')) {
+      game.objects[0].type = type; game.objects[0].used = false;
+      assert.deepEqual(render(game, ui).filter(e => e.kind === 'sprite').map(e => e.id), [type], 'other cast never gets jester loop');
+    }
+    s.jesterIdleLoop = null; H.Anim.enabled = false;
+  }
   // 1) All disabled (shipping): exactly today's Canvas calls (same id, position, scale, pose, alpha).
   install();
   {

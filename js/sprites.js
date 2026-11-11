@@ -199,6 +199,22 @@ Hop.Sprites = {
     // keeps choosing the x as before. 576x288 cell, pivot (352,264) = the Canvas truck origin (translate x, ground);
     // drawn scale 1.25*96/288 -> 167 x 102 px on screen, the same length and roof height as the Canvas truck.
     // Missing / broken asset -> drawTruck returns false and Graphics.truck draws the Canvas truck.
+    WITCH_CAPE_BACK: { id: "BOOST", animation: "CAPE_BACK", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_cape_back_v1.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_cape_back_v1.json" },
+    FIGHTER_SCARF_BACK: { id: "BOUNCE", animation: "SCARF_BACK", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_scarf_back_v1.png", metadata: "assets/sprites/cast/bounce_fighter_comic_v1/bounce_fighter_scarf_back_v1.json" },
+    THIEF_HAIR_BACK: { id: "BRAKE", animation: "HAIR_BACK", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_hair_back_v1.png", metadata: "assets/sprites/cast/brake_thief_comic_v1/brake_thief_hair_back_v1.json" },
+    WARRIOR_CAPE_BACK: { id: "DASH", animation: "CAPE_BACK", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_cape_back_v1.png", metadata: "assets/sprites/cast/dash_warrior_comic_v1/dash_warrior_cape_back_v1.json" },
+    SAGE_CAPE_BACK: { id: "GUARD", animation: "CAPE_BACK", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_cape_back_v1.png", metadata: "assets/sprites/cast/guard_sage_comic_v1/guard_sage_cape_back_v1.json" },
+    CLERIC_HAIR_BACK: { id: "STOPPER", animation: "HAIR_BACK", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_hair_back_v1.png", metadata: "assets/sprites/cast/stopper_cleric_comic_v1/stopper_cleric_hair_back_v1.json" },
+    MERCHANT_HAIR_BACK: { id: "SPECIAL_ONLY", animation: "HAIR_BACK", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/merchant_comic_v1/merchant_hair_back_v1.png", metadata: "assets/sprites/cast/merchant_comic_v1/merchant_hair_back_v1.json" },
+    JESTER_IDLE_LOOP: { id: "ANGLE", animation: "IDLE_LOOP", frames: 8, fps: 5, loop: true, enabled: true,
+      src: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_idle_loop_v1.png", metadata: "assets/sprites/cast/angle_jester_comic_v1/angle_jester_idle_loop_v1.json" },
     TRUCK: {
       IDLE: { id: "TRUCK", animation: "IDLE", frames: 1, fps: 1, loop: false, scale: 1.25, enabled: true,
         src: "assets/sprites/truck/truck_comic_v1/truck_idle_sheet_576x288.png", metadata: "assets/sprites/truck/truck_comic_v1/truck_idle.json" }
@@ -236,7 +252,7 @@ Hop.Sprites = {
       const response = await fetch(definition.metadata);
       if (!response.ok) return asset;
       const data = await response.json();
-      // HERO animations stay 8 frames; CAST stills declare id and frames: 1.
+      // Each slot declares its own frame count and playback contract.
       if (data.id !== (definition.id || "HERO") || data.animation !== definition.animation ||
           data.frames !== (definition.frames || 8) || data.fps !== definition.fps || data.loop !== definition.loop) return asset;
       if (!this.normalizeCell(data)) return asset;
@@ -284,12 +300,61 @@ Hop.Sprites = {
     return sequence ? sequence[step] : step;
   },
   duration(data) { return (Array.isArray(data.sequence) ? data.sequence.length : data.frames) / data.fps; },
+  // Optional display-only flight cape cache. Only the free left tip is changed; the supplied
+  // sprite, its pivot and every pixel outside the clipped rectangle stay untouched.
+  buildFlightCapeCache(asset) {
+    try {
+      const image = asset?.image, d = asset?.data;
+      if (!asset?.ready || !image?.complete || image.naturalWidth !== 384 * 8 || image.naturalHeight !== 288 ||
+          d?.frameWidth !== 384 || d?.frameHeight !== 288 || d.frames !== 8 || d.fps !== 8 || d.loop !== true ||
+          d.pivot?.x !== 192 || d.pivot?.y !== 264 || typeof document === "undefined") return null;
+      const canvas = document.createElement?.("canvas"), ctx = canvas?.getContext?.("2d");
+      if (!ctx) return null;
+      canvas.width = 384 * 8; canvas.height = 288;
+      ctx.imageSmoothingEnabled = false;
+      for (let f = 0; f < 8; f++) {
+        const sx = f * 384, angle = f * Math.PI / 4;
+        ctx.drawImage(image, sx, 0, 384, 288, sx, 0, 384, 288);
+        ctx.save();
+        try {
+          ctx.beginPath(); ctx.rect(sx, 145, 128, 82); ctx.clip();
+          ctx.clearRect(sx, 145, 128, 82);
+          for (let x = 0; x < 128; x++) {
+            const weight = Math.max(0, Math.min(1, (128 - x) / 48));
+            const shift = Math.round(3 * weight * Math.sin(angle));
+            ctx.drawImage(image, sx + x, 145, 1, 82, sx + x, 145 + shift, 1, 82);
+          }
+        } finally { ctx.restore(); }
+      }
+      return { ready: true, image: canvas, data: d, canvasSource: true, sourceAsset: asset };
+    } catch (_) { return null; }
+  },
+  scheduleFlightCapeCache(asset) {
+    try {
+      if (!asset?.ready || typeof document === "undefined" || !document.createElement) return;
+      const build = () => {
+        try { if (this.heroFlight === asset) this.flightCapeCache = this.buildFlightCapeCache(asset); } catch (_) { /* Original sprite remains available. */ }
+      };
+      if (typeof requestIdleCallback === "function") requestIdleCallback(build, { timeout: 1000 });
+      else if (typeof setTimeout === "function") setTimeout(build, 0);
+    } catch (_) { /* Cache is optional. */ }
+  },
+  drawFlightCape(ctx, asset, time, x, feet, scale) {
+    try {
+      const cache = this.flightCapeCache;
+      if (asset?.ready && cache?.sourceAsset === asset && this.draw(ctx, cache, time, x, feet, scale)) return true;
+    } catch (_) { /* Drawing the original is always the fallback. */ }
+    return this.draw(ctx, asset, time, x, feet, scale);
+  },
   // view (optional) = { x0, y0, x1, y1 } in the current coords: the cell is cropped to it (source and destination
   // rect cut alike, same pixels inside), so a caller can skip a clip (cycle 54 launch cut-in bands). Empty -> true.
   // asset.opaque (optional, opaqueBoxes) crops each cell to its pixels the same way (cycle 55): a transparent texel
   // costs as much to sample as an opaque one (the launch cut-in hero stills are ~2/3 empty cell).
   draw(ctx, asset, time, x, feet, scale, view = null) {
-    if (!asset?.ready || !asset.image?.complete || !asset.image.naturalWidth || !asset.data?.pivot) return false;
+    const imageReady = asset?.canvasSource === true
+      ? !!asset.image && typeof asset.image.getContext === "function" && asset.image.width > 0 && asset.image.height > 0
+      : !!asset?.image?.complete && !!asset.image.naturalWidth;
+    if (!asset?.ready || !imageReady || !asset.data?.pivot) return false;
     const d = asset.data;
     const frame = this.frameAt(d, time);
     scale /= d.unit > 0 ? d.unit : 1; // HD cells: same on-screen size as the 96 version
@@ -395,13 +460,86 @@ Hop.Sprites = {
     if (!def || def.enabled === false || !asset?.ready) return false;
     return this.draw(ctx, asset, 0, x, ground, def.scale, view);
   },
+  // Decorative road-truck wheel hubs only; the already-drawn truck stays visible on any failure.
+  // Centers and radius are source-image pixels, transformed with the same pivot and scale as IDLE.
+  drawTruckHubs(ctx, x, ground, phaseTime) {
+    let saved = false;
+    try {
+      const def = this.definitions.TRUCK?.IDLE, asset = this.truckIdle, d = asset?.data;
+      if (!def || def.enabled === false || !asset?.ready || !asset.image?.complete || !asset.image.naturalWidth ||
+          d?.frameWidth !== 576 || d?.frameHeight !== 288 || d.pivot?.x !== 352 || d.pivot?.y !== 264) return;
+      const scale = def.scale / (d.unit > 0 ? d.unit : 1), angle = (Number.isFinite(phaseTime) ? phaseTime : 0) * 14;
+      ctx.save(); saved = true; ctx.imageSmoothingEnabled = !!d.smooth;
+      if (d.smooth) ctx.imageSmoothingQuality = "high";
+      ctx.translate(x, ground); ctx.scale(scale, scale); ctx.translate(-d.pivot.x, -d.pivot.y);
+      for (const cx of [130, 351]) {
+        let wheelSaved = false;
+        try {
+          ctx.save(); wheelSaved = true; ctx.beginPath(); ctx.arc(cx, 228, 21, 0, Math.PI * 2); ctx.clip();
+          ctx.translate(cx, 228); ctx.rotate(angle); ctx.drawImage(asset.image, -cx, -228);
+        } catch (_) { /* Optional hub drawing must not interrupt the game. */ }
+        finally { if (wheelSaved) try { ctx.restore(); } catch (_) {} }
+      }
+    } catch (_) { /* The original truck is already drawn. */ }
+    finally { if (saved) try { ctx.restore(); } catch (_) {} }
+  },
+  // Compose one back-detail frame and its original character offscreen before drawing either to
+  // the game. A failed front draw cannot leave a stray back detail on the game canvas. One small
+  // canvas is reused per character and refreshed only when the 5fps frame or source assets change.
+  castComposite(id, base, back, time) {
+    try {
+      const b = base?.data, d = back?.data;
+      if (typeof document === "undefined" || !document.createElement || !base?.ready || !back?.ready ||
+          !base.image?.complete || base.image.naturalWidth !== 288 || base.image.naturalHeight !== 288 ||
+          !back.image?.complete || back.image.naturalWidth !== 288 * 8 || back.image.naturalHeight !== 288 ||
+          b?.frameWidth !== 288 || b?.frameHeight !== 288 || b.frames !== 1 || b.pivot?.x !== 144 || b.pivot?.y !== 264 ||
+          d?.frameWidth !== 288 || d?.frameHeight !== 288 || d.frames !== 8 || d.pivot?.x !== 144 || d.pivot?.y !== 264) return null;
+      const entries = this.castCompositeCache ||= new Map();
+      let entry = entries.get(id);
+      if (!entry || entry.base !== base || entry.back !== back) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 288; canvas.height = 288;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        entry = { base, back, canvas, ctx, frame: -1, asset: { ready: true, image: canvas, data: b, canvasSource: true } };
+        entries.set(id, entry);
+      }
+      const frame = this.frameAt(d, time);
+      if (entry.frame !== frame) {
+        entry.frame = -1; // a failed draw must never expose a partially composed frame
+        entry.ctx.clearRect(0, 0, 288, 288);
+        entry.ctx.drawImage(back.image, frame * 288, 0, 288, 288, 0, 0, 288, 288);
+        entry.ctx.drawImage(base.image, 0, 0, 288, 288, 0, 0, 288, 288);
+        entry.frame = frame;
+      }
+      return entry.asset;
+    } catch (_) { return null; }
+  },
   // Draw a CAST still with its feet at (x, feet); false -> caller draws the Canvas figure.
-  drawCast(ctx, id, x, feet, pose = 0) {
+  drawCast(ctx, id, x, feet, pose = 0, time = 0, reducedMotion = false) {
     const layer = this.castLayer(id, pose);
     if (!layer) return false;
-    if (!layer.flip) return this.draw(ctx, layer.asset, 0, x, feet, layer.scale);
+    // The optional jester loop replaces only the unused roadside idle. The original remains the
+    // fallback and reduced-motion still. Time 0 is a valid first animation frame, including pauses.
+    const idleLoop = this.jesterIdleLoop, loopData = idleLoop?.data;
+    if (id === "ANGLE" && !pose && !reducedMotion && !layer.flip && this.definitions.JESTER_IDLE_LOOP?.enabled !== false &&
+        idleLoop?.ready && loopData?.frameWidth === 288 && loopData?.frameHeight === 288 && loopData.pivot?.x === 144 && loopData.pivot?.y === 264 &&
+        this.draw(ctx, idleLoop, time, x, feet, layer.scale)) return true;
+    // Optional transparent detail behind the approved original idle. The complete character is drawn
+    // over it, keeping face, equipment and feet unchanged. No extra detail for USED or reduced motion.
+    const back = id === "BOOST" ? this.witchCapeBack : id === "BOUNCE" ? this.fighterScarfBack : id === "BRAKE" ? this.thiefHairBack : id === "DASH" ? this.warriorCapeBack : id === "GUARD" ? this.sageCapeBack : id === "STOPPER" ? this.clericHairBack : id === "SPECIAL_ONLY" ? this.merchantHairBack : null;
+    const backDef = id === "BOOST" ? this.definitions.WITCH_CAPE_BACK : id === "BOUNCE" ? this.definitions.FIGHTER_SCARF_BACK : id === "BRAKE" ? this.definitions.THIEF_HAIR_BACK : id === "DASH" ? this.definitions.WARRIOR_CAPE_BACK : id === "GUARD" ? this.definitions.SAGE_CAPE_BACK : id === "STOPPER" ? this.definitions.CLERIC_HAIR_BACK : id === "SPECIAL_ONLY" ? this.definitions.MERCHANT_HAIR_BACK : null;
+    const d = back?.data, base = layer.asset;
+    const showBack = backDef && backDef.enabled !== false && !pose && !reducedMotion && time > 0 &&
+        base.image?.complete && base.image.naturalWidth && base.data?.pivot && back?.ready && d?.frameWidth === 288 && d?.frameHeight === 288 && d.pivot?.x === 144 && d.pivot?.y === 264;
+    const composed = showBack ? this.castComposite(id, base, back, time) : null;
+    const drawAt = px => (composed && this.draw(ctx, composed, 0, px, feet, layer.scale)) || this.draw(ctx, base, 0, px, feet, layer.scale);
+    if (!layer.flip) return drawAt(x);
     ctx.save();
-    try { ctx.translate(x, 0); ctx.scale(-1, 1); return this.draw(ctx, layer.asset, 0, 0, feet, layer.scale); }
+    try {
+      ctx.translate(x, 0); ctx.scale(-1, 1);
+      return drawAt(0);
+    }
     finally { ctx.restore(); }
   },
   // Combo scenes (display only): a CAST still with uniform scale `mul` (x and y alike, so the 5-head proportions
@@ -540,6 +678,9 @@ Hop.Sprites.idleReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO.IDLE).then
 });
 Hop.Sprites.ready = Hop.Sprites.load(Hop.Sprites.definitions.HERO.FLIGHT_LOOP).then(asset => {
   Hop.Sprites.heroFlight = asset;
+  Hop.Sprites.flightCapeCache = null;
+  // Optional CPU work waits for the title's hero and truck assets to settle.
+  Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.scheduleFlightCapeCache(asset)).catch(() => {});
   return asset;
 });
 Hop.Sprites.aerialReady = Promise.all([["UP", "heroAerialUp"], ["DOWN", "heroAerialDown"]].map(([direction, key]) =>
@@ -567,6 +708,40 @@ Hop.Sprites.specialReactionReady = Hop.Sprites.load(Hop.Sprites.definitions.HERO
 Hop.Sprites.truckReady = Hop.Sprites.load(Hop.Sprites.definitions.TRUCK.IDLE).then(asset => {
   asset.opaque = Hop.Sprites.opaqueBoxes(asset); // launch cut-in / roadside stills sample only their pixels (cycle 55)
   Hop.Sprites.truckIdle = asset;
+  return asset;
+});
+// Decorative flight/cast assets never compete with the two assets shown on the title screen.
+Hop.Sprites.titleAssetsReady = Promise.all([Hop.Sprites.truckReady, Hop.Sprites.idleReady].map(p => p.catch(() => null)));
+Hop.Sprites.witchCapeBackReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.WITCH_CAPE_BACK)).then(asset => {
+  Hop.Sprites.witchCapeBack = asset;
+  return asset;
+});
+Hop.Sprites.fighterScarfBackReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.FIGHTER_SCARF_BACK)).then(asset => {
+  Hop.Sprites.fighterScarfBack = asset;
+  return asset;
+});
+Hop.Sprites.thiefHairBackReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.THIEF_HAIR_BACK)).then(asset => {
+  Hop.Sprites.thiefHairBack = asset;
+  return asset;
+});
+Hop.Sprites.warriorCapeBackReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.WARRIOR_CAPE_BACK)).then(asset => {
+  Hop.Sprites.warriorCapeBack = asset;
+  return asset;
+});
+Hop.Sprites.sageCapeBackReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.SAGE_CAPE_BACK)).then(asset => {
+  Hop.Sprites.sageCapeBack = asset;
+  return asset;
+});
+Hop.Sprites.clericHairBackReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.CLERIC_HAIR_BACK)).then(asset => {
+  Hop.Sprites.clericHairBack = asset;
+  return asset;
+});
+Hop.Sprites.merchantHairBackReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.MERCHANT_HAIR_BACK)).then(asset => {
+  Hop.Sprites.merchantHairBack = asset;
+  return asset;
+});
+Hop.Sprites.jesterIdleLoopReady = Hop.Sprites.titleAssetsReady.then(() => Hop.Sprites.load(Hop.Sprites.definitions.JESTER_IDLE_LOOP)).then(asset => {
+  Hop.Sprites.jesterIdleLoop = asset;
   return asset;
 });
 Hop.Sprites.castAssets = {};
