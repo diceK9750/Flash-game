@@ -99,10 +99,10 @@ Hop.Sprites = {
           src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle_sheet_288x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_idle.json" },
         // HD comic idle (288 cell) and used pose (384x288 cell for the wide stance); the 96 r1 stills are
         // kept in boost_witch/.
-        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", pose: 1, enabled: true,
+        USED: { id: "BOOST", animation: "USED", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", pose: 1, enabled: true, hotspot: { x: 87, y: 38 },
           src: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used_sheet_384x288.png", metadata: "assets/sprites/cast/boost_witch_comic_v1/boost_witch_used.json" },
         // Combo-scene only (comboPose; never the roadside still): chanting with the staff raised.
-        CAST: { id: "BOOST", animation: "CAST", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, enabled: true,
+        CAST: { id: "BOOST", animation: "CAST", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "left", comboPose: true, enabled: true, hotspot: { x: 100, y: 30 },
           src: "assets/sprites/cast/boost_witch_combo_v1/boost_witch_cast_sheet_288x288.png", metadata: "assets/sprites/cast/boost_witch_combo_v1/boost_witch_cast.json" },
         CUTIN_FACE: { id: "BOOST", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/boost_witch_cutin_face_v2/boost_witch_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/boost_witch_cutin_face_v2/boost_witch_cutin_face.json" }
@@ -117,7 +117,7 @@ Hop.Sprites = {
         // Combo-scene only (comboPose): rush punch and uppercut.
         PUNCH: { id: "BOUNCE", animation: "PUNCH", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "right", comboPose: true, enabled: true,
           src: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_punch_sheet_384x288.png", metadata: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_punch.json" },
-        UPPER: { id: "BOUNCE", animation: "UPPER", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "right", comboPose: true, enabled: true,
+        UPPER: { id: "BOUNCE", animation: "UPPER", frames: 1, fps: 1, loop: false, scale: 1.25, flip: false, facing: "right", comboPose: true, enabled: true, hotspot: { x: 192, y: 41 },
           src: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_upper_sheet_288x288.png", metadata: "assets/sprites/cast/bounce_fighter_combo_v1/bounce_fighter_upper.json" },
         CUTIN_FACE: { id: "BOUNCE", animation: "CUTIN_FACE", frames: 1, fps: 1, loop: false, scale: 1, flip: false, enabled: true,
           src: "assets/sprites/cast/bounce_fighter_cutin_face_v2/bounce_fighter_cutin_face_sheet_640x320.png", metadata: "assets/sprites/cast/bounce_fighter_cutin_face_v2/bounce_fighter_cutin_face.json" }
@@ -339,6 +339,189 @@ Hop.Sprites = {
       else if (typeof setTimeout === "function") setTimeout(build, 0);
     } catch (_) { /* Cache is optional. */ }
   },
+  // Optional witch CAST wind animation, generated once from the existing sprite. Work is split
+  // into one frame per idle callback so image preparation never blocks the first interactive view.
+  createWitchWindCache(asset) {
+    try {
+      const img = asset?.image, d = asset?.data;
+      if (!asset?.ready || !img?.complete || img.naturalWidth !== 288 || img.naturalHeight !== 288 ||
+          d?.frameWidth !== 288 || d.frameHeight !== 288 || d.frames !== 1 ||
+          d.pivot?.x !== 144 || d.pivot?.y !== 278 || typeof document === "undefined") return null;
+      // Four short strips avoid a 4608px-wide texture (too large for some mobile GPUs).
+      const fps = 16 / 1.3, sheets = [];
+      // Generated phases have their own timeline, independent of any source hold sequence.
+      const motionData = frames => { const out = { ...d, frames, fps, loop: true }; delete out.sequence; return out; };
+      for (let i = 0; i < 4; i++) {
+        const canvas = document.createElement?.("canvas"), context = canvas?.getContext?.("2d");
+        if (!context) return null;
+        canvas.width = 288 * 4; canvas.height = 288;
+        sheets.push({ ready: true, image: canvas, data: motionData(4), canvasSource: true, context });
+      }
+      return { ready: false, data: motionData(16), sheets, sourceAsset: asset, sourceImage: img, sourceData: d, sourcePivot: d.pivot,
+        sourceSpec: { src: img.src, currentSrc: img.currentSrc, unit: d.unit, smooth: d.smooth, fps: d.fps, loop: d.loop,
+          sequenceRef: d.sequence, sequence: Array.isArray(d.sequence) ? d.sequence.slice() : null }, nextFrame: 0 };
+    } catch (_) { return null; }
+  },
+  witchWindSourceValid(cache) {
+    try {
+      const a = cache?.sourceAsset, img = cache?.sourceImage, d = cache?.sourceData, s = cache?.sourceSpec;
+      return !!a?.ready && !!img?.complete && img.naturalWidth === 288 && img.naturalHeight === 288 &&
+        a.image === img && a.data === d && !!d && !!s && d.pivot === cache.sourcePivot &&
+        d.frameWidth === 288 && d.frameHeight === 288 && d.frames === 1 && d.pivot?.x === 144 && d.pivot?.y === 278 &&
+        img.src === s.src && img.currentSrc === s.currentSrc && d.unit === s.unit && d.smooth === s.smooth && d.fps === s.fps && d.loop === s.loop &&
+        d.sequence === s.sequenceRef && (!s.sequence || Array.isArray(d.sequence) && d.sequence.length === s.sequence.length && d.sequence.every((v, i) => v === s.sequence[i]));
+    } catch (_) { return false; }
+  },
+  renderWitchWindFrame(cache) {
+    const img = cache.sourceImage, f = cache.nextFrame, ctx = cache.sheets[Math.floor(f / 4)].context, ox = (f % 4) * 288;
+    const phase = 2 * Math.PI * f / 16, amount = 12;
+    // Blend only the five boundary phases toward the untouched source; the remaining phases retain their original path.
+    const phaseWeight = [0, .44, .78, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, .78, .44][f];
+    const edge = (x0, x1, y0, y1, seam, sign, p) => {
+      ctx.save();
+      try {
+        ctx.beginPath(); ctx.rect(ox + x0, y0, x1 - x0, y1 - y0); ctx.clip();
+        ctx.clearRect(ox + x0, y0, x1 - x0, y1 - y0); ctx.imageSmoothingEnabled = true;
+        for (let x = x0; x < x1; x++) {
+          const u = Math.max(0, Math.min(1, sign * (x - seam) / 35)), weight = u * u * (3 - 2 * u);
+          const dx = sign * amount * weight * Math.sin(p) * phaseWeight, dy = amount * 0.4 * weight * Math.sin(p + 0.7) * phaseWeight;
+          ctx.drawImage(img, Math.max(0, Math.min(286, x - dx)), y0, 1, y1 - y0, ox + x, y0 + dy, 1, y1 - y0);
+        }
+      } finally { ctx.restore(); }
+    };
+    ctx.drawImage(img, 0, 0, 288, 288, ox, 0, 288, 288);
+    if (f !== 0) {
+      edge(32, 100, 140, 240, 99, -1, phase);
+      edge(215, 272, 156, 238, 221, 1, phase + 0.7);
+    }
+    cache.nextFrame++;
+  },
+  scheduleWitchWindCache(asset) {
+    try {
+      if (!asset?.ready || this.witchWindPending === asset || (this.witchWindCache?.sourceAsset === asset && this.witchWindSourceValid(this.witchWindCache))) return;
+      const pending = this.createWitchWindCache(asset); if (!pending) return;
+      const queue = typeof requestIdleCallback === "function" ? cb => requestIdleCallback(cb, { timeout: 1000 })
+        : typeof setTimeout === "function" ? cb => setTimeout(cb, 0) : null;
+      if (!queue) return;
+      this.witchWindPending = asset;
+      const step = () => {
+        try {
+          if (this.witchWindPending !== asset) return;
+          if (this.castAssets?.BOOST?.CAST !== asset || !this.witchWindSourceValid(pending)) { this.witchWindPending = null; return; }
+          this.renderWitchWindFrame(pending);
+          if (this.castAssets?.BOOST?.CAST !== asset || !this.witchWindSourceValid(pending)) { this.witchWindPending = null; return; }
+          if (pending.nextFrame < 16) queue(step);
+          else { pending.ready = true; for (const sheet of pending.sheets) delete sheet.context; delete pending.nextFrame; this.witchWindCache = pending; this.witchWindPending = null; }
+        } catch (_) { this.witchWindPending = null; /* Static source remains available. */ }
+      };
+      queue(step);
+    } catch (_) { this.witchWindPending = null; }
+  },
+  // Optional UPPER wind animation: 16 logical phases share nine full frames. The two
+  // temporary 288px canvases are used only while its idle-time cache is being prepared.
+  createFighterWindCache(asset) {
+    try {
+      const img = asset?.image, d = asset?.data;
+      if (!asset?.ready || !img?.complete || img.naturalWidth !== 288 || img.naturalHeight !== 288 ||
+          d?.frameWidth !== 288 || d.frameHeight !== 288 || d.frames !== 1 ||
+          d.pivot?.x !== 144 || d.pivot?.y !== 264 || typeof document === "undefined") return null;
+      const fps = 16 / 0.7, sheets = [];
+      // The source may legally provide a one-frame hold sequence. It must not override
+      // the generated cache's independent 16-phase timeline or its four-cell strips.
+      const motionData = frames => { const out = { ...d, frames, fps, loop: true }; delete out.sequence; return out; };
+      for (const cells of [4, 4, 1]) {
+        const canvas = document.createElement?.("canvas"), context = canvas?.getContext?.("2d");
+        if (!context) return null;
+        canvas.width = cells * 288; canvas.height = 288;
+        sheets.push({ ready: true, image: canvas, data: motionData(cells), canvasSource: true, context });
+      }
+      const work = document.createElement?.("canvas"), mask = document.createElement?.("canvas");
+      const workCtx = work?.getContext?.("2d"), maskCtx = mask?.getContext?.("2d");
+      if (!workCtx || !maskCtx) return null;
+      work.width = mask.width = 288; work.height = mask.height = 288;
+      // Some canvases accept an unsupported composite assignment without throwing.
+      for (const [ctx, mode] of [[workCtx, "destination-out"], [workCtx, "lighter"], [maskCtx, "destination-in"]]) {
+        ctx.globalCompositeOperation = mode; if (ctx.globalCompositeOperation !== mode) return null;
+      }
+      workCtx.globalCompositeOperation = maskCtx.globalCompositeOperation = "source-over";
+      return { ready: false, data: motionData(16), sheets, sourceAsset: asset,
+        sourceImage: img, sourceData: d, sourcePivot: d.pivot,
+        sourceSpec: { src: img.src, currentSrc: img.currentSrc, unit: d.unit, smooth: d.smooth, fps: d.fps, loop: d.loop,
+          sequenceRef: d.sequence, sequence: Array.isArray(d.sequence) ? d.sequence.slice() : null },
+        work, mask, workCtx, maskCtx, nextFrame: 0 };
+    } catch (_) { return null; }
+  },
+  // A cache belongs to the exact, still-loaded image and metadata used for all its phases.
+  fighterWindSourceValid(cache) {
+    try {
+      const a = cache?.sourceAsset, img = cache?.sourceImage, d = cache?.sourceData, s = cache?.sourceSpec;
+      return !!a?.ready && !!img?.complete && img.naturalWidth === 288 && img.naturalHeight === 288 &&
+        a.image === img && a.data === d && !!d && !!s && d.pivot === cache.sourcePivot &&
+        d.frameWidth === 288 && d.frameHeight === 288 && d.frames === 1 && d.pivot?.x === 144 && d.pivot?.y === 264 &&
+        img.src === s.src && img.currentSrc === s.currentSrc && d.unit === s.unit && d.smooth === s.smooth && d.fps === s.fps && d.loop === s.loop &&
+        d.sequence === s.sequenceRef && (!s.sequence || Array.isArray(d.sequence) && d.sequence.length === s.sequence.length && d.sequence.every((v, i) => v === s.sequence[i]));
+    } catch (_) { return false; }
+  },
+  renderFighterWindFrame(cache) {
+    const img = cache.sourceImage, f = cache.nextFrame, sheet = cache.sheets[Math.floor(f / 4)], ox = (f % 4) * 288;
+    // Symmetry is exact because hair and scarf use the same sin(phase) value.
+    const phaseIndex = f <= 4 ? f : f + 4, phase = 2 * Math.PI * phaseIndex / 16;
+    const work = cache.workCtx, mask = cache.maskCtx;
+    work.clearRect(0, 0, 288, 288); work.drawImage(img, 0, 0);
+    // Phase 0 is the untouched reference, including every translucent pixel.
+    if (f !== 0) for (const r of [{ x0: 40, x1: 123, y0: 44, y1: 103, seam: 122, width: 32 },
+      { x0: 55, x1: 120, y0: 103, y1: 132, seam: 119, width: 26 }]) {
+      const h = r.y1 - r.y0, fade = Math.min(10, h / 3), grad = work.createLinearGradient(0, r.y0, 0, r.y1);
+      grad.addColorStop(0, "rgba(0,0,0,0)"); grad.addColorStop(1 / h, "rgba(0,0,0,0)");
+      grad.addColorStop((fade + 1) / h, "rgba(0,0,0,1)"); grad.addColorStop(1 - (fade + 1) / h, "rgba(0,0,0,1)");
+      grad.addColorStop(1 - 1 / h, "rgba(0,0,0,0)"); grad.addColorStop(1, "rgba(0,0,0,0)");
+      mask.clearRect(0, 0, 288, 288); mask.save();
+      try {
+        mask.beginPath(); mask.rect(r.x0, r.y0, r.x1 - r.x0, h); mask.clip(); mask.imageSmoothingEnabled = true;
+        for (let x = r.x0; x < r.x1; x++) {
+          const u = Math.max(0, Math.min(1, (r.seam - x) / r.width)), w = u * u * (3 - 2 * u);
+          const dx = -12 * w * Math.sin(phase), dy = 12 * 0.35 * w * Math.sin(phase);
+          mask.drawImage(img, Math.max(0, Math.min(286, x - dx)), r.y0, 1, h, x, r.y0 + dy, 1, h);
+        }
+        mask.globalCompositeOperation = "destination-in"; mask.fillStyle = grad; mask.fillRect(r.x0, r.y0, r.x1 - r.x0, h);
+      } finally { mask.restore(); }
+      work.save();
+      try {
+        work.beginPath(); work.rect(r.x0, r.y0, r.x1 - r.x0, h); work.clip();
+        work.globalCompositeOperation = "destination-out"; work.fillStyle = grad; work.fillRect(r.x0, r.y0, r.x1 - r.x0, h);
+        work.globalCompositeOperation = "lighter"; work.drawImage(cache.mask, 0, 0);
+      } finally { work.restore(); }
+    }
+    sheet.context.drawImage(cache.work, 0, 0, 288, 288, ox, 0, 288, 288); cache.nextFrame++;
+  },
+  scheduleFighterWindCache(asset) {
+    try {
+      if (!asset?.ready || this.fighterWindPending === asset ||
+          (this.fighterWindCache?.sourceAsset === asset && this.fighterWindSourceValid(this.fighterWindCache))) return;
+      const pending = this.createFighterWindCache(asset); if (!pending) return;
+      const queue = typeof requestIdleCallback === "function" ? cb => requestIdleCallback(cb, { timeout: 1000 })
+        : typeof setTimeout === "function" ? cb => setTimeout(cb, 0) : null;
+      if (!queue) return;
+      this.fighterWindPending = asset;
+      const step = () => {
+        try {
+          if (this.fighterWindPending !== asset) return;
+          if (this.castAssets?.BOUNCE?.UPPER !== asset || !this.fighterWindSourceValid(pending)) { this.fighterWindPending = null; return; }
+          this.renderFighterWindFrame(pending);
+          if (this.castAssets?.BOUNCE?.UPPER !== asset || !this.fighterWindSourceValid(pending)) { this.fighterWindPending = null; return; }
+          if (pending.nextFrame < 9) queue(step);
+          else {
+            pending.ready = true;
+            for (const sheet of pending.sheets) delete sheet.context;
+            try { pending.work.width = pending.work.height = pending.mask.width = pending.mask.height = 1; } catch (_) { /* Optional cleanup. */ }
+            delete pending.work; delete pending.mask; delete pending.workCtx; delete pending.maskCtx; delete pending.nextFrame;
+            this.fighterWindCache = pending; this.fighterWindPending = null;
+          }
+        } catch (_) { this.fighterWindPending = null; /* Static source remains available. */ }
+      };
+      queue(step);
+    } catch (_) { this.fighterWindPending = null; }
+  },
   drawFlightCape(ctx, asset, time, x, feet, scale) {
     try {
       const cache = this.flightCapeCache;
@@ -558,8 +741,13 @@ Hop.Sprites = {
   // ("left" / "right") mirrors the slot when its drawn facing differs (mirrored about the feet, so the feet stay);
   // without face, opts.flip toggles the definition flip. Returns { w, h, left, top, scale, name, flipped } or null.
   drawCastScaled(ctx, id, x, feet, pose = 0, mul = 1, opts = {}) {
-    const layer = this.comboLayer(id, pose);
-    if (!layer) return null;
+    const gate = id === "BOUNCE" && pose === "UPPER" && Number.isFinite(opts.windTime) ? opts.fighterWindGate : null;
+    const witchGate = id === "BOOST" && pose === "CAST" && Number.isFinite(opts.windTime) ? opts.witchWindGate : null;
+    let layer;
+    try { layer = this.comboLayer(id, pose); } catch (_) { if (gate) gate.allowed = false; if (witchGate) witchGate.allowed = false; return null; }
+    if (!layer || !layer.asset?.data) { if (gate) gate.allowed = false; if (witchGate) witchGate.allowed = false; return null; }
+    if (gate && layer.name !== "UPPER") gate.allowed = false;
+    if (witchGate && layer.name !== "CAST") witchGate.allowed = false;
     const d = layer.asset.data, scale = layer.scale * mul / (d.unit > 0 ? d.unit : 1);
     // facing = the stored image's facing, so the total mirror is simply face !== facing.
     const flip = opts.face ? opts.face !== (layer.facing || "left") : !!layer.flip !== !!opts.flip;
@@ -569,7 +757,31 @@ Hop.Sprites = {
       ctx.translate(x, feet);
       if (opts.rotate) ctx.rotate(opts.rotate);
       if (flip) ctx.scale(-1, 1);
-      if (!this.draw(ctx, layer.asset, 0, 0, 0, layer.scale * mul)) return null;
+      let drawn = false;
+      const windAlpha = Number.isFinite(opts.windAlpha) ? Math.max(0, Math.min(1, opts.windAlpha)) : 1;
+      const fighterWind = this.fighterWindCache;
+      const fighterCandidate = id === "BOUNCE" && layer.name === "UPPER" && Number.isFinite(opts.windTime) && (!gate || gate.allowed);
+      const fighterValid = fighterWind?.ready && fighterWind.sourceAsset === layer.asset && this.fighterWindSourceValid(fighterWind) &&
+        fighterWind.data?.frames === 16 && fighterWind.data.fps > 0 && Array.isArray(fighterWind.sheets) && (!gate || gate.cache === fighterWind);
+      if (fighterCandidate && !fighterValid && gate) gate.allowed = false;
+      if (fighterCandidate && fighterValid && windAlpha >= 1) {
+        const logical = this.frameAt(fighterWind.data, opts.windTime), stored = [0,1,2,3,4,3,2,1,0,5,6,7,8,7,6,5][logical];
+        const sheet = fighterWind.sheets[Math.floor(stored / 4)], localTime = (stored % 4 + 0.5) / fighterWind.data.fps;
+        if (sheet) drawn = this.draw(ctx, sheet, localTime, 0, 0, layer.scale * mul);
+        if (!drawn && gate) gate.allowed = false; // latch failure for every later draw in this scene
+      }
+      const wind = this.witchWindCache;
+      const witchCandidate = id === "BOOST" && layer.name === "CAST" && Number.isFinite(opts.windTime) && (!witchGate || witchGate.allowed);
+      const witchValid = wind?.ready && wind.sourceAsset === layer.asset && this.witchWindSourceValid(wind) &&
+        wind.data?.frames === 16 && wind.data.fps > 0 && Array.isArray(wind.sheets) && (!witchGate || witchGate.cache === wind);
+      if (witchCandidate && !witchValid && witchGate) witchGate.allowed = false;
+      if (witchCandidate && witchValid) {
+        const frame = this.frameAt(wind.data, opts.windTime), sheet = wind.sheets?.[Math.floor(frame / 4)], localTime = (frame % 4 + 0.5) / wind.data.fps;
+        // The first cached frame is the original image, so a single blit preserves translucent pixels.
+        if (sheet) drawn = this.draw(ctx, sheet, localTime, 0, 0, layer.scale * mul);
+        if (!drawn && witchGate) witchGate.allowed = false;
+      }
+      if (!drawn && !this.draw(ctx, layer.asset, 0, 0, 0, layer.scale * mul)) return null;
       const left = flip ? x - (d.frameWidth - d.pivot.x) * scale : x - d.pivot.x * scale;
       return { w: d.frameWidth * scale, h: d.frameHeight * scale, left, top: feet - d.pivot.y * scale, scale, name: layer.name, flipped: flip };
     } finally { ctx.restore(); }
@@ -761,3 +973,10 @@ Hop.Sprites.castBodyReady = Promise.all(Hop.Sprites.castLoad((name, d) => !Hop.S
 Hop.Sprites.cutinFaceReady = Promise.all([Hop.Sprites.truckReady, Hop.Sprites.idleReady].map(p => p.catch(() => null)))
   .then(() => Promise.all(Hop.Sprites.castLoad((name, d) => Hop.Sprites.castDeferred(name, d))));
 Hop.Sprites.castReady = Promise.all([Hop.Sprites.castBodyReady, Hop.Sprites.cutinFaceReady]).then(([a, b]) => a.concat(b));
+// Wait for the title-critical assets and CAST itself, then build only when the browser is idle.
+Promise.all([Hop.Sprites.titleAssetsReady, Hop.Sprites.castBodyReady]).then(() => {
+  Hop.Sprites.scheduleWitchWindCache(Hop.Sprites.castAssets?.BOOST?.CAST);
+}).catch(() => {});
+Promise.all([Hop.Sprites.titleAssetsReady, Hop.Sprites.castBodyReady]).then(() => {
+  Hop.Sprites.scheduleFighterWindCache(Hop.Sprites.castAssets?.BOUNCE?.UPPER);
+}).catch(() => {});

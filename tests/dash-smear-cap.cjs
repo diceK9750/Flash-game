@@ -70,17 +70,23 @@ function recCtx(canvas) {
   assert.ok(stopSaw, 'expected STOPPER smear lookups');
   assert.ok(stopMaxK >= 2, 'STOPPER still walks past k=1 (got max k=' + stopMaxK + ')');
   // ANGLE ribbon / trail also probe grandActor at 0.02 / 0.014 steps, so k-offset counting collides with smear.
-  // Force historical placements far away so the smear hypot check always passes, then count smear-band comboCast alphas.
-  function smearAlphasForced(type, baseT) {
+  // Tag the exact historical actor objects passed to comboCast; do not identify smears by rounded alpha,
+  // since a nearby ANGLE smear can legitimately share the old k=2 or k=3 opacity.
+  function smearSamplesForced(type, baseT) {
     const a = [];
     const ga = G.grandActor.bind(G), cc = G.comboCast.bind(G);
+    const current = ga(mk(type, baseT), sx, sy, ground);
     G.grandActor = function (st2, ...rest) {
       const A = ga(st2, ...rest);
-      if (st2 && st2.type === type && st2.after === null && Math.abs(st2.t - baseT) > 1e-9) return { ...A, x: A.x + 80, dy: (A.dy || 0) + 80 };
+      if (st2 && st2.type === type && st2.after === null && Math.abs(st2.t - baseT) > 1e-9) {
+        const k = [1, 2, 3].find(k => Math.abs(baseT - st2.t - 0.03 * k) < 1e-9);
+        return { ...A, x: A.x + 80, dy: (A.dy || 0) + 80, __smearK: k };
+      }
       return A;
     };
     G.comboCast = function (ctx, id, p, sx, gnd, alpha) {
-      if (id === type && alpha > 0.05 && alpha < 0.4) a.push(+alpha.toFixed(2));
+      if (id === type && p.__smearK) a.push({ k: p.__smearK, alpha, actorAlpha: p.alpha ?? 1,
+        distance: Math.hypot(p.x - current.x, p.dy - current.dy) });
       return cc(ctx, id, p, sx, gnd, alpha);
     };
     try { G.grandBack(recCtx({ width: 390, height: 844 }), mk(type, baseT), sx, sy, ground); }
@@ -91,10 +97,13 @@ function recCtx(canvas) {
   for (let i = 0; i < 40; i++) {
     const t = 0.4 + i * 0.04;
     if (t >= c.grandDurations.ANGLE - start) break;
-    const al = smearAlphasForced('ANGLE', t).filter(x => x === 0.34 || x === 0.2 || x === 0.1);
-    if (al.length) {
+    const samples = smearSamplesForced('ANGLE', t);
+    if (samples.length) {
       angleSaw = true;
-      assert.deepEqual([...new Set(al)].sort((x, y) => y - x), [0.34], 'ANGLE smear alphas k=1 only, got ' + al + ' at t=' + t);
+      assert.deepEqual(samples.map(s => s.k), [1], 'ANGLE draws only the closest smear at t=' + t);
+      const s = samples[0], u = Math.max(0, Math.min(1, (s.distance - 75) / 45));
+      const expected = 0.34 * s.actorAlpha * (0.45 + 0.55 * u * u * (3 - 2 * u));
+      assert.ok(Math.abs(s.alpha - expected) < 1e-9, 'ANGLE proximity opacity at t=' + t);
     }
   }
   assert.ok(angleSaw, 'expected ANGLE smear comboCasts under forced distance');
@@ -102,10 +111,32 @@ function recCtx(canvas) {
   for (let i = 0; i < 40; i++) {
     const t = 0.25 + i * 0.04;
     if (t >= c.grandDurations.BRAKE - start) break;
-    const al = smearAlphasForced('BRAKE', t).filter(x => x === 0.34 || x === 0.2 || x === 0.1);
-    if (al.length) { brakeSaw = true; if (al.includes(0.2) || al.includes(0.1)) brakeFar = true; }
+    const samples = smearSamplesForced('BRAKE', t);
+    if (samples.length) {
+      brakeSaw = true;
+      for (const s of samples) {
+        assert.ok(Math.abs(s.alpha - [0, 0.34, 0.2, 0.1][s.k] * s.actorAlpha) < 1e-9, 'BRAKE original smear opacity');
+        if (s.k > 1) brakeFar = true;
+      }
+    }
   }
   assert.ok(brakeSaw, 'expected BRAKE smear comboCasts');
   assert.ok(brakeFar, 'BRAKE still draws far smears (k=2/3)');
+  // Keep the other grand SPECIALs' actual opacity as well as their existing smear-count limits.
+  for (const type of ['DASH', 'STOPPER', 'GUARD']) {
+    let saw = false, sawFar = false;
+    for (let i = 0; i < 35; i++) {
+      const t = 0.25 + i * 0.04;
+      if (t >= c.grandDurations[type] - start) break;
+      const samples = smearSamplesForced(type, t);
+      for (const s of samples) {
+        saw = true; if (s.k > 1) sawFar = true;
+        assert.ok(s.k <= (type === 'DASH' ? 1 : 3), type + ' retains its smear-count limit');
+        assert.ok(Math.abs(s.alpha - [0, 0.34, 0.2, 0.1][s.k] * s.actorAlpha) < 1e-9, type + ' retains its original smear opacity');
+      }
+    }
+    assert.ok(saw, type + ' expected smear samples');
+    if (type !== 'DASH') assert.ok(sawFar, type + ' retains distant smear samples');
+  }
   console.log(`dash-smear-cap OK: DASH+ANGLE smear k=1; STOPPER max k=${stopMaxK}; BRAKE keeps far smears`);
 })().catch(e => { console.error(e); process.exit(1); });

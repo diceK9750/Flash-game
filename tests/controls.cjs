@@ -38,7 +38,8 @@ test('all seven special taps only resolve, never trigger AERIAL',()=>{
   if(type==='GUARD')g.normalGuard=1;else g.specialArmed[rule.trigger]=true;
   hit(g,type,{next:rule.partner?[{x:900,type:rule.partner}]:[]});assert(g.special);
   document.listeners.keydown({code:'Space',repeat:true});assert(g.special); // repeat ignored
-  document.listeners.keydown({code:type.length%2?'Space':'Enter',repeat:false});assert.equal(g.special,null); // key = tap (cycle 22)assert.equal(g.upRemaining,3);near(g.downCharge,1);
+  document.listeners.keydown({code:type.length%2?'Space':'Enter',repeat:false});assert.equal(g.special,null); // key = tap (cycle 22)
+  assert.equal(g.upRemaining,3);near(g.downCharge,1);
  }
 });
 test('audio absent, denied, or suspended never breaks controls',()=>{

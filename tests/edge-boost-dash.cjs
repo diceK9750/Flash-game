@@ -34,9 +34,23 @@ for (let room = 70; room < 400; room += 5) {
   }
   if (room < 135) { assert.deepEqual([...sides], [1], 'all blows from the right'); assert.equal(ghost, 0, 'no ghost'); } else { assert.equal(sides.size, 2, 'teleport rush kept'); assert.ok(ghost > 0); }
 }
-// staff side follows the facing (motes / fireball start at the staff) — source check
+// Staff side follows the facing even when optional sprite assets are not loaded.
+// Verify rendered effect positions rather than the syntax of their source expressions.
 const src = fs.readFileSync(path.join(root, 'js', 'graphics.js'), 'utf8');
-assert.ok(src.includes('wx + (A.witch.face === "left" ? -28 : 28)') && src.includes('x0 = wx + (A.witch.face === "left" ? -30 : 30)'), 'staff offsets mirrored with the facing');
+const oldCircle = G.circle, oldCast = G.comboCast, oldBlend = G.comboCastBlend;
+const ctx = () => new Proxy({ globalAlpha: 1 }, { get: (o, k) => k in o ? o[k] : k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}, set: (o, k, v) => (o[k] = v, true) });
+try {
+  G.comboCast = () => {}; G.comboCastBlend = () => {};
+  for (const room of [100, 260]) {
+    const k = mkB(room, 0.7), a = G.comboActors(k), circles = [], sign = a.witch.face === 'left' ? -1 : 1;
+    G.circle = (c, x, y) => circles.push({ x, y }); G.comboBack(ctx(), k, sx, sy, ground);
+    const d = (1 - (k.t * 1.3) % 1) * 150;
+    assert.ok(Math.abs(circles[0].x - (sx(a.witch.x) + sign * 28 + d)) < 1e-6, 'mote fallback follows facing');
+    const f = mkB(room, W.liftEnd), actor = G.comboActors(f).witch, arcs = [], c = ctx();
+    c.arc = (x, y) => arcs.push({ x, y }); G.comboFront(c, f, sx, sy, ground);
+    assert.ok(Math.abs(arcs[0].x - (sx(actor.x) + sign * 30)) < 1e-6, 'fireball fallback follows facing');
+  }
+} finally { G.circle = oldCircle; G.comboCast = oldCast; G.comboCastBlend = oldBlend; }
 assert.ok(src.includes('if (combo) combo.room = sx(combo.heroWX);'), 'draw() gives the scene its room');
 // DASH: slide past the hero limited by room - 85, unchanged with room
 const z = Math.max(1, Math.min(c.comboZoomMax, c.width * c.comboZoomFill / 410, c.height * c.comboZoomFill / 305)) * 1.07, half = c.width / 2 / z;

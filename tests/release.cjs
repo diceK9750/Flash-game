@@ -82,8 +82,9 @@ if (!process.argv.includes('--serve')) {
   const qa = '<script>' + fs.readFileSync(path.join(__dirname, 'qa.js'), 'utf8') + '</script>';
   http.createServer((req, res) => {
     const prefix = '/NANACACRASH/';
-    if (!req.url.startsWith(prefix)) { res.writeHead(404); res.end(); return; }
-    const file = req.url.slice(prefix.length) || 'index.html';
+    const pathname = req.url.split('?', 1)[0];
+    if (!pathname.startsWith(prefix)) { res.writeHead(404); res.end(); return; }
+    const file = pathname.slice(prefix.length) || 'index.html';
     if (file === 'qa.html') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html.replace('<script defer src="js/main.js"></script>', '').replace('</body>', qa + '</body>').replaceAll(' defer ', ' ')); return; }
     if (!allowed.has(file)) { res.writeHead(404); res.end(); return; }
     res.setHeader('Content-Type', file.endsWith('.mp3') ? 'audio/mpeg' : file.endsWith('.png') ? 'image/png' : file.endsWith('.gif') ? 'image/gif' : file.endsWith('.json') ? 'application/json' : file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/html; charset=utf-8');

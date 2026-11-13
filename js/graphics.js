@@ -231,7 +231,7 @@ Hop.Graphics = {
   // SPECIAL cut-in band (plate, duotone wash, face close-up, soft wash, rim) in band space (origin = band centre, tilt
   // applied by the caller), revealed left -> right to `reveal`, portrait scale x pop, layer alpha a.
   specialCutinBand(ctx, cut, accent, bandW, bandH, reveal, pop, a) {
-    const c = Hop.CONFIG;
+    const c = Hop.CONFIG; let portraitFailed = false;
     ctx.save();
     ctx.globalAlpha = a;
     const hw = bandW / 2, hh = bandH / 2, skew = 36;
@@ -277,7 +277,7 @@ Hop.Graphics = {
           finally { ctx.restore(); }
         } else drawn = !!Hop.Sprites.draw(ctx, fall.asset, 0, 0, feetY, scale);
       }
-      if (!drawn) this.character(ctx, cut.castId, 0, hh * 0.35, 1.6 * pop);
+      if (!drawn) { portraitFailed = !!(face?.asset?.ready || fall?.asset?.ready); this.character(ctx, cut.castId, 0, hh * 0.35, 1.6 * pop); }
       // Soft plate wash (keep face readable)
       ctx.globalAlpha = a * (cut.strong ? 0.12 : 0.14);
       ctx.fillStyle = cut.strong ? "#ffe9a0" : accent;
@@ -293,6 +293,7 @@ Hop.Graphics = {
     ctx.lineTo(hw - skew * 0.2, hh); ctx.lineTo(-hw - skew, hh);
     ctx.closePath(); ctx.stroke();
     ctx.restore();
+    return !portraitFailed;
   },
   // Settled SPECIAL cut-in band from a cached layer (2026-11-05 auto cycle 56, display only). Drawn live, the band is
   // a rotated anti-aliased clip with a gradient wash and a ~1200 x 1000 device-px upscaled face inside (~12 ms/frame
@@ -306,11 +307,17 @@ Hop.Graphics = {
     const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
     if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
     let L = this.cutinBandLayer;
-    if (!L) { const cv = doc?.createElement?.("canvas"), cx = cv?.getContext?.("2d"); if (!cx) return false; L = this.cutinBandLayer = { cv, cx, key: null }; }
+    if (!L) {
+      try { const cv = doc?.createElement?.("canvas"), cx = cv?.getContext?.("2d"); if (!cx) return false; L = this.cutinBandLayer = { cv, cx, key: null }; }
+      catch (_) { return false; } // Optional cache; the caller draws the live band.
+    }
     if (!(alpha > 0)) return true;
     const face = Hop.Sprites?.cutinFaceLayer?.(cut.castId), fall = Hop.Sprites?.castLayer?.(cut.castId, 0);
-    const key = [cut.castId, !!cut.strong, accent, bandW, bandH, m.a, m.b, m.c, m.d, !!face?.asset?.ready, !!fall?.asset?.ready].join("|");
-    if (L.key !== key) {
+    const imageState = a => [!!a?.ready, !!a?.image?.complete, a?.image?.naturalWidth || 0, a?.image?.naturalHeight || 0];
+    const key = [cut.castId, !!cut.strong, accent, bandW, bandH, m.a, m.b, m.c, m.d, ...imageState(face?.asset), ...imageState(fall?.asset)].join("|");
+    // Keep a fallback for this cut-in after a transient draw failure, but retry on
+    // the next cut-in or as soon as the source image's identity or readiness changes.
+    if (L.key !== key || (L.failedCut && L.failedCut !== cut) || L.faceAsset !== face?.asset || L.fallAsset !== fall?.asset || L.faceImage !== face?.asset?.image || L.fallImage !== fall?.asset?.image) {
       // device-space box of the band around its origin: wipe rect (+4 / +30 px) and skewed plate + rim (5 px)
       const hw = bandW / 2 + 36 + 8, hh = bandH / 2 + 36;
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -326,13 +333,33 @@ Hop.Graphics = {
       cx.globalAlpha = 1; cx.globalCompositeOperation = "source-over"; cx.filter = "none";
       cx.lineCap = ctx.lineCap; cx.lineJoin = ctx.lineJoin; cx.miterLimit = ctx.miterLimit;
       cx.setTransform(m.a, m.b, m.c, m.d, -ox, -oy);
-      this.specialCutinBand(cx, cut, accent, bandW, bandH, 1, 1, 1);
-      Object.assign(L, { key, ox, oy });
+      const portraitOK = this.specialCutinBand(cx, cut, accent, bandW, bandH, 1, 1, 1);
+      Object.assign(L, { key, ox, oy, failedCut: portraitOK === false ? cut : null, faceAsset: face?.asset, fallAsset: fall?.asset, faceImage: face?.asset?.image, fallImage: fall?.asset?.image });
     }
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha;
     ctx.drawImage(L.cv, Math.round(m.e) + L.ox, Math.round(m.f) + L.oy);
     ctx.restore();
     return true;
+  },
+  // Protect the portrait and the Canvas fallback with the same area in band coordinates.
+  // The mask is independent of image loading, drawing and the cached band.
+  merchantCoinMask(g, visual) {
+    const cut = g?.specialCutin, c = Hop.CONFIG;
+    const age = cut && cut.total - cut.remaining + this.subStep(g, g.combo ? g.combo.rate || 1 : 1);
+    if (!cut?.merchantType || visual?.reducedMotion || !(age >= 0 && age < cut.total)) return null;
+    const st = this.specialCutinStyle(age, false, false), tilt = c.specialCutinBandTiltDeg * Math.PI / 180;
+    const cs = Math.cos(tilt), sn = Math.sin(tilt), slide = (st.slide || 0) * c.width * 0.45;
+    return { x: c.width * 0.5 + slide * cs + st.shakeX, y: c.height * 0.48 - slide * sn + st.shakeY,
+      cs, sn, strength: st.alpha * Math.min(1, st.wipe * 2) * 0.78 };
+  },
+  merchantCoinAlpha(mask, x, y, radius) {
+    if (!mask) return 1;
+    const dx = x - mask.x, dy = y - mask.y;
+    const lx = dx * mask.cs - dy * mask.sn, ly = dx * mask.sn + dy * mask.cs;
+    const ox = Math.max(0, -300 - radius - lx, lx - 70 - radius);
+    const oy = Math.max(0, -145 - radius - ly, ly - 120 - radius);
+    const u = Math.max(0, Math.min(1, Math.hypot(ox, oy) / 70));
+    return 1 - mask.strength * (1 - u * u * (3 - 2 * u));
   },
   // Merchant SPECIAL flourish (2026-10-16, display only; never mutates game): gold coin burst + sparkles and a big
   // skill-name pop, timed on the real-time clock from the merchant cut-in's start and lasting merchantFlourishDuration
@@ -345,6 +372,7 @@ Hop.Graphics = {
     const T = c.merchantFlourishDuration, a = now - fx.at;
     if (g.state !== "FLYING" || !(a >= 0) || a >= T) { if (a >= T || g.state !== "FLYING") visual.merchantFx = null; return; }
     const fade = Math.min(1, (T - a) / 0.35), cx = c.width * 0.5, cy = c.height * 0.48;
+    const coinMask = this.merchantCoinMask(g, visual);
     ctx.save();
     if (!rm) {
       // Coin burst: two waves fly out, arc under gravity and spin (uniform-scale gold discs + glint).
@@ -353,7 +381,10 @@ Hop.Graphics = {
         const ang = (i * 2.399963) % (Math.PI * 2), sp = 520 + (i * 97) % 380;
         const x = cx + Math.cos(ang) * sp * t, y = cy + Math.sin(ang) * sp * t * 0.75 + 520 * t * t;
         const r = 13 + (i % 3) * 4, spin = t * 9 + i;
-        ctx.globalAlpha = fade * Math.max(0, 1 - t / (T * 0.9));
+        // Ease each wave in independently to avoid all coins popping in at the same point.
+        const u = Math.min(1, t / 0.1), appear = u * u * (3 - 2 * u);
+        ctx.globalAlpha = fade * Math.max(0, 1 - t / (T * 0.9)) * appear;
+        ctx.globalAlpha *= this.merchantCoinAlpha(coinMask, x, y, r + 3);
         ctx.fillStyle = "#b8860b"; ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#ffd447"; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = "#fff6c0"; ctx.beginPath(); ctx.arc(x - r * 0.3 * Math.cos(spin), y - r * 0.3, r * 0.32, 0, Math.PI * 2); ctx.fill();
@@ -388,10 +419,70 @@ Hop.Graphics = {
     const sy = y => ground - c.playerRadius - y;
     // Combo scene (display only): one state per frame; screen shake wraps the world, not the cut-in.
     const combo = this.comboState(g);
+    // Decide once per live scene whether the optional witch animation was already prepared.
+    // Finishing its idle cache mid-scene must not suddenly change the visible sprite. Toggling
+    // reduced motion on also suppresses it until the next scene, avoiding a pop when toggled off.
+    if (combo && g.combo) {
+      const S = Hop.Sprites, asset = S?.castAssets?.BOOST?.CAST, cache = S?.witchWindCache;
+      const sourceValid = !!cache?.ready && cache.sourceAsset === asset && !!S?.witchWindSourceValid?.(cache);
+      if (visual.witchWindScene !== g.combo) {
+        visual.witchWindScene = g.combo;
+        visual.witchWindGate = { scene: g.combo, asset, cache, allowed: !visual.reducedMotion && !combo.short && !combo.skipped && sourceValid };
+      }
+      const gate = visual.witchWindGate;
+      if (visual.reducedMotion || combo.short || combo.skipped || asset !== gate.asset || cache !== gate.cache || !sourceValid) gate.allowed = false;
+      visual.witchWindAllowed = !!gate.allowed;
+      combo.witchWindAllowed = !!visual.witchWindAllowed;
+      combo.witchWindGate = gate;
+    } else if (visual.witchWindScene != null || visual.witchWindAllowed) {
+      visual.witchWindScene = null; visual.witchWindAllowed = false; visual.witchWindGate = null;
+    }
+    // UPPER wind is independent of the witch cache. Snapshot readiness once per scene:
+    // late cache completion, recovery and reduced-motion OFF cannot pop it into view.
+    if (combo?.type === "BOUNCE" && g.combo) {
+      const S = Hop.Sprites, asset = S?.castAssets?.BOUNCE?.UPPER, cache = S?.fighterWindCache;
+      const sourceValid = !!cache?.ready && cache.sourceAsset === asset && !!S?.fighterWindSourceValid?.(cache);
+      if (visual.fighterWindGate?.scene !== g.combo) {
+        visual.fighterWindGate = { scene: g.combo, asset, cache, allowed: !visual.reducedMotion && !combo.short && !combo.skipped &&
+          sourceValid };
+      }
+      const gate = visual.fighterWindGate;
+      if (visual.reducedMotion || combo.short || combo.skipped || asset !== gate.asset || cache !== gate.cache || !sourceValid) gate.allowed = false;
+      combo.fighterWindAllowed = gate.allowed;
+      combo.fighterWindGate = gate;
+    } else if (visual.fighterWindGate != null) visual.fighterWindGate = null;
+    // The optional fist accent must not suddenly appear when UPPER finishes loading mid-scene.
+    // Remember the original asset by identity; once unavailable or reduced-motion is enabled,
+    // keep the old aura for the rest of this scene. This state belongs to the UI, not the game.
+    if (combo?.type === "BOUNCE" && g.combo) {
+      if (visual.fighterAuraGate?.scene !== g.combo) {
+        const asset = Hop.Sprites?.castAssets?.BOUNCE?.UPPER;
+        visual.fighterAuraGate = { scene: g.combo, asset, allowed: !visual.reducedMotion && !combo.short && !combo.skipped &&
+          !!asset?.ready && !!asset.image?.complete && !!asset.image.naturalWidth };
+      }
+      const gate = visual.fighterAuraGate, asset = Hop.Sprites?.castAssets?.BOUNCE?.UPPER;
+      if (visual.reducedMotion || combo.short || combo.skipped || asset !== gate.asset || !asset?.ready || !asset.image?.complete || !asset.image.naturalWidth) gate.allowed = false;
+    } else if (visual.fighterAuraGate != null) visual.fighterAuraGate = null;
     if (combo) combo.room = sx(combo.heroWX); // cycle 42: hero -> left stage edge (the combo view never looks past it), for the BOOST layout
     if (combo && this.smooth) { const sub = this.subStep(g, g.combo?.rate || 1); if (combo.after === null) combo.t = Math.min(combo.end, combo.t + sub); else combo.after = Math.min(combo.afterTotal, combo.after + sub); }
     // Grand solo SPECIAL scene (cycle 34): same clock rules as the combo scene.
     const grand = this.grandState(g);
+    // Optional DASH sword-light crossfade: snapshot both exact assets on the first
+    // frame of this scene. A late load or a later recovery must not pop the effect in.
+    if (grand?.type === "DASH" && grand.after === null && g.combo) {
+      if (visual.warriorGlowGate?.scene !== g.combo) {
+        let windup = null, thrust = null, windupImage = null, thrustImage = null, windupData = null, thrustData = null;
+        try { windup = Hop.Sprites?.castAssets?.DASH?.WINDUP; thrust = Hop.Sprites?.castAssets?.DASH?.THRUST; windupImage = windup?.image; thrustImage = thrust?.image; windupData = windup?.data; thrustData = thrust?.data; } catch (_) { windup = thrust = null; }
+        visual.warriorGlowGate = { scene: g.combo, windup, thrust, windupImage, thrustImage, windupData, thrustData,
+          allowed: !visual.reducedMotion && !grand.short && !grand.skipped && this.warriorGlowAssetsReady(windup, thrust) };
+      }
+      const gate = visual.warriorGlowGate;
+      try {
+        const slots = Hop.Sprites?.castAssets?.DASH;
+        if (visual.reducedMotion || grand.short || grand.skipped || slots?.WINDUP !== gate.windup || slots?.THRUST !== gate.thrust ||
+            gate.windup?.image !== gate.windupImage || gate.thrust?.image !== gate.thrustImage || gate.windup?.data !== gate.windupData || gate.thrust?.data !== gate.thrustData || !this.warriorGlowAssetsReady(gate.windup, gate.thrust)) gate.allowed = false;
+      } catch (_) { gate.allowed = false; }
+    } else if (visual.warriorGlowGate != null) visual.warriorGlowGate = null;
     if (grand && this.smooth) { const sub = this.subStep(g, g.combo?.rate || 1); if (grand.after === null) grand.t = Math.min(grand.end, grand.t + sub); else grand.after = Math.min(grand.afterTotal, grand.after + sub); }
     const scene = combo || grand;
     const impact = grand ? this.grandImpact(grand, !!visual?.reducedMotion) : this.comboImpact(combo, !!visual?.reducedMotion);
@@ -485,8 +576,8 @@ Hop.Graphics = {
     const x = sx(bodyX), y = sy(bodyY);
     if (D && !D.rm && g.state === "FLYING" && !g.launchCutin && !scene) this.speedLines(ctx, x, y, g.body.vx, g.body.vy, D.time);
     if (g.tempoEnabled && !visual.reducedMotion && g.state === "FLYING" && !g.launchCutin && !scene) this.windLines(ctx, g.body.vx, g.body.vy, g.realTime || 0, cam.w > 0 ? 0 : 1);
-    if (combo) this.comboBack(ctx, combo, sx, sy, ground);
-    if (grand) this.grandBack(ctx, grand, sx, sy, ground);
+    if (combo) this.comboBack(ctx, combo, sx, sy, ground, !!visual.reducedMotion, visual.fighterAuraGate);
+    if (grand) this.grandBack(ctx, grand, sx, sy, ground, !!visual.reducedMotion, visual.warriorGlowGate);
     const comboHero = combo && combo.after === null ? this.comboActors(combo).hero : null;
     // Sakuga hero reaction (cycle 35): grand scenes move / spin the hero; combos add a spin to their own hero motion.
     const sceneHero = grand ? this.grandHeroOff(grand, sx, sy, ground) : comboHero ? { dx: 0, dy: 0, rot: this.comboHeroRot(combo), hit: false } : null;
@@ -584,7 +675,7 @@ Hop.Graphics = {
       ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - launchAge / 0.18)})`; ctx.fillRect(0, 0, c.width, c.height);
       this.contactEffect(ctx, "BOOST", sx(0), sy(0), launchAge);
     }
-    const overlay = combo ? this.comboFront(ctx, combo, sx, sy, ground) : grand ? this.grandFront(ctx, grand, sx, sy, ground) : null;
+    const overlay = combo ? this.comboFront(ctx, combo, sx, sy, ground, !!visual.reducedMotion) : grand ? this.grandFront(ctx, grand, sx, sy, ground, !!visual.reducedMotion, visual.warriorGlowGate) : null;
     if (scene) this.sakugaImpact(ctx, scene, sx, sy, ground, grand ? sceneHero : comboHero && { ...comboHero, rot: sceneHero?.rot || 0 }, !!visual?.reducedMotion);
     const camM = scene ? ctx.getTransform?.() : null; // cycle 40: camera transform for the key-pose readout below
     ctx.restore(); // combo camera
@@ -803,7 +894,10 @@ Hop.Graphics = {
     let e = cache.get(key);
     if (e === null) return false;
     if (!e) {
-      const cv = doc?.createElement?.("canvas"), c2 = cv?.getContext?.("2d"); if (!c2) return false;
+      let cv, c2;
+      try { cv = doc?.createElement?.("canvas"); c2 = cv?.getContext?.("2d"); }
+      catch (_) { return false; } // Draw the existing vector outlines if the cache is unavailable.
+      if (!c2) return false;
       const lc = this.lcTextState(ctx, doc), setup = () => { Object.assign(c2, lc); c2.font = ctx.font; c2.textAlign = "center"; c2.textBaseline = "middle"; };
       setup();
       const mt = c2.measureText(text), mw = ctx.measureText?.(text)?.width;
@@ -1167,29 +1261,65 @@ Hop.Graphics = {
     // Continuous shake (no 60 Hz stepping): two incommensurate sines per axis, sub-frame smooth.
     return { x: (Math.sin(t * 67) * 0.7 + Math.sin(t * 109 + 2.1) * 0.3) * amp, y: (Math.cos(t * 83) * 0.7 + Math.cos(t * 127 + 0.7) * 0.3) * amp * 0.7, flash };
   },
-  comboCast(ctx, id, a, sx, ground, alpha = 1) {
+  comboCast(ctx, id, a, sx, ground, alpha = 1, windTime = null, windAlpha = 1, fighterWindGate = null) {
     if (!a) return;
-    const ok = Hop.Sprites?.drawCastScaled?.(ctx, id, sx(a.x), ground + (a.dy || 0), a.pose, a.scale || 1, { face: a.face, rotate: a.rotate, alpha });
+    const opts = { face: a.face, rotate: a.rotate, alpha };
+    if (Number.isFinite(windTime)) { opts.windTime = windTime; opts.windAlpha = windAlpha; }
+    const gate = id === "BOUNCE" && a.pose === "UPPER" && Number.isFinite(windTime) ? fighterWindGate : null;
+    const witchGate = id === "BOOST" && a.pose === "CAST" && Number.isFinite(windTime) ? fighterWindGate : null;
+    if (gate) opts.fighterWindGate = gate;
+    if (witchGate) opts.witchWindGate = witchGate;
+    let ok = null;
+    try { ok = Hop.Sprites?.drawCastScaled?.(ctx, id, sx(a.x), ground + (a.dy || 0), a.pose, a.scale || 1, opts); }
+    catch (_) { if (gate) gate.allowed = false; if (witchGate) witchGate.allowed = false; /* Draw the existing Canvas fallback. */ }
+    if (!ok && gate) gate.allowed = false;
+    if (!ok && witchGate) witchGate.allowed = false;
     // Canvas fallback (no sprite): pose 0 / 1, the Canvas figures face the viewer's left.
     if (!ok) { ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(sx(a.x), ground + (a.dy || 0)); if (a.rotate) ctx.rotate(a.rotate); if (a.face === "right") ctx.scale(-1, 1); this.character(ctx, id, 0, 0, 1.365 * (a.scale || 1), a.pose === "IDLE" ? 0 : 1); ctx.restore(); }
+    return !!ok;
   },
   // Pose in-between (2026-10-15, display only): for POSE_FADE s after an actor's pose / facing changes in place,
   // the previous still fades out over the new one (cross-fade of existing sprites; same uniform scale).
   POSE_FADE: 0.1,
-  comboCastBlend(ctx, id, key, st, a, sx, ground, alpha = 1) {
+  // Refine only the one 1/120 s interval that brackets a pose change. The existing coarse search
+  // and geometry guards stay intact; six bisections reduce timing steps to ~0.13 ms.
+  poseTransitionAge(back, step, isCurrent) {
+    let current = back - step, previous = back;
+    for (let i = 0; i < 6; i++) {
+      const mid = (current + previous) / 2;
+      if (isCurrent(mid)) current = mid; else previous = mid;
+    }
+    return (current + previous) / 2;
+  },
+  comboCastBlend(ctx, id, key, st, a, sx, ground, alpha = 1, reducedMotion = false, fighterAuraGate = null) {
     if (!a) return;
+    const sourceScale = a.scale || 1; // compare scene geometry, before the visual-only pose pulse
     a = this.comboSakuga(st, key, a); // cycle 35 sakuga layer (lean / pose overshoot)
-    this.comboCast(ctx, id, a, sx, ground, alpha);
-    if (st.short || st.after !== null || st.skipped) return;
+    const eligible = !reducedMotion && !st.short && !st.skipped && st.after === null;
+    const witchWind = id === "BOOST" && key === "witch" && st.witchWindAllowed && eligible;
+    const fighterWind = id === "BOUNCE" && key === "fighter" && st.type === "BOUNCE" && st.fighterWindGate?.allowed &&
+      Number.isFinite(st.fighterWindGate.startAt) && eligible;
+    const wind = witchWind || fighterWind;
+    const start = fighterWind ? st.fighterWindGate.startAt : st.type === "BOOST" ? 0.15 : Hop.CONFIG.comboFighterTimes.arrive;
+    const end = fighterWind ? st.end : st.type === "BOOST" ? Hop.CONFIG.comboWitchTimes.liftEnd - 0.05 : Hop.CONFIG.comboFighterTimes.gone;
+    const windTime = wind ? Math.max(0, Math.min(st.t, end) - start) : null;
+    const windAlpha = witchWind ? this.smoother((st.t - start) / 0.15) : 1;
+    const drawn = this.comboCast(ctx, id, a, sx, ground, alpha, windTime, windAlpha, fighterWind ? st.fighterWindGate : witchWind ? st.witchWindGate : null);
+    if (id === "BOUNCE" && st.type === "BOUNCE" && a.pose === "UPPER" && drawn === false && fighterAuraGate) fighterAuraGate.allowed = false;
+    if (st.short || st.after !== null || st.skipped || reducedMotion) return;
     const h = 1 / 120;
     for (let back = h; back <= this.POSE_FADE + 1e-9; back += h) {
       const p = this.comboActors({ ...st, t: st.t - back })[key];
       if (!p) return;
       if (p.pose === a.pose && p.face === a.face) continue;
-      if (Math.abs(p.x - a.x) > 40 || (p.scale || 1) !== (a.scale || 1) || Math.abs((p.dy || 0) - (a.dy || 0)) > 40) return;
-      const u = (back - h * 0.5) / this.POSE_FADE, k = 1 - Math.max(0, Math.min(1, u)) ** 2 * (3 - 2 * Math.max(0, Math.min(1, u)));
+      if (Math.abs(p.x - a.x) > 40 || (p.scale || 1) !== sourceScale || Math.abs((p.dy || 0) - (a.dy || 0)) > 40) return;
+      const age = this.poseTransitionAge(back, h, distance => {
+        const q = this.comboActors({ ...st, t: st.t - distance })[key];
+        return !!q && q.pose === a.pose && q.face === a.face;
+      });
+      const u = Math.max(0, Math.min(1, age / this.POSE_FADE)), k = 1 - u * u * (3 - 2 * u);
       // the previous pose is drawn at the current placement so only the drawing changes
-      this.comboCast(ctx, id, { ...a, pose: p.pose, face: p.face }, sx, ground, alpha * (1 - k) * 0.9);
+      this.comboCast(ctx, id, { ...a, pose: p.pose, face: p.face }, sx, ground, alpha * k * 0.9, windTime, windAlpha, fighterWind ? st.fighterWindGate : witchWind ? st.witchWindGate : null);
       return;
     }
   },
@@ -1436,6 +1566,29 @@ Hop.Graphics = {
     const pulse = age === null ? 0 : 0.07 * Math.exp(-age * 12) * Math.cos(age * 24);
     return { ...a, rotate: (a.rotate || 0) + lean, scale: (a.scale || 1) * (1 + pulse) };
   },
+  // Match the actual combo pose, its animation pulse, facing and rotation. Optional images may
+  // be missing or not decoded; preserve each effect's prior Canvas origin in that case.
+  comboWitchTip(st, actor, sx, ground, fallback, reducedMotion = false) {
+    try {
+      const a = this.comboSakuga(st, "witch", actor), S = Hop.Sprites, layer = S?.comboLayer?.("BOOST", a.pose);
+      if (!layer || layer.name !== a.pose || !layer.asset?.image?.complete || !layer.asset.image.naturalWidth) return fallback;
+      const p = S.castPoint("BOOST", sx(a.x), ground + (a.dy || 0), a.pose, a.scale || 1, { face: a.face, rotate: a.rotate });
+      if (!Number.isFinite(p?.x) || !Number.isFinite(p?.y)) return fallback;
+      // During the BOOST CAST -> USED visual fade, move the magic origin along the same
+      // smooth timing curve. The outgoing point is sampled immediately before the change,
+      // preserving its exact pre-transition transform rather than jumping with the pulse.
+      const change = Hop.CONFIG.comboWitchTimes.liftEnd - 0.05, age = st.t - change;
+      if (st.type !== "BOOST" || st.short || st.skipped || st.after !== null || reducedMotion || a.pose !== "USED" || age < 0 || age >= this.POSE_FADE) return p;
+      const prevSt = { ...st, t: change - 1e-7 }, prev = this.comboActors(prevSt).witch;
+      if (!prev || prev.pose !== "CAST" || prev.face !== actor.face || Math.abs(prev.x - actor.x) > 40) return p;
+      const old = this.comboSakuga(prevSt, "witch", prev), oldLayer = S.comboLayer("BOOST", old.pose);
+      if (!oldLayer || oldLayer.name !== old.pose || !oldLayer.asset?.image?.complete || !oldLayer.asset.image.naturalWidth) return p;
+      const q = S.castPoint("BOOST", sx(old.x), ground + (old.dy || 0), old.pose, old.scale || 1, { face: old.face, rotate: old.rotate });
+      if (!Number.isFinite(q?.x) || !Number.isFinite(q?.y)) return p;
+      const u = age / this.POSE_FADE, k = u * u * (3 - 2 * u);
+      return { x: q.x + (p.x - q.x) * k, y: q.y + (p.y - q.y) * k };
+    } catch (_) { return fallback; }
+  },
   comboHeroRot(st) {
     if (!st || st.short || st.after !== null || st.skipped) return 0;
     const c = Hop.CONFIG, t = st.t, cl = u => Math.max(0, Math.min(1, u)); let r = 0;
@@ -1452,28 +1605,64 @@ Hop.Graphics = {
   // uniform scale; nothing in the short version / reduced motion / after a skip.
   grandPoseChange(st, A, sx, sy, ground) {
     if (st.short || st.after !== null || st.skipped) return null;
-    for (let back = 1 / 120; back <= this.POSE_FADE + 1e-9; back += 1 / 120) {
+    const step = 1 / 120;
+    for (let back = step; back <= this.POSE_FADE + 1e-9; back += step) {
       const p = this.grandActor({ ...st, t: st.t - back }, sx, sy, ground);
-      if (p.pose !== A.pose) return Math.abs(p.x - A.x) > 60 || Math.abs((p.dy || 0) - (A.dy || 0)) > 60 ? null : { back, pose: p.pose, face: p.face };
+      if (p.pose !== A.pose) {
+        if (Math.abs(p.x - A.x) > 60 || Math.abs((p.dy || 0) - (A.dy || 0)) > 60) return null;
+        const age = this.poseTransitionAge(back, step, distance => this.grandActor({ ...st, t: st.t - distance }, sx, sy, ground).pose === A.pose);
+        return { back: age, pose: p.pose, face: p.face };
+      }
     }
     return null;
   },
-  grandCastBlend(ctx, id, st, A, sx, sy, ground, alpha) {
-    this.comboCast(ctx, id, A, sx, ground, alpha);
+  grandCastBlend(ctx, id, st, A, sx, sy, ground, alpha, reducedMotion = false, warriorGlowGate = null) {
+    const drawn = this.comboCast(ctx, id, A, sx, ground, alpha);
+    if (id === "DASH" && (A.pose === "WINDUP" || A.pose === "THRUST") && drawn === false && warriorGlowGate) warriorGlowGate.allowed = false;
+    if (reducedMotion) return null;
     const ch = this.grandPoseChange(st, A, sx, sy, ground); if (!ch) return null;
-    const u = Math.max(0, Math.min(1, (ch.back - 1 / 240) / this.POSE_FADE)), k = u * u * (3 - 2 * u);
-    this.comboCast(ctx, id, { ...A, pose: ch.pose, face: ch.face }, sx, ground, alpha * (1 - k) * 0.85);
+    // The priest's IDLE -> PRAY silhouettes overlap around the face. Fade only that
+    // prior pose a little sooner, retaining the same continuous entrance and placement.
+    const duration = id === "STOPPER" && ch.pose === "IDLE" && A.pose === "PRAY" ? 0.07 : this.POSE_FADE;
+    const u = Math.max(0, Math.min(1, ch.back / duration)), k = u * u * (3 - 2 * u);
+    // The warrior's wind-up and thrust have very different silhouettes; a faint prior pose
+    // suggests motion without doubling her face and sword. Other characters are unchanged.
+    const previousOpacity = id === "DASH" ? 0.22 : 0.85;
+    const oldDrawn = this.comboCast(ctx, id, { ...A, pose: ch.pose, face: ch.face }, sx, ground, alpha * (1 - k) * previousOpacity);
+    if (id === "DASH" && ch.pose === "WINDUP" && oldDrawn === false && warriorGlowGate) warriorGlowGate.allowed = false;
     if (ch.back < 0.05) { ctx.save(); ctx.filter = "brightness(0) invert(1)"; this.comboCast(ctx, id, A, sx, ground, alpha * 0.6 * (1 - ch.back / 0.05)); ctx.filter = "none"; ctx.restore(); }
     return ch;
   },
   // Screen point of the drawn pose's hotspot (sword / dagger tip, staff orb, cane top); a body estimate before the
   // pose sprites are loaded so the effects still play.
-  grandTip(st, A, sx, ground) {
+  grandTip(st, A, sx, ground, warriorGlowGate = null) {
     const x = sx(A.x), feet = ground + (A.dy || 0);
-    const p = Hop.Sprites?.castPoint?.(st.type, x, feet, A.pose, A.scale, { face: A.face, rotate: A.rotate });
-    if (p) return p;
+    let p = null;
+    try { p = Hop.Sprites?.castPoint?.(st.type, x, feet, A.pose, A.scale, { face: A.face, rotate: A.rotate }); } catch (_) { /* The existing body estimate is the fallback. */ }
+    if (Number.isFinite(p?.x) && Number.isFinite(p?.y)) return p;
+    if (warriorGlowGate && st.type === "DASH" && (A.pose === "WINDUP" || A.pose === "THRUST")) warriorGlowGate.allowed = false;
     const s = A.scale || 1, dx = (A.face === "right" ? 1 : -1) * 45 * s, dy = -100 * s, r = A.rotate || 0;
     return { x: x + dx * Math.cos(r) - dy * Math.sin(r), y: feet + dx * Math.sin(r) + dy * Math.cos(r) };
+  },
+  warriorGlowAssetsReady(windup, thrust) {
+    try { return [windup, thrust].every(a => !!a?.ready && !!a.image?.complete && a.image.naturalWidth > 0 && a.image.naturalHeight > 0 && !!a.data); }
+    catch (_) { return false; }
+  },
+  // Two lights stay attached to their respective sword tips while the poses crossfade.
+  // This is presentation only; failed optional lookups latch the scene to the old effect.
+  warriorGlowTransition(st, A, sx, sy, ground, gate) {
+    if (!gate?.allowed || st.type !== "DASH" || st.short || st.skipped || st.after !== null) return null;
+    const smooth = u => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); }, t = this.grandT(st);
+    if (A.pose === "WINDUP" && t >= 0.67 && t < 0.75) return { current: 1 - 0.78 * smooth((t - 0.67) / 0.08) };
+    if (A.pose !== "THRUST" || t >= 0.85) return null;
+    try {
+      const ch = this.grandPoseChange(st, A, sx, sy, ground);
+      if (!ch || ch.pose !== "WINDUP") return null;
+      const p = Hop.Sprites?.castPoint?.("DASH", sx(A.x), ground + (A.dy || 0), ch.pose, A.scale, { face: ch.face, rotate: A.rotate });
+      if (!Number.isFinite(p?.x) || !Number.isFinite(p?.y)) { gate.allowed = false; return null; }
+      const k = smooth(ch.back / this.POSE_FADE);
+      return { current: k, previous: 0.22 * (1 - k), oldTip: p };
+    } catch (_) { gate.allowed = false; return null; }
   },
   // GUARD magic circle strokes (origin = circle centre, strokeStyle set by the caller): 2 rings, hexagram, 12 runes.
   guardCirclePaths(ctx, R, draw, t) {
@@ -1500,8 +1689,11 @@ Hop.Graphics = {
     const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
     if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
     let L = this.guardGlowLayer;
-    if (!L) { const a = doc?.createElement?.("canvas"), b = doc?.createElement?.("canvas"), ca = a?.getContext?.("2d"), cb = b?.getContext?.("2d");
-      if (!ca || !cb) return false; L = this.guardGlowLayer = { a, b, ca, cb }; }
+    if (!L) {
+      try { const a = doc?.createElement?.("canvas"), b = doc?.createElement?.("canvas"), ca = a?.getContext?.("2d"), cb = b?.getContext?.("2d");
+        if (!ca || !cb) return false; L = this.guardGlowLayer = { a, b, ca, cb }; }
+      catch (_) { return false; } // Keep the existing shadowed-stroke fallback.
+    }
     if (!(alpha > 0)) return true;
     const D = this.GUARD_GLOW_DOWN, blur = 16, k = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d));
     const cx = m.a * x + m.c * y + m.e, cy = m.b * x + m.d * y + m.f;
@@ -1558,7 +1750,10 @@ Hop.Graphics = {
     const m = ctx.getTransform?.(), f = ctx.filter, doc = typeof document !== "undefined" ? document : null;
     if (!m || (typeof f === "string" && f !== "none") || (ctx.globalCompositeOperation || "source-over") !== "source-over") return false;
     let L = this.guardDomeLayer;
-    if (!L) { const a = doc?.createElement?.("canvas"), ca = a?.getContext?.("2d"); if (!ca) return false; L = this.guardDomeLayer = { a, ca }; }
+    if (!L) {
+      try { const a = doc?.createElement?.("canvas"), ca = a?.getContext?.("2d"); if (!ca) return false; L = this.guardDomeLayer = { a, ca }; }
+      catch (_) { return false; } // Keep the existing live barrier fallback.
+    }
     const k = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d)); if (!(k > 0)) return false;
     if (!(alpha > 0)) return true;
     const R0 = this.GUARD_DOME_R0, rot = (m.a / k).toFixed(3) + ":" + (m.b / k).toFixed(3) + ":" + (m.c / k).toFixed(3) + ":" + (m.d / k).toFixed(3);
@@ -1608,28 +1803,39 @@ Hop.Graphics = {
     ctx.restore(); return pts.length;
   },
   // Light / particle effects that follow each adopted pose (the art carries none). Drawn over the actor, behind the hero.
-  grandPoseFx(ctx, st, A, sx, sy, ground, fade, back = false) { // back: the part drawn behind the actor (rays, pillars, decals)
+  grandPoseFx(ctx, st, A, sx, sy, ground, fade, back = false, reducedMotion = false, warriorGlowGate = null) { // back: the part drawn behind the actor (rays, pillars, decals)
     if (!(A.alpha > 0.05) || !(fade > 0.01)) return;
-    const t = this.grandT(st), b = t - st.climax, cl = u => Math.max(0, Math.min(1, u)), tip = this.grandTip(st, A, sx, ground), ax = sx(A.x), afeet = ground + (A.dy || 0);
+    const t = this.grandT(st), b = t - st.climax, cl = u => Math.max(0, Math.min(1, u)), tip = this.grandTip(st, A, sx, ground, warriorGlowGate?.allowed ? warriorGlowGate : null), ax = sx(A.x), afeet = ground + (A.dy || 0);
+    const swordLight = !back && !reducedMotion ? this.warriorGlowTransition(st, A, sx, sy, ground, warriorGlowGate) : null;
     const dir = A.face === "right" ? 1 : -1, S = A.scale || 1, R = (i, k) => this.grandRand(i, k);
     ctx.save();
     if (st.type === "DASH") {
       if (A.pose === "WINDUP") { const u = cl((t - 0.5) / 0.25); // power gathering at the sword tip
       if (!back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+        // The twelve old-pose rays reach zero as the pose changes, using the same
+        // asset/scene gate as the sword lights. Geometry and timing stay unchanged.
+        const rayFade = swordLight ? cl((swordLight.current - 0.22) / 0.78) : 1;
         for (let i = 0; i < 12; i++) { const an = i * Math.PI / 6 + t * 2.5, r0 = 30 + 150 * (1 - ((t * 3 + R(i, 20)) % 1));
-          ctx.globalAlpha = fade * 0.8 * u; ctx.strokeStyle = i % 2 ? "#ffd27a" : "#ff6a2a"; ctx.lineWidth = 3;
+          ctx.globalAlpha = fade * 0.8 * u * rayFade; ctx.strokeStyle = i % 2 ? "#ffd27a" : "#ff6a2a"; ctx.lineWidth = 3;
           ctx.beginPath(); ctx.moveTo(tip.x + Math.cos(an) * r0, tip.y + Math.sin(an) * r0); ctx.lineTo(tip.x + Math.cos(an) * r0 * 0.55, tip.y + Math.sin(an) * r0 * 0.55); ctx.stroke(); }
         ctx.restore();
-        this.grandGlow(ctx, tip.x, tip.y, 26 + 46 * u + 6 * Math.sin(t * 40), "255,140,50", fade * (0.5 + 0.5 * u));
-        ctx.globalAlpha = fade * u; this.spark(ctx, tip.x, tip.y, 14 + 22 * u, "#fff6d8", t * 9); }
+        this.grandGlow(ctx, tip.x, tip.y, 26 + 46 * u + 6 * Math.sin(t * 40), "255,140,50", fade * (0.5 + 0.5 * u) * (swordLight?.current ?? 1));
+        ctx.globalAlpha = fade * u * (swordLight?.current ?? 1); this.spark(ctx, tip.x, tip.y, 14 + 22 * u, "#fff6d8", t * 9); }
       if (back) { ctx.globalAlpha = fade * 0.7 * u; ctx.strokeStyle = "#ff8a3a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(ax, afeet, 40 + 40 * u, 10 + 6 * u, 0, 0, Math.PI * 2); ctx.stroke(); }
       } else if (A.pose === "THRUST") { // blazing thrust: tip comet trail, wind rings, flame glow
       const a = fade * (b < 0 ? 1 : 1 - cl((b - 0.35) / 0.35));
       if (!back) { this.grandTrail(ctx, st, sx, sy, ground, ["THRUST"], 12, 0.014, ["#ff5a20", "#ff9a40", "#ffd060"], 30, a);
-        this.grandGlow(ctx, tip.x, tip.y, 55 + 10 * Math.sin(t * 50), "255,170,70", a);
-        ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 26 + 8 * Math.sin(t * 30), "#ffffff", t * 12);
+        this.grandGlow(ctx, tip.x, tip.y, 55 + 10 * Math.sin(t * 50), "255,170,70", a * (swordLight?.current ?? 1));
+        ctx.globalAlpha = a * (swordLight?.current ?? 1); this.spark(ctx, tip.x, tip.y, 26 + 8 * Math.sin(t * 30), "#ffffff", t * 12);
         ctx.strokeStyle = "rgba(255,240,210,0.9)"; ctx.lineWidth = 3;
-        for (let k = 0; k < 3; k++) { const ph = (t * 6 + k / 3) % 1; ctx.globalAlpha = a * (1 - ph) * 0.8; ctx.beginPath(); ctx.ellipse(ax - dir * (20 + 120 * ph), afeet - 62 * S, 10 + 8 * ph, 44 + 24 * ph, 0, 0, Math.PI * 2); ctx.stroke(); } }
+        for (let k = 0; k < 3; k++) { const ph = (t * 6 + k / 3) % 1; ctx.globalAlpha = a * (1 - ph) * 0.8; ctx.beginPath(); ctx.ellipse(ax - dir * (20 + 120 * ph), afeet - 62 * S, 10 + 8 * ph, 44 + 24 * ph, 0, 0, Math.PI * 2); ctx.stroke(); }
+        if (swordLight?.oldTip) {
+          // Continue the previous glow and star with their actual wind-up size, colour and
+          // rotation, then fade them out while the new sword light fades in.
+          const oldAlpha = fade * swordLight.previous, q = swordLight.oldTip;
+          this.grandGlow(ctx, q.x, q.y, 72 + 6 * Math.sin(t * 40), "255,140,50", oldAlpha);
+          ctx.save(); ctx.globalAlpha = oldAlpha; this.spark(ctx, q.x, q.y, 36, "#fff6d8", t * 9); ctx.restore();
+        } }
       if (back) { this.grandGlow(ctx, ax, afeet - 60 * S, 90, "255,90,30", a * 0.45); }
       } else if (A.pose === "FINISH") { const v = cl((b - 0.72) / 0.2), e = 1 - cl((b - 1.6) / 0.6), a = fade * v * e; // sword raised: light pillar + star glint
       if (back) { const w = 16 * (1 + 0.25 * Math.sin(t * 34)) * (0.4 + 0.6 * v);
@@ -1651,7 +1857,9 @@ Hop.Graphics = {
         for (let i = 0; i < 8; i++) { const an = t * 1.6 + i * Math.PI / 4; this.circle(ctx, ax + Math.cos(an) * 63, afeet + Math.sin(an) * 14.5, 3, "#fffbe6"); }
         ctx.beginPath(); ctx.moveTo(ax - 24, afeet); ctx.lineTo(ax + 24, afeet); ctx.moveTo(ax, afeet - 6); ctx.lineTo(ax, afeet + 6); ctx.stroke(); ctx.restore(); }
       if (!back) { for (let i = 0; i < 18; i++) { const life = (t * 0.9 + R(i, 24)) % 1; ctx.globalAlpha = fade * u * (1 - life); this.spark(ctx, ax + (R(i, 25) - 0.5) * 150 + Math.sin(t * 3 + i) * 8, afeet - 10 - life * 230, 4 + 4 * R(i, 26), "#fffbe6", t * 2 + i); }
-        this.grandGlow(ctx, tip.x, tip.y, 30 + 8 * Math.sin(t * 12) + 20 * u, "255,236,150", fade * (0.4 + 0.6 * u)); }
+        // Use the same scene-time ramp in every display mode, avoiding a flash when
+        // reduced motion is toggled during an already-running full scene.
+        this.grandGlow(ctx, tip.x, tip.y, 30 + 8 * Math.sin(t * 12) + 20 * u, "255,236,150", fade * (0.4 + 0.6 * u) * u); }
       } else if (A.pose === "RELEASE") { const a = fade * (1 - cl((b - 0.6) / 0.25)), v = this.ease(cl(b / 0.15)); // release: beam from the staff, rotating rays, burst rings
       if (back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; const w = 26 * (1 + 0.2 * Math.sin(t * 40));
         const g = ctx.createLinearGradient(tip.x - w * 2, 0, tip.x + w * 2, 0); g.addColorStop(0, "rgba(255,230,140,0)"); g.addColorStop(0.5, "rgba(255,255,245,1)"); g.addColorStop(1, "rgba(255,230,140,0)");
@@ -1681,9 +1889,14 @@ Hop.Graphics = {
     } else if (st.type === "ANGLE") {
       const hues = ["#ff4d6d", "#ffb340", "#ffe066", "#5fd35f", "#4dc3ff", "#a46bff"];
       if (A.pose === "HANDSTAND") { const a = fade; // cartwheel: rainbow cane trail, star sprinkles from the cane
-      if (!back) { this.grandTrail(ctx, st, sx, sy, ground, ["HANDSTAND"], 16, 0.014, hues, 22, a);
-        for (let i = 0; i < 8; i++) { const life = (t * 3 + R(i, 29)) % 1, an = R(i, 30) * Math.PI * 2; ctx.globalAlpha = a * (1 - life); this.spark(ctx, tip.x + Math.cos(an) * 60 * life, tip.y + Math.sin(an) * 60 * life + 40 * life * life, 7 * (1 - life) + 3, hues[i % 6], t * 8 + i); }
-        this.grandGlow(ctx, tip.x, tip.y, 30, "255,230,120", a * 0.9); }
+      // Keep the trail behind the jester, including when reduced motion changes mid-scene.
+      if (back) this.grandTrail(ctx, st, sx, sy, ground, ["HANDSTAND"], 16, 0.014, hues, 22, a);
+      if (!back) {
+        // Ease in the cane glow and sparks on the shared clock. Short, skipped and
+        // afterglow scenes keep their existing presentation.
+        const q = st.short || st.skipped || st.after !== null ? 1 : cl((t - 0.35) / 0.1), reveal = q * q * (3 - 2 * q);
+        for (let i = 0; i < 8; i++) { const life = (t * 3 + R(i, 29)) % 1, an = R(i, 30) * Math.PI * 2; ctx.globalAlpha = a * (1 - life) * reveal; this.spark(ctx, tip.x + Math.cos(an) * 60 * life, tip.y + Math.sin(an) * 60 * life + 40 * life * life, 7 * (1 - life) + 3, hues[i % 6], t * 8 + i); }
+        this.grandGlow(ctx, tip.x, tip.y, 30, "255,230,120", a * 0.9 * reveal); }
       } else if (A.pose === "TADA") { const a = fade * (1 - cl((b - 0.75) / 0.15)); // ta-da: spotlight, fireworks, cane star
       if (back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = a * 0.28;
         const g = ctx.createLinearGradient(0, afeet - 600, 0, afeet); g.addColorStop(0, "rgba(255,250,200,0)"); g.addColorStop(1, "rgba(255,240,170,0.8)");
@@ -1706,15 +1919,22 @@ Hop.Graphics = {
         for (let i = 0; i < 8; i++) { const an = t * 2 + i * Math.PI / 4, gx = ax + Math.cos(an) * 75, gy = afeet - 80 * S + Math.sin(an) * 22; if ((Math.sin(an) < 0) !== back) continue; ctx.globalAlpha = fade * u * (0.55 + 0.45 * Math.sin(an));
           ctx.beginPath(); ctx.moveTo(gx - 6, gy - 7); ctx.lineTo(gx + 6, gy - 7); ctx.moveTo(gx, gy - 7); ctx.lineTo(gx, gy + 7); ctx.moveTo(gx - 5, gy + 3); ctx.lineTo(gx + 5, gy + 3); ctx.stroke(); }
         ctx.restore();
-      if (!back) { this.grandGlow(ctx, tip.x, tip.y, 22 + 10 * Math.abs(Math.sin(t * 9)) + 12 * u, "110,220,255", fade * (0.45 + 0.4 * u)); }
+      if (!back) {
+        // The CHANT pose begins when its scene progress exceeds 0.15. Match the
+        // glow's entrance to that moment instead of abruptly appearing at full opacity.
+        const q = cl((t - (0.55 + 0.15 * (st.climax - 0.55))) / 0.1), reveal = q * q * (3 - 2 * q);
+        this.grandGlow(ctx, tip.x, tip.y, 22 + 10 * Math.abs(Math.sin(t * 9)) + 12 * u, "110,220,255", fade * (0.45 + 0.4 * u) * reveal);
+      }
       } else if (A.pose === "BARRIER") { const a = fade * (1 - cl((b - 0.85) / 0.2)), v = this.ease(cl(b / 0.12)); // barrier: orb flash, rays, hex shards
       if (back) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(tip.x, tip.y); ctx.rotate(-t * 0.8);
         for (let i = 0; i < 16; i++) { ctx.rotate(Math.PI / 8); ctx.globalAlpha = a * 0.3; ctx.fillStyle = i % 2 ? "#bff8ff" : "#ffffff"; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(210 * v, -7); ctx.lineTo(210 * v, 7); ctx.closePath(); ctx.fill(); }
         ctx.restore(); }
       if (!back) { const h = this.grandHero(st, sx, sy);
+        // The shared warped scene clock keeps this reveal frozen during hit-stop.
+        const revealU = cl(b / 0.12), reveal = revealU * revealU * (3 - 2 * revealU);
         ctx.save(); ctx.strokeStyle = "#e8fdff"; ctx.lineWidth = 2;
         for (let i = 0; i < 12; i++) { const an = i * Math.PI / 6 + R(i, 31), r = 40 + 230 * this.ease(cl(b / 0.7)), px = h.x + Math.cos(an) * r, py = h.y + Math.sin(an) * r * 0.8;
-          ctx.globalAlpha = a * (1 - cl(b / 0.8)); ctx.beginPath(); for (let j = 0; j <= 6; j++) { const q = j * Math.PI / 3 + b * 6 + i; const qx = px + Math.cos(q) * 9, qy = py + Math.sin(q) * 9; j ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.stroke(); }
+          ctx.globalAlpha = a * (1 - cl(b / 0.8)) * reveal; ctx.beginPath(); for (let j = 0; j <= 6; j++) { const q = j * Math.PI / 3 + b * 6 + i; const qx = px + Math.cos(q) * 9, qy = py + Math.sin(q) * 9; j ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.stroke(); }
         ctx.restore();
         this.grandGlow(ctx, tip.x, tip.y, 30 + 40 * (1 - cl(b / 0.5)), "150,235,255", a * 0.8);
         ctx.globalAlpha = a; this.spark(ctx, tip.x, tip.y, 24, "#ffffff", t * 3); }
@@ -1722,8 +1942,61 @@ Hop.Graphics = {
     }
     ctx.restore();
   },
+  // The jester's horizontal rainbow is shared between the normal back layer and the legacy
+  // short / skipped / afterglow front layer; geometry and timing stay identical.
+  grandAngleArrow(ctx, hero, b, fade) {
+    if (!(b >= 0 && b < 0.6)) return false;
+    const cl = u => Math.max(0, Math.min(1, u)), u = this.ease(cl(b / 0.45)), ax = hero.x - 420 + 840 * u;
+    ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.35) / 0.25));
+    ["#ff4d6d", "#ffb340", "#ffe066", "#5fd35f", "#4dc3ff", "#a46bff"].forEach((col, i) => this.line(ctx, [[ax - 300, hero.y - 25 + i * 9], [ax, hero.y - 25 + i * 9]], col, 8));
+    this.polygon(ctx, [[ax, hero.y - 45], [ax + 60, hero.y + 2], [ax, hero.y + 50]], "#ffffff"); ctx.restore();
+    return true;
+  },
+  // Same deterministic confetti trajectories as before; only its layer changes in the full scene.
+  grandAngleConfetti(ctx, hero, b, fade) {
+    if (!(b >= 0)) return false;
+    const cl = u => Math.max(0, Math.min(1, u)), cols = ["#ff4d6d", "#ffb340", "#ffe066", "#5fd35f", "#4dc3ff", "#a46bff", "#ffffff"];
+    for (let i = 0; i < 72; i++) {
+      const an = -Math.PI * this.grandRand(i, 9), v = 300 + 420 * this.grandRand(i, 10), u = Math.min(b, 1.4);
+      const px = hero.x + Math.cos(an) * v * u + Math.sin(b * 8 + i) * 8, py = hero.y + Math.sin(an) * v * u + 520 * u * u;
+      ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.9) / 0.5)); ctx.translate(px, py); ctx.rotate(b * 9 + i); ctx.fillStyle = cols[i % 7]; ctx.fillRect(-5, -3, 10, 6); ctx.restore();
+    }
+    return true;
+  },
+  // The priest's cross keeps its original trajectory while changing its layer in the full scene.
+  grandStopperCross(ctx, hero, t, b, fade) {
+    if (!(t > 0.6 && b < 0.6)) return false;
+    const cl = u => Math.max(0, Math.min(1, u)), k = b < 0 ? cl((t - 0.6) / 0.4) : 1 - b / 0.6;
+    ctx.save(); ctx.globalAlpha = fade * k;
+    this.line(ctx, [[hero.x, hero.y - 70 * k - 30], [hero.x, hero.y + 70 * k + 30]], "#ffffff", 6);
+    this.line(ctx, [[hero.x - 45 * k - 20, hero.y - 10], [hero.x + 45 * k + 20, hero.y - 10]], "#ffffff", 6);
+    ctx.restore(); return true;
+  },
+  // The rapid slash paths are unchanged; draw them behind the hero in live scenes.
+  grandBrakeSlashes(ctx, hero, t, fade) {
+    for (let k = 0; k < 6; k++) { const t0 = 0.18 + k * 0.15 + 0.1, u = (t - t0) / 0.4; if (u < 0 || u > 1) continue;
+      const dir = k % 2 ? -1 : 1, yy = hero.y + [-30, 20, -5, 35, -20, 10][k]; ctx.save(); ctx.globalAlpha = fade * (1 - u);
+      this.line(ctx, [[hero.x - 150 * dir, yy - 40 * dir], [hero.x + 150 * dir, yy + 40 * dir]], k % 2 ? "#ffffff" : this.GRAND.BRAKE.color, 7 * (1 - u) + 2); ctx.restore(); }
+  },
+  // BRAKE's finishing X and reappearance smoke keep their original shapes and timing.
+  // They stay behind the actors even if reduced motion changes during a scene.
+  grandBrakeCross(ctx, hero, b, fade) {
+    if (!(b >= 0 && b < 0.7)) return false;
+    const cl = u => Math.max(0, Math.min(1, u)), u = this.ease(cl(b / 0.12)), a = 1 - cl((b - 0.3) / 0.4);
+    ctx.save(); ctx.globalAlpha = fade * a;
+    this.line(ctx, [[hero.x - 130 * u, hero.y - 110 * u], [hero.x + 130 * u, hero.y + 110 * u]], "#ffffff", 10);
+    this.line(ctx, [[hero.x + 130 * u, hero.y - 110 * u], [hero.x - 130 * u, hero.y + 110 * u]], this.GRAND.BRAKE.color, 10);
+    ctx.restore(); return true;
+  },
+  grandBrakeSmoke(ctx, hero, t, fade, back1) {
+    if (!(t > 1.1 && t < 1.7)) return false;
+    const u = Math.max(0, Math.min(1, (t - 1.1) / 0.6));
+    ctx.save(); ctx.globalAlpha = fade * (1 - u) * 0.8;
+    for (let i = 0; i < 7; i++) this.circle(ctx, hero.x - back1 * 140 + Math.cos(i) * 50 * (0.5 + u), hero.y + 30 + Math.sin(i * 1.7) * 30 * (0.5 + u), 18 + 16 * u, "#5a4a70");
+    ctx.restore(); return true;
+  },
   // Behind the hero: darkness, aura, pillar, magic circle, actor + afterimages / clones.
-  grandBack(ctx, st, sx, sy, ground) {
+  grandBack(ctx, st, sx, sy, ground, reducedMotion = false, warriorGlowGate = null) {
     const c = Hop.CONFIG, T = this.GRAND[st.type], t = this.grandT(st), b = t - st.climax, h = this.grandHero(st, sx, sy), rm = st.short;
     const fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal), cl = u => Math.max(0, Math.min(1, u));
     const A = this.grandActor(st, sx, sy, ground), ax = sx(A.x), afeet = ground + A.dy;
@@ -1732,6 +2005,11 @@ Hop.Graphics = {
     const tint = { DASH: "rgba(80,10,0,", STOPPER: "rgba(255,240,190,", BRAKE: "rgba(20,0,40,", ANGLE: "rgba(255,120,200,", GUARD: "rgba(0,40,70," }[st.type];
     const tk = st.type === "BRAKE" ? 0.5 * cl(t / 0.3) * (1 - cl((t - 1.4) / 0.6)) : 0.22 * cl(t / 0.3);
     if (tk > 0) { ctx.fillStyle = tint + tk + ")"; ctx.fillRect(-2000, -2000, c.width + 4000, c.height + 4000); }
+    if (st.type === "BRAKE" && !st.short && !st.skipped && st.after === null) this.grandBrakeSlashes(ctx, h, t, fade);
+    if (st.type === "BRAKE") {
+      this.grandBrakeCross(ctx, h, b, fade);
+      this.grandBrakeSmoke(ctx, h, t, fade, this.grandBack1(st, sx));
+    }
     if (st.type === "DASH") {
       const k = cl(t / st.climax), pul = 1 + 0.08 * Math.sin(t * 30);
       if (b < 0.4) { ctx.save(); ctx.globalAlpha *= (b < 0 ? 0.35 + 0.45 * k : 0.8 * (1 - b / 0.4)); ctx.fillStyle = T.color;
@@ -1778,6 +2056,10 @@ Hop.Graphics = {
         ctx.globalAlpha = fade * (1 - k / 18) * (b < 0.4 ? 1 : 1 - cl((b - 0.4) / 0.4)); this.circle(ctx, px, py, 14 - k * 0.5, hues[k % 6]); }
       ctx.globalAlpha = fade;
     }
+    if (st.type === "ANGLE" && !st.short && !st.skipped && st.after === null) {
+      this.grandAngleConfetti(ctx, h, b, fade); this.grandAngleArrow(ctx, h, b, fade);
+    }
+    if (st.type === "STOPPER" && !st.short && !st.skipped && st.after === null) this.grandStopperCross(ctx, h, t, b, fade);
     if (st.type === "BRAKE" && t > 0.1 && b < 1.0) for (let i = 0; i < 32; i++) { // drifting shadow wisps around the hero
       const life = (t * 0.8 + this.grandRand(i, 13)) % 1, an = this.grandRand(i, 14) * Math.PI * 2, r = 60 + 150 * life;
       ctx.globalAlpha = fade * 0.55 * (1 - life) * (b < 0.6 ? 1 : 1 - (b - 0.6) / 0.4); this.circle(ctx, h.x + Math.cos(an) * r, h.y + Math.sin(an) * r * 0.6, 10 + 14 * life, i % 3 ? "#3a1760" : "#7d4bc0"); }
@@ -1796,28 +2078,50 @@ Hop.Graphics = {
       const kMax = (st.type === "DASH" || st.type === "ANGLE") ? 1 : 3;
       for (let k = kMax; k >= 1; k--) {
         const p = this.grandActor({ ...st, t: st.t - 0.03 * k }, sx, sy, ground);
-        if (Math.hypot(p.x - A.x, p.dy - A.dy) > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) this.comboCast(ctx, id, p, sx, ground, fade * [0, 0.34, 0.2, 0.1][k] * (p.alpha ?? 1));
+        const distance = Math.hypot(p.x - A.x, p.dy - A.dy);
+        if (distance > 12 || Math.abs((p.rotate || 0) - (A.rotate || 0)) > 0.3) {
+          // A nearby cartwheel smear can double the jester's face. Keep it subtle near the
+          // main pose and ease back to the original opacity as the two poses separate.
+          const u = Math.max(0, Math.min(1, (distance - 75) / 45));
+          const clarity = st.type === "ANGLE" && !st.skipped ? 0.45 + 0.55 * u * u * (3 - 2 * u) : 1;
+          this.comboCast(ctx, id, p, sx, ground, fade * [0, 0.34, 0.2, 0.1][k] * (p.alpha ?? 1) * clarity);
+        }
       }
     }
-    if (A.alpha > 0.01 && !A.front) this.grandActorDraw(ctx, st, A, sx, sy, ground, fade);
+    if (A.alpha > 0.01 && !A.front) this.grandActorDraw(ctx, st, A, sx, sy, ground, fade, reducedMotion, warriorGlowGate);
     ctx.restore();
   },
-  grandActorDraw(ctx, st, A, sx, sy, ground, fade) {
-    this.grandPoseFx(ctx, st, A, sx, sy, ground, fade, true); this.grandCastBlend(ctx, st.type, st, A, sx, sy, ground, fade * A.alpha); this.grandPoseFx(ctx, st, A, sx, sy, ground, fade);
+  grandActorDraw(ctx, st, A, sx, sy, ground, fade, reducedMotion = false, warriorGlowGate = null) {
+    this.grandPoseFx(ctx, st, A, sx, sy, ground, fade, true, reducedMotion, warriorGlowGate); this.grandCastBlend(ctx, st.type, st, A, sx, sy, ground, fade * A.alpha, reducedMotion, warriorGlowGate); this.grandPoseFx(ctx, st, A, sx, sy, ground, fade, false, reducedMotion, warriorGlowGate);
   },
   // In front of the hero: shockwaves, slashes, confetti, barrier dome, label (returned as overlay items).
-  grandFront(ctx, st, sx, sy, ground) {
+  grandFront(ctx, st, sx, sy, ground, reducedMotion = false, warriorGlowGate = null) {
     const c = Hop.CONFIG, T = this.GRAND[st.type], t = this.grandT(st), b = t - st.climax, h = this.grandHero(st, sx, sy), cl = u => Math.max(0, Math.min(1, u));
     const fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal), overlay = [];
     ctx.save(); ctx.globalAlpha = fade;
     const A = this.grandActor(st, sx, sy, ground); // cycle 37: actor drawn over the hero (see grandActor a.front)
-    if (A.front && A.alpha > 0.01) this.grandActorDraw(ctx, st, A, sx, sy, ground, fade);
+    if (A.front && A.alpha > 0.01) this.grandActorDraw(ctx, st, A, sx, sy, ground, fade, reducedMotion, warriorGlowGate);
     if (b >= 0) {
       // common climax burst: double shockwave + radial spikes
       for (let k = 0; k < 2; k++) { const u = cl((b - k * 0.08) / 0.55); if (u <= 0 || u >= 1) continue;
         ctx.save(); ctx.globalAlpha = fade * (1 - u); ctx.strokeStyle = k ? "#ffffff" : T.color; ctx.lineWidth = 14 * (1 - u) + 2;
         ctx.beginPath(); ctx.ellipse(h.x, h.y, 40 + 300 * this.ease(u), (40 + 300 * this.ease(u)) * (st.type === "DASH" ? 0.55 : 0.9), 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
-      if (b < 0.35) { ctx.save(); ctx.globalAlpha = fade * (1 - b / 0.35); this.spark(ctx, h.x, h.y, 90 + 160 * this.ease(b / 0.35), T.glow, b * 2); this.spark(ctx, h.x, h.y, 50 + 90 * this.ease(b / 0.35), "#ffffff", 0.4 - b); ctx.restore(); }
+      if (b < 0.35) {
+        ctx.save(); ctx.globalAlpha = fade * (1 - b / 0.35);
+        // Keep the impact readable through the foreground effects in these scenes.
+        const clearHit = (st.type === "BRAKE" || st.type === "ANGLE" || st.type === "GUARD" || st.type === "STOPPER") && !st.short && !st.skipped && st.after === null;
+        const colorU = clearHit ? cl(b / 0.18) : 0;
+        if (!clearHit || colorU < 1) {
+          if (clearHit) ctx.globalAlpha = fade * 0.5 * (1 - colorU * colorU * (3 - 2 * colorU));
+          this.spark(ctx, h.x, h.y, 90 + 160 * this.ease(b / 0.35), T.glow, b * 2);
+        }
+        const whiteU = clearHit ? cl(b / 0.16) : 0;
+        if (!clearHit || whiteU < 1) {
+          if (clearHit) ctx.globalAlpha = fade * 0.55 * (1 - whiteU * whiteU * (3 - 2 * whiteU));
+          this.spark(ctx, h.x, h.y, 50 + 90 * this.ease(b / 0.35), "#ffffff", 0.4 - b);
+        }
+        ctx.restore();
+      }
     }
     if (st.type === "DASH" && b >= 0) {
       for (let i = 0; i < 12; i++) { // debris rocks with gravity
@@ -1832,30 +2136,19 @@ Hop.Graphics = {
           ctx.beginPath(); ctx.arc(cx, h.y - 10, 175, a0, a0 + bk * 2.1 * u, bk < 0); ctx.stroke(); }
         ctx.restore(); }
     } else if (st.type === "STOPPER") {
-      if (t > 0.6 && b < 0.6) { const k = b < 0 ? cl((t - 0.6) / 0.4) : 1 - b / 0.6; ctx.save(); ctx.globalAlpha = fade * k; // cross glint on the hero
-        this.line(ctx, [[h.x, h.y - 70 * k - 30], [h.x, h.y + 70 * k + 30]], "#ffffff", 6); this.line(ctx, [[h.x - 45 * k - 20, h.y - 10], [h.x + 45 * k + 20, h.y - 10]], "#ffffff", 6); ctx.restore(); }
+      if (st.short || st.skipped || st.after !== null) this.grandStopperCross(ctx, h, t, b, fade);
       if (b >= 0) for (let i = 0; i < 12; i++) { // feathers drifting down
         const u = Math.min(b, 1.3), px = h.x + (this.grandRand(i, 7) - 0.5) * 380 + Math.sin(b * 3 + i) * 20, py = h.y - 200 + 160 * this.grandRand(i, 8) + 110 * u;
         ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.8) / 0.5)); ctx.translate(px, py); ctx.rotate(Math.sin(b * 4 + i) * 0.6); ctx.fillStyle = "#fffdf0"; ctx.beginPath(); ctx.ellipse(0, 0, 4, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     } else if (st.type === "BRAKE") {
-      for (let k = 0; k < 6; k++) { const t0 = 0.18 + k * 0.15 + 0.1, u = (t - t0) / 0.4; if (u < 0 || u > 1) continue; // clone slash across the hero
-        const dir = k % 2 ? -1 : 1, yy = h.y + [-30, 20, -5, 35, -20, 10][k]; ctx.save(); ctx.globalAlpha = fade * (1 - u); this.line(ctx, [[h.x - 150 * dir, yy - 40 * dir], [h.x + 150 * dir, yy + 40 * dir]], k % 2 ? "#ffffff" : T.color, 7 * (1 - u) + 2); ctx.restore(); }
-      if (b >= 0 && b < 0.7) { const u = this.ease(cl(b / 0.12)), a = 1 - cl((b - 0.3) / 0.4); ctx.save(); ctx.globalAlpha = fade * a; // final cross slash
-        this.line(ctx, [[h.x - 130 * u, h.y - 110 * u], [h.x + 130 * u, h.y + 110 * u]], "#ffffff", 10); this.line(ctx, [[h.x + 130 * u, h.y - 110 * u], [h.x - 130 * u, h.y + 110 * u]], T.color, 10); ctx.restore(); }
-      if (t > 1.1 && t < 1.7) { const u = cl((t - 1.1) / 0.6); ctx.save(); ctx.globalAlpha = fade * (1 - u) * 0.8; // smoke puff where the thief reappears
-        for (let i = 0; i < 7; i++) this.circle(ctx, h.x - this.grandBack1(st, sx) * 140 + Math.cos(i) * 50 * (0.5 + u), h.y + 30 + Math.sin(i * 1.7) * 30 * (0.5 + u), 18 + 16 * u, "#5a4a70"); ctx.restore(); }
+      if (st.short || st.skipped || st.after !== null) this.grandBrakeSlashes(ctx, h, t, fade);
     } else if (st.type === "ANGLE") {
       if (t > 0.3 && t < 1.25) for (let i = 0; i < 6; i++) { const an = t * 6 + i * Math.PI / 3; ctx.globalAlpha = fade * 0.9; this.spark(ctx, h.x + Math.cos(an) * 170, h.y + Math.sin(an) * 110, 9, ["#ffe066", "#ff8fd0", "#7df9ff"][i % 3], an); }
       ctx.globalAlpha = fade;
       if (b >= 0) {
-        const cols = ["#ff4d6d", "#ffb340", "#ffe066", "#5fd35f", "#4dc3ff", "#a46bff", "#ffffff"];
-        for (let i = 0; i < 72; i++) { // confetti burst with gravity + flutter
-          const an = -Math.PI * this.grandRand(i, 9), v = 300 + 420 * this.grandRand(i, 10), u = Math.min(b, 1.4);
-          const px = h.x + Math.cos(an) * v * u + Math.sin(b * 8 + i) * 8, py = h.y + Math.sin(an) * v * u + 520 * u * u;
-          ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.9) / 0.5)); ctx.translate(px, py); ctx.rotate(b * 9 + i); ctx.fillStyle = cols[i % 7]; ctx.fillRect(-5, -3, 10, 6); ctx.restore(); }
-        if (b < 0.6) { const u = this.ease(cl(b / 0.45)), ax = h.x - 420 + 840 * u; ctx.save(); ctx.globalAlpha = fade * (1 - cl((b - 0.35) / 0.25)); // horizontal rainbow arrow sweep
-          cols.slice(0, 6).forEach((col, i) => this.line(ctx, [[ax - 300, h.y - 25 + i * 9], [ax, h.y - 25 + i * 9]], col, 8));
-          this.polygon(ctx, [[ax, h.y - 45], [ax + 60, h.y + 2], [ax, h.y + 50]], "#ffffff"); ctx.restore(); }
+        if (st.short || st.skipped || st.after !== null) {
+          this.grandAngleConfetti(ctx, h, b, fade); this.grandAngleArrow(ctx, h, b, fade);
+        }
       }
     } else if (st.type === "GUARD" && b >= 0) {
       // barrier dome: hex lattice inside a growing sphere, then a shimmer pulse
@@ -1879,11 +2172,78 @@ Hop.Graphics = {
     if (st.after === null && !st.short) overlay.push({ kind: "hint", text: "タップでスキップ ▶▶" });
     return overlay;
   },
+  // Use earlier positions of the existing UPPER still rather than fixed-offset copies. The
+  // display-only opacity tapers at both ends of the rise; no actor geometry or timing changes.
+  comboFighterRiseGhosts(st, fighter, reducedMotion = false) {
+    const F = Hop.CONFIG.comboFighterTimes;
+    if (st.type !== "BOUNCE" || st.short || st.skipped || st.after !== null || reducedMotion || fighter?.beat !== "rise" || !(st.t > F.rise && st.t < F.upper)) return [];
+    const u = (st.t - F.rise) / (F.upper - F.rise), envelope = Math.sin(Math.PI * u) ** 2, ghosts = [];
+    for (let k = 3; k >= 1; k--) {
+      const prior = this.comboActors({ ...st, t: st.t - k * 0.025 }).fighter;
+      if (prior?.beat === "rise" && Math.abs(prior.dy - fighter.dy) > 1) ghosts.push({ actor: prior, alpha: 0.16 * (4 - k) * envelope });
+    }
+    return ghosts;
+  },
+  // Focus the existing giant uppercut aura around the raised fist. This is presentation only:
+  // use the same transformed UPPER pose as the actor, and leave the old aura intact if the
+  // optional image/hotspot is unavailable or motion is reduced. The return value attenuates
+  // the old full-body aura gradually rather than replacing it in a single frame.
+  comboFighterFistAura(ctx, st, fighter, sx, ground, alpha, reducedMotion = false, gate = null) {
+    const F = Hop.CONFIG.comboFighterTimes;
+    if (!gate?.allowed || st?.type !== "BOUNCE" || st.short || st.skipped || st.after !== null || reducedMotion ||
+        !fighter || fighter.pose !== "UPPER" || !(st.t >= F.rise && st.t < F.upper + 0.45)) return null;
+    try {
+      const S = Hop.Sprites, layer = S?.comboLayer?.("BOUNCE", "UPPER");
+      if (!layer || layer.name !== "UPPER" || layer.asset !== gate.asset || !layer.asset?.image?.complete || !layer.asset.image.naturalWidth) { gate.allowed = false; return null; }
+      const actor = this.comboSakuga(st, "fighter", fighter);
+      const p = S.castPoint("BOUNCE", sx(actor.x), ground + (actor.dy || 0), "UPPER", actor.scale || 1, { face: actor.face, rotate: actor.rotate });
+      if (!Number.isFinite(p?.x) || !Number.isFinite(p?.y)) { gate.allowed = false; return null; }
+      const smooth = value => { const u = Math.max(0, Math.min(1, value)); return u * u * (3 - 2 * u); };
+      const rise = smooth((st.t - F.rise) / 0.12), decay = 1 - smooth((st.t - F.upper) / 0.38);
+      const envelope = rise * decay * Math.min(1, Math.max(0, alpha) * 2), r = 30 + Math.min(14, (fighter.scale || 1) * 4);
+      ctx.save();
+      try {
+        ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 0.78 * envelope;
+        ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.strokeStyle = "#ffe584";
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, Math.PI * 0.12, Math.PI * 0.89); ctx.stroke();
+        ctx.globalAlpha = 0.68 * envelope; ctx.lineWidth = 3.5; ctx.strokeStyle = "#fff9e6";
+        for (const dx of [-0.75, -0.25, 0.25, 0.75]) {
+          ctx.beginPath(); ctx.moveTo(p.x + dx * r, p.y + r * 0.8);
+          ctx.lineTo(p.x + dx * r, p.y + r * (Math.abs(dx) === 0.25 ? 2.5 : 1.8)); ctx.stroke();
+        }
+      } finally { ctx.restore(); }
+      return 1 - 2 * rise / 3;
+    } catch (_) { gate.allowed = false; return null; }
+  },
+  // BOOST impact accents stay behind the actors and the existing explosion. The live-scene
+  // envelope reaches zero before afterglow takes over, including at different frame rates.
+  comboWitchBlastBack(ctx, st, sx, sy, reducedMotion = false) {
+    const blast = Hop.CONFIG.comboWitchTimes.blast;
+    if (st?.type !== "BOOST" || st.short || st.skipped || st.after !== null || reducedMotion) return false;
+    const age = st.t - blast, duration = Math.min(0.35, st.end - blast);
+    if (!(duration > 0 && age > 0 && age < duration)) return false;
+    const hero = this.comboActors(st).hero, x = sx(st.heroWX) + hero.dx, y = sy(st.heroY) + hero.dy;
+    const u = age / duration, envelope = Math.sin(Math.PI * u) ** 2;
+    const radius = 40 + 200 * this.ease(age / 0.45), ring = radius + 28 + 20 * this.ease(u);
+    ctx.save(); ctx.globalAlpha *= envelope * 0.68;
+    ctx.strokeStyle = "#ffc148"; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(x, y, ring, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha *= 0.78; ctx.strokeStyle = "#fff1ba"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, ring + 12, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6 + 0.12, inner = ring + 15, outer = inner + (i % 2 ? 42 : 66) * envelope, w = 0.045;
+      ctx.fillStyle = i % 2 ? "#ffb14a" : "#ffe477"; ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a - w) * inner, y + Math.sin(a - w) * inner);
+      ctx.lineTo(x + Math.cos(a) * outer, y + Math.sin(a) * outer);
+      ctx.lineTo(x + Math.cos(a + w) * inner, y + Math.sin(a + w) * inner);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore(); return true;
+  },
   // Behind the hero: magic circle, actors, afterimages, aura / rings.
-  comboBack(ctx, st, sx, sy, ground) {
+  comboBack(ctx, st, sx, sy, ground, reducedMotion = false, fighterAuraGate = null) {
     const c = Hop.CONFIG, A = this.comboActors(st), t = st.t, fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal);
     ctx.save(); ctx.globalAlpha = fade;
     if (st.type === "BOOST") {
+      this.comboWitchBlastBack(ctx, st, sx, sy, reducedMotion);
       const W = c.comboWitchTimes, wx = sx(A.witch.x);
       if (st.short ? t >= 0 : t >= 0.15 && t < W.blast + 0.1) { // magic circle at the witch's feet
         const r = st.short ? 80 : 30 + 60 * this.ease((t - 0.15) / 0.5), rot = st.short ? 0 : t * 2.2;
@@ -1896,21 +2256,27 @@ Hop.Graphics = {
         ctx.fillStyle = "rgba(255,190,90,0.18)"; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
         if (!st.short) { // light motes gathering to the staff
+          const tip = this.comboWitchTip(st, A.witch, sx, ground, { x: wx + (A.witch.face === "left" ? -28 : 28), y: ground - 120 }, reducedMotion);
           for (let i = 0; i < 18; i++) {
             const ph = (t * 1.3 + i / 18) % 1, a = i * 2.39, d = (1 - ph) * 150;
             ctx.globalAlpha = fade * Math.min(1, ph * 3) * 0.9;
-            this.circle(ctx, wx + (A.witch.face === "left" ? -28 : 28) + Math.cos(a) * d, ground - 120 + Math.sin(a) * d * 0.7, 3 + ph * 3, i % 3 ? "#ffe9a0" : "#ffb347");
+            this.circle(ctx, tip.x + Math.cos(a) * d, tip.y + Math.sin(a) * d * 0.7, 3 + ph * 3, i % 3 ? "#ffe9a0" : "#ffb347");
           }
           ctx.globalAlpha = fade;
         }
       }
-      this.comboCastBlend(ctx, "BOOST", "witch", st, A.witch, sx, ground);
+      this.comboCastBlend(ctx, "BOOST", "witch", st, A.witch, sx, ground, 1, reducedMotion);
       const f = A.fighter;
       if (f.dash !== undefined && !st.short) for (let i = 3; i >= 1; i--) this.comboCast(ctx, "BOUNCE", { ...f, x: f.x + i * 55 }, sx, ground, 0.18 * (4 - i) * fade);
       if (f.ghost) this.comboCast(ctx, "BOUNCE", { ...f, x: st.heroWX + f.ghost * 75, face: f.ghost > 0 ? "left" : "right" }, sx, ground, 0.35 * (1 - f.ghostU) * fade);
       this.comboCast(ctx, "BOUNCE", this.comboSakuga(st, "fighter", f), sx, ground);
     } else {
       const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x), feet = ground + (f.dy || 0), mid = feet - 70 * f.scale, heroX = sx(st.heroWX);
+      const windGate = st.fighterWindGate;
+      if (windGate?.allowed && !Number.isFinite(windGate.startAt) && f.pose === "UPPER" && t >= F.rise &&
+          !st.short && !st.skipped && st.after === null && !reducedMotion) windGate.startAt = t;
+      const fWind = windGate?.allowed && Number.isFinite(windGate.startAt) && !st.short && !st.skipped && st.after === null && !reducedMotion;
+      const fWindTime = fWind ? Math.max(0, t - windGate.startAt) : null;
       const visible = st.short || f.beat === "arrive" || f.beat === "buff" || f.beat === "crouch" || f.beat === "drop";
       if (!st.short && visible && t >= F.arrive) { // buff aura (pulsing), brighter while crouching
         const pulse = 1 + 0.06 * Math.sin(t * 22), k = f.beat === "crouch" || f.beat === "drop" ? 0.7 : Math.min(0.55, (t - F.arrive) * 1.5);
@@ -1946,9 +2312,9 @@ Hop.Graphics = {
       }
       if (!st.short && t > 0 && t < F.arrive) for (let i = 3; i >= 1; i--) { // witch dash afterimages (same sprite)
         const p = this.comboActors({ ...st, t: Math.max(0, t - 0.03 * i) }).witch; if (Math.abs(p.x - A.witch.x) > 6) this.comboCast(ctx, "BOOST", p, sx, ground, 0.12 * (4 - i) * fade); }
-      this.comboCastBlend(ctx, "BOOST", "witch", st, A.witch, sx, ground);
+      this.comboCastBlend(ctx, "BOOST", "witch", st, A.witch, sx, ground, 1, reducedMotion);
       if (!st.short && t >= F.arrive && t < F.crouch) { // sparkles from the staff to the fighter
-        const wx = sx(A.witch.x) + 40, wy = ground - 110;
+        const tip = this.comboWitchTip(st, A.witch, sx, ground, { x: sx(A.witch.x) + 40, y: ground - 110 }, reducedMotion), wx = tip.x, wy = tip.y;
         for (let i = 0; i < 10; i++) { const ph = (t * 2 + i / 10) % 1; this.spark(ctx, wx + (fx - wx) * ph, wy + (mid - wy) * ph - Math.sin(ph * Math.PI) * 50, 7, "#fff1a8", t * 5 + i); }
       }
       if (f.beat === "rise") { // upward speed lines in the fighter's column + afterimages of the same sprite
@@ -1956,14 +2322,16 @@ Hop.Graphics = {
         for (let i = 0; i < 16; i++) { const lx = fx + ((i * 53) % 340) - 170, len = 120 + (i * 37) % 160, y0 = ground + 140 - ((t * 2400 + i * 97) % 760);
           ctx.lineWidth = 2 + (i % 3) * 2; ctx.beginPath(); ctx.moveTo(lx, y0); ctx.lineTo(lx, y0 + len); ctx.stroke(); }
         ctx.restore();
-        for (let k = 3; k >= 1; k--) this.comboCast(ctx, "BOUNCE", { ...f, dy: f.dy + k * 70 }, sx, ground, 0.16 * (4 - k) * fade);
+        for (const ghost of this.comboFighterRiseGhosts(st, f, reducedMotion)) this.comboCast(ctx, "BOUNCE", ghost.actor, sx, ground, ghost.alpha * fade, fWindTime, 1, st.fighterWindGate);
       }
       if (f.beat === "rise" || (f.beat === "upper" && t < F.upper + 0.45)) { // fist-shaped energy aura: same sprite, slightly larger (uniform)
         const a = f.beat === "rise" ? 0.45 : 0.55 * (1 - (t - F.upper) / 0.45);
+        const factor = this.comboFighterFistAura(ctx, st, f, sx, ground, a * fade, reducedMotion, fighterAuraGate);
         ctx.save(); ctx.globalCompositeOperation = "lighter";
-        this.comboCast(ctx, "BOUNCE", { ...f, scale: f.scale * 1.07 }, sx, ground, a * fade); ctx.restore();
+        const drawn = this.comboCast(ctx, "BOUNCE", { ...f, scale: f.scale * 1.07 }, sx, ground, a * fade * (factor ?? 1), fWindTime, 1, st.fighterWindGate); ctx.restore();
+        if (drawn === false && fighterAuraGate) fighterAuraGate.allowed = false;
       }
-      if (st.short || f.beat !== "hidden") this.comboCastBlend(ctx, "BOUNCE", "fighter", st, f, sx, ground);
+      if (st.short || f.beat !== "hidden") this.comboCastBlend(ctx, "BOUNCE", "fighter", st, f, sx, ground, 1, reducedMotion, fighterAuraGate);
       // Dust puffs where she dived in and where she bursts out.
       for (const [at, x, big] of [[F.crouch, sx(st.heroWX - 150), 1], [F.rise, sx(f.x), 2]]) {
         const age = t - at; if (st.short || age < 0 || age > 0.7) continue;
@@ -1977,10 +2345,30 @@ Hop.Graphics = {
     }
     ctx.restore();
   },
+  // A brief fireball tail, tangent to its existing arc. The envelope starts and ends at zero;
+  // it depends only on scene time, so a paused frame has exactly the same two lights.
+  comboWitchTrail(ctx, st, u, x, y, x0, y0, targetX, targetY, radius) {
+    const W = Hop.CONFIG.comboWitchTimes;
+    if (st.type !== "BOOST" || st.short || st.skipped || st.after !== null || !(st.t >= W.liftEnd && st.t < W.blast) || !(u > 0 && u < 1)) return false;
+    const envelope = Math.sin(Math.PI * u) ** 2, length = 40 * envelope;
+    const dx = targetX - x0, dy = targetY - y0 - Math.PI * 60 * Math.cos(Math.PI * u), n = Math.hypot(dx, dy);
+    const vx = n > 1e-6 ? dx / n : 1, vy = n > 1e-6 ? dy / n : 0;
+    const start = radius * 0.75, end = radius * 0.9 + length;
+    ctx.save(); ctx.globalAlpha *= envelope * 0.55; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x - vx * start, y - vy * start); ctx.lineTo(x - vx * end, y - vy * end);
+    ctx.strokeStyle = "#ff9b38"; ctx.lineWidth = 8; ctx.stroke();
+    ctx.strokeStyle = "#fff3c3"; ctx.lineWidth = 2.5; ctx.stroke();
+    for (let i = 0; i < 2; i++) {
+      const along = radius * 0.9 + length * (0.3 + i * 0.35), angle = st.t * 12 + i * Math.PI;
+      const across = Math.sin(angle) * 4 * envelope;
+      this.circle(ctx, x - vx * along - vy * across, y - vy * along + vx * across, 1.8 + envelope, i ? "#ffd27a" : "#fff9df");
+    }
+    ctx.restore(); return true;
+  },
   // In front of the hero: hit sparks, HIT counter, chant gauge, fireball / explosion, shockwave, labels.
   // Effects are drawn in world space (under the combo camera); texts / gauge / skip hint are returned as an
   // overlay list (world anchor + screen offset) and drawn by comboOverlay at a readable size.
-  comboFront(ctx, st, sx, sy, ground) {
+  comboFront(ctx, st, sx, sy, ground, reducedMotion = false) {
     const c = Hop.CONFIG, A = this.comboActors(st), t = st.t, fade = st.after === null ? 1 : Math.max(0, 1 - st.after / st.afterTotal);
     // Effects stay where the scene happened (world x / held height), even after the hero flies off.
     const heroX = sx(st.heroWX) + A.hero.dx, heroY = sy(st.heroY) + A.hero.dy;
@@ -2006,8 +2394,10 @@ Hop.Graphics = {
       }
       if (st.short && t >= 0) { this.circle(ctx, heroX, heroY, 70, "rgba(255,190,90,0.35)"); label("爆裂斜光", heroX, heroY - 60, 40, "#ffe55c", undefined, 0, -50); }
       if (!st.short && t >= W.liftEnd && t < W.blast) { // fireball from the staff
-        const u = this.ease((t - W.liftEnd) / (W.blast - W.liftEnd)), x0 = wx + (A.witch.face === "left" ? -30 : 30), y0 = ground - 120;
+        const tip = this.comboWitchTip(st, A.witch, sx, ground, { x: wx + (A.witch.face === "left" ? -30 : 30), y: ground - 120 }, reducedMotion);
+        const u = this.ease((t - W.liftEnd) / (W.blast - W.liftEnd)), x0 = tip.x, y0 = tip.y;
         const x = x0 + (heroX - x0) * u, y = y0 + (heroY - y0) * u - Math.sin(u * Math.PI) * 60, r = 18 + 18 * u;
+        if (!reducedMotion) this.comboWitchTrail(ctx, st, u, x, y, x0, y0, heroX, heroY, r);
         const grad = ctx.createRadialGradient?.(x, y, 2, x, y, r * 1.6);
         if (grad) { grad.addColorStop(0, "#fffbe0"); grad.addColorStop(0.4, "#ffb13b"); grad.addColorStop(1, "rgba(255,80,20,0)"); ctx.fillStyle = grad; }
         else ctx.fillStyle = "#ff9a3c";
@@ -2029,9 +2419,12 @@ Hop.Graphics = {
       const F = c.comboFighterTimes, f = A.fighter, fx = sx(f.x);
       within(F.arrive, F.buffEnd + 0.15); if (!st.short && t >= F.arrive && t < F.buffEnd + 0.15 && st.after === null) label("強化魔法！", sx(A.witch.x), ground - 125, 30, "#ffd6f2", undefined, 0, -30);
       within(F.buffEnd, F.gone); if (!st.short && t >= F.buffEnd && t < F.gone && st.after === null) label("溜め…！", fx, ground - 130, 30, "#fff4c0", undefined, 0, -24);
-      if (!st.short && t >= F.gone && t < F.upper && st.after === null) { // ゴゴゴ… rumble texts
+      // In the full moving scene, clear the rumble as the fighter rises into view.
+      // Keep the same fade if reduced motion changes mid-scene; skipped scenes stay unchanged.
+      const clearFighterFace = !st.skipped, rumbleEnd = clearFighterFace ? F.rise : F.upper;
+      if (!st.short && t >= F.gone && t < rumbleEnd && st.after === null) { // ゴゴゴ… rumble texts
         const n = Math.min(3, 1 + Math.floor((t - F.gone) / 0.15));
-        for (let i = 0; i < n; i++) { within(F.gone + 0.15 * i, F.upper + 0.06); label("ゴゴゴ…", sx(st.heroWX) + [-150, 140, -10][i], ground - 20, 40 + 4 * i, "#ffe9b0", "#4a2f12", Math.sin(t * 40 + i) * 3, -30 - 60 * i); }
+        for (let i = 0; i < n; i++) { within(F.gone + 0.15 * i, clearFighterFace ? F.rise : F.upper + 0.06); label("ゴゴゴ…", sx(st.heroWX) + [-150, 140, -10][i], ground - 20, 40 + 4 * i, "#ffe9b0", "#4a2f12", Math.sin(t * 40 + i) * 3, -30 - 60 * i); }
       }
       const u = t + (st.after || 0) - F.upper;
       if (st.short ? t >= 0 : u >= 0 && u < 1.0) {
@@ -2068,8 +2461,8 @@ Hop.Graphics = {
     for (const it of items) {
       ctx.save();
       if (it.kind === "hint") {
-        ctx.font = "bold 20px system-ui"; ctx.textAlign = "right"; ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.fillRect(c.width - 232, c.height - 46, 220, 34);
-        ctx.fillStyle = "rgba(40,40,60,0.85)"; ctx.fillText(it.text, c.width - 22, c.height - 22); ctx.restore(); continue;
+        // The existing flight HUD carries this instruction at readable CSS size.
+        ctx.restore(); continue;
       }
       ctx.globalAlpha *= it.alpha ?? 1;
       let [x, y] = map(it.x, it.y); y += (it.dy || 0) * k; x += (it.dx || 0) * k;

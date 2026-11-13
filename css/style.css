@@ -200,6 +200,10 @@ small { color: #40594d; font-size: 14px; line-height: 1.6; }
   .flight-hud { top: 4px; left: 4px; right: 4px; gap: 4px; font-size: 11px; }
   #aerial-hud, #merchant-hud { flex-wrap: nowrap; gap: 5px; padding: 2px 6px; border-radius: 6px; line-height: 16px; white-space: nowrap; }
   #aerial-hud-charge, #merchant-hud-charge { width: 34px; height: 5px; }
+  /* Keep the merchant charge legible when long labels share a narrow stage. */
+  #merchant-hud { flex-wrap: wrap; white-space: normal; gap: 0 5px; }
+  #merchant-hud-text { white-space: nowrap; }
+  #merchant-hud-charge { flex: none; }
   .ready-targets { top: 30px; left: 4px; max-width: calc(100% - 8px); padding: 1px 6px; font-size: 10px; line-height: 15px; }
   .next-rank { right: 4px; bottom: 4px; padding: 1px 6px; font-size: 10px; line-height: 15px; }
   /* Phone status panel (2026-10-16 cycle 06): AERIAL / CONTACT / GUARD / DEBUG on one static row (CONTACT

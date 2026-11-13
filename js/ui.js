@@ -571,9 +571,10 @@ Hop.UI = class {
     el("se-toggle").textContent = Hop.Audio?.muted ? "音声・SE OFF" : "音声・SE ON";
     el("se-toggle").setAttribute("aria-pressed", String(!!Hop.Audio?.muted));
     el("flight-hud").hidden = !flying;
-    el("aerial-hud").className = g.special || g.combo ? "subdued" : "";
+    // During a scene this existing, screen-sized HUD carries the skip instruction.
+    el("aerial-hud").className = g.special && !g.combo ? "subdued" : "";
     const charge = g.downCharge >= 1 ? "READY" : Math.min(99, Math.floor(g.downCharge * 100 + 1e-9)) + "%";
-    el("aerial-hud-text").textContent = g.combo ? "COMBO演出中" : g.special ? "SPECIAL優先" : g.merchant?.type === "C" ? "AERIAL 使用不可" : !g.airborne() ? "AERIAL / 空中のみ" : g.aerialMode === "UP" ? "AERIAL ↑ ×" + g.upRemaining : "AERIAL ↓ " + charge;
+    el("aerial-hud-text").textContent = g.combo ? "タップでスキップ ▶▶" : g.special ? "SPECIAL優先" : g.merchant?.type === "C" ? "AERIAL 使用不可" : !g.airborne() ? "AERIAL / 空中のみ" : g.aerialMode === "UP" ? "AERIAL ↑ ×" + g.upRemaining : "AERIAL ↓ " + charge;
     el("aerial-hud-charge").value = g.downCharge;
     el("aerial-hud-charge").hidden = !!g.special || !!g.combo || g.merchant?.type === "C" || g.aerialMode === "UP";
     const m = g.merchant;
