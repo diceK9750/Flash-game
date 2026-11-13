@@ -4,13 +4,15 @@
 // Now an unarmed warrior contact also draws dashSpecialChance (no draw when armed or when a merchant SPECIAL takes
 // the contact). Speed / angle of 戦陣突破 are unchanged. dashSpecialChance 0 reproduces the old game exactly.
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
+const legacyContactReflectionOff = require('./fixtures/legacy-contact-reflection-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-function load(chance) {
+function load(chance, legacy = false) {
   const scope = {}; scope.window = scope; vm.createContext(scope);
   for (const name of ['config', 'physics', 'game']) {
     let src = adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name);
+    if (legacy) src = legacyContactReflectionOff(src, name);
     if (name === 'config' && chance !== undefined) { assert(/dashSpecialChance: [\d.]+,/.test(src)); src = src.replace(/dashSpecialChance: [\d.]+,/, `dashSpecialChance: ${chance},`); }
     // Sage condition (2026-10-13d 先見の結界, was guardSpecialChance in 2026-10-13c) off ("none") here so this test
     // isolates the warrior draw (see sage-special.cjs); "none" is identical to the old guardSpecialChance 0.
@@ -38,6 +40,7 @@ function rates(H, plays) {
       if (g.special) { age += 1 / 60; if (age >= 0.25) { g.act(); age = 0; } continue; }
       age = 0; if (g.airborne() && pr() < 0.02) g.act();
     }
+    assert.equal(g.state, 'RESULT', `seed ${seed} must finish before the 600 s limit`);
     TYPES.forEach(k => { enc[k] += g.counts[k]; }); dist += g.body.x / c.pixelsPerMeter;
   }
   return { rate: Object.fromEntries(TYPES.map(k => [k, 100 * sp[k] / enc[k]])), enc, dist: dist / plays };
@@ -71,13 +74,15 @@ function fingerprint(H) {
   return crypto.createHash('sha256').update(lines.join('\n')).digest('hex');
 }
 const now = load(), old = load(0), c = now.CONFIG;
+const legacyNow = load(undefined, true), legacyOld = load(0, true);
 assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.merchantChance, 0.20, 'merchant draw stays 20%');
 assert.equal(JSON.stringify(c.specials.DASH), JSON.stringify({ trigger: 'dash', speed: 2000, angle: 25, name: '戦陣突破' }), 'same gain per activation');
 assert.equal(c.angleSpecialChance, 0.10);
 // Old behaviour reproduced exactly with the chance at 0 (proves every baseline change comes from the warrior draw).
-assert.deepEqual(animSim(old), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline.json'), 'utf8')));
-assert.equal(fingerprint(old), '8cfecc1beadfd41906ebe1bf22f525fcf4911817a97b7a78ef8a1b00e212d12a');
-assert.deepEqual(animSim(now), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-warrior.json'), 'utf8')));
+assert.deepEqual(animSim(legacyOld), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline.json'), 'utf8')));
+assert.equal(fingerprint(legacyOld), '8cfecc1beadfd41906ebe1bf22f525fcf4911817a97b7a78ef8a1b00e212d12a');
+assert.deepEqual(animSim(legacyNow), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-warrior.json'), 'utf8')));
+assert.deepEqual(animSim(now), animSim(load()), 'elastic-contact results are reproducible in a fresh VM');
 // Unit: draw only when unarmed and not taken by a merchant; armed = no draw.
 {
   const mk = r => { const g = new now.Game(r); g.objects = []; g.nextObjectX = Infinity; g.nextBoundaryX = Infinity; g.act(); g.angle = 30; g.act(); g.power = 0.8; g.act(); return g; };
@@ -91,7 +96,7 @@ assert.deepEqual(animSim(now), JSON.parse(fs.readFileSync(path.join(__dirname, '
   draws = 0; zero.objects = [{ x: zero.body.x + 5, type: 'DASH', used: false }]; zero.contactObjects({ x: zero.body.x, y: zero.body.y }); assert.equal(draws, 0); assert.equal(zero.special, null);
 }
 // Deterministic sim (1000 fixed-seed plays; the 3000-play measurement is in the README).
-const PLAYS = 1000, before = rates(old, PLAYS), after = rates(now, PLAYS);
+const PLAYS = 1000, before = rates(legacyOld, PLAYS), after = rates(legacyNow, PLAYS);
 const band = (after.rate.BOOST + after.rate.BOUNCE) / 2;
 assert(Math.abs(after.rate.DASH - band) <= 3, `warrior ${after.rate.DASH.toFixed(2)} vs witch/fighter ${band.toFixed(2)}`);
 assert(before.rate.DASH < 10, 'was low before');
@@ -102,4 +107,8 @@ for (const t of TYPES.filter(t => t !== 'DASH')) {
   assert(Math.abs(after.rate[t] - before.rate[t]) <= Math.max(2, 3 * se), `${t} unchanged ${before.rate[t].toFixed(2)} -> ${after.rate[t].toFixed(2)}`);
 }
 const fmt = r => Object.fromEntries(TYPES.map(t => [t, +r.rate[t].toFixed(2)]));
-console.log(JSON.stringify({ warriorSpecial: 'PASS', plays: PLAYS, before: fmt(before), after: fmt(after), avgDistanceM: [+before.dist.toFixed(1), +after.dist.toFixed(1)], newFingerprint: fingerprint(now) }));
+const elasticBefore = rates(old, PLAYS), elasticAfter = rates(now, PLAYS);
+assert(elasticAfter.rate.DASH > elasticBefore.rate.DASH, 'warrior eligibility increases under elastic contacts');
+assert(Number.isFinite(elasticAfter.dist) && elasticAfter.enc.DASH > 0, 'current seeded simulation produces finite results');
+assert.deepEqual(rates(now, 100), rates(load(), 100), 'elastic-contact rate sampling is reproducible');
+console.log(JSON.stringify({ warriorSpecial: 'PASS', plays: PLAYS, historicalBefore: fmt(before), historicalAfter: fmt(after), elasticBefore: fmt(elasticBefore), elasticAfter: fmt(elasticAfter), elasticAvgDistanceM: [+elasticBefore.dist.toFixed(1), +elasticAfter.dist.toFixed(1)] }));

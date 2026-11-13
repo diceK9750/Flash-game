@@ -1,5 +1,5 @@
 // Launch cut-in (truck x hero, display only): timing, skip, freeze, physics identical to the pre-cut-in
-// baseline (fixtures/anim-physics-baseline.json, also asserted unchanged at main 0f722c2 by anim.cjs),
+// elastic-contact baseline under historical compatibility settings,
 // reduced-motion path, SE / voice hooks (no error when the voice is not approved).
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const { scope, element } = require('./phase2.cjs');
@@ -80,10 +80,12 @@ const peak = (k, mode = 'full', rm = false) => {
   checks++;
 }
 
-// Physics / distance identical to the baseline (anim-physics-baseline-sage.json; see anim.cjs) over fixed seeds (same runs as anim.cjs), with the cut-in drawn
+// Physics / distance identical to the elastic-contact baseline (see anim.cjs) over fixed seeds (same runs as anim.cjs), with the cut-in drawn
 // every frame (full / repeat / reduced, played out or skipped) before the baseline input sequence starts.
 {
-  const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8'));
+  // phase2.cjs uses adjacent-gate-off.cjs; this fixture does not represent ordinary current play.
+  const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-elastic-timed.json'), 'utf8'));
+  assert.equal(baseline.length, 24); assert(baseline.every(row => row[0] === 'RESULT'), 'fixture contains only naturally completed runs');
   for (const variant of ['play', 'skip']) {
     const out = [];
     for (let seed = 1; seed <= 24; seed++) {
@@ -94,7 +96,8 @@ const peak = (k, mode = 'full', rm = false) => {
       const visual = { launchAt: -Infinity, contactAt: -Infinity, reducedMotion: seed % 3 === 0, readyTargets: [] };
       for (let i = 0; g.launchCutin; i++) { g.update(step); G.draw(ctx, g, visual); if (variant === 'skip' && i === 5 + seed % 7 && g.launchCutin) g.act(); }
       visual.launchAt = g.phaseTime;
-      for (let i = 0; i < 20000 && g.state === 'FLYING'; i++) { g.update(1 / 60); if (seed % 2 && i % 37 === 0) g.act(); G.draw(ctx, g, visual); }
+      for (let i = 0; i < 20000 && g.state === 'FLYING'; i++) { g.update(1 / 60); if (g.state === 'FLYING' && seed % 2 && i % 37 === 0) g.act(); G.draw(ctx, g, visual); }
+      assert.equal(g.state, 'RESULT', `${variant} seed ${seed} must stop naturally within 20000 frames`);
       out.push([g.state, g.finalDistance, g.body.x, g.body.bounces, g.specialSuccesses]);
     }
     assert.deepEqual(out, baseline, variant); checks++;

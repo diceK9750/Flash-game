@@ -39,16 +39,6 @@ VOICE_SPECS = {
         "text": "爆裂斜光", "reading": "ばくれつしゃこう",
         "duration": 1.1, "f0": 260, "formants": [850, 1700, 2900], "style": "high-pitched magical invocation"
     },
-    "special_bounce": {
-        "char": "武闘家", "gemini_voice": "Orus", "category": "SPECIAL_BOUNCE",
-        "text": "巨神昇天拳", "reading": "きょしんしょうてんけん",
-        "duration": 1.25, "f0": 140, "formants": [600, 1050, 2450], "style": "powerful martial arts shout"
-    },
-    "special_dash": {
-        "char": "戦士", "gemini_voice": "Charon", "category": "SPECIAL_DASH",
-        "text": "戦陣突破", "reading": "せんじんとっぱ",
-        "duration": 1.05, "f0": 125, "formants": [550, 1000, 2400], "style": "disciplined warrior battle cry"
-    },
     "special_stopper": {
         "char": "僧侶", "gemini_voice": "Kore", "category": "SPECIAL_STOPPER",
         "text": "聖光反転", "reading": "せいこうはんてん",
@@ -59,22 +49,12 @@ VOICE_SPECS = {
         "text": "影すり抜け", "reading": "かげすりぬけ",
         "duration": 0.95, "f0": 165, "formants": [620, 1300, 2600], "style": "light agile phantom whisper"
     },
-    "special_angle": {
-        "char": "遊び人", "gemini_voice": "Sadachbia", "category": "SPECIAL_ANGLE",
-        "text": "水平曲芸", "reading": "すいへいきょくげい",
-        "duration": 1.0, "f0": 220, "formants": [800, 1500, 2700], "style": "comical acrobatic banter"
-    },
     "special_guard": {
         "char": "賢者", "gemini_voice": "Sadaltager", "category": "SPECIAL_GUARD",
         "text": "聖護結界", "reading": "せいごけっかい",
         "duration": 1.15, "f0": 200, "formants": [650, 1400, 2650], "style": "serene dignified barrier barrier spell"
     },
     # 商人A〜D（同一人物・演じ分け）
-    "special_merchant_a": {
-        "char": "商人（秘薬）", "gemini_voice": "Achird", "category": "SPECIAL_MERCHANT_A",
-        "text": "倍化の秘薬", "reading": "ばいかのひやく",
-        "duration": 1.05, "f0": 150, "formants": [680, 1250, 2550], "style": "shrewd alchemical merchant whisper"
-    },
     "special_merchant_b": {
         "char": "商人（護符）", "gemini_voice": "Achird", "category": "SPECIAL_MERCHANT_B",
         "text": "蓄光の護符", "reading": "ちっこうのごふ",
@@ -91,11 +71,6 @@ VOICE_SPECS = {
         "duration": 0.95, "f0": 195, "formants": [750, 1400, 2700], "style": "bouncy fast-talking boots vendor"
     },
     # 合体技掛け合い
-    "combo_witch_call": {
-        "char": "武闘家", "gemini_voice": "Orus", "category": "COMBO_WITCH",
-        "text": "合わせるぞ！", "reading": "あわせるぞ！",
-        "duration": 0.65, "f0": 150, "formants": [620, 1100, 2450], "style": "urgent team-up call"
-    },
     "combo_witch_blast": {
         "char": "魔法使い", "gemini_voice": "Aoede", "category": "COMBO_WITCH",
         "text": "一気に吹き飛びなさい！エクスプロージョン！", "reading": "いっきにふきとびなさい！えくすぷろーじょん！",
@@ -106,20 +81,10 @@ VOICE_SPECS = {
         "text": "力、授けます！", "reading": "ちから、さずけます！",
         "duration": 0.65, "f0": 255, "formants": [820, 1650, 2850], "style": "supportive buff enchantment"
     },
-    "combo_fighter_upper": {
-        "char": "武闘家", "gemini_voice": "Orus", "category": "COMBO_FIGHTER",
-        "text": "唸れ我が拳！昇天撃破ァ！", "reading": "うなれわがこぶし！しょうてんげきはぁ！",
-        "duration": 1.6, "f0": 145, "formants": [580, 1050, 2400], "style": "explosive giant uppercut yell"
-    },
     "combo_witch_short": {
         "char": "魔法使い", "gemini_voice": "Aoede", "category": "COMBO_WITCH_SHORT",
         "text": "吹き飛びなさい！", "reading": "ふきとびなさい！",
         "duration": 0.75, "f0": 265, "formants": [860, 1720, 2900], "style": "swift decisive spell release"
-    },
-    "combo_fighter_short": {
-        "char": "武闘家", "gemini_voice": "Orus", "category": "COMBO_FIGHTER_SHORT",
-        "text": "昇天撃破ァ！", "reading": "しょうてんげきはぁ！",
-        "duration": 0.75, "f0": 145, "formants": [580, 1050, 2400], "style": "instant decisive uppercut roar"
     }
 }
 

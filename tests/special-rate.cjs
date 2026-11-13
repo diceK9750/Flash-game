@@ -5,12 +5,14 @@
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
+const legacyContactReflectionOff = require('./fixtures/legacy-contact-reflection-off.cjs');
 const root = path.resolve(__dirname, '..');
-function load(gateOff) {
+function load(gateOff, legacy = false) {
   const scope = {}; scope.window = scope; vm.createContext(scope);
   for (const name of ['config', 'physics', 'game']) {
     let src = fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8');
     if (gateOff) src = adjacentGateOff(src, name);
+    if (legacy) src = legacyContactReflectionOff(src, name);
     // JUST! launch (2026-10-15, tests/just-launch.cjs) off so the fingerprint isolates the BOOST/BOUNCE gate.
     if (name === 'config') src = src.replace(/typeCTempo: \d+,/, 'typeCTempo: 1,'); // historical wall-frame fingerprint: x1 Type C ride (cycle 32; x4 proven distance-identical in merchant-c-tempo.cjs)
     if (name === 'config') src = src.replace(/justLaunchEnabled: true,/, 'justLaunchEnabled: false,');
@@ -35,6 +37,7 @@ function rates(H, plays) {
       if (g.special) { age += 1 / 60; if (age >= 0.25) { g.act(); age = 0; } continue; }
       age = 0; if (g.airborne() && pr() < 0.02) g.act();
     }
+    assert.equal(g.state, 'RESULT', `seed ${seed} must finish before the 600 s limit`);
     TYPES.forEach(k => { enc[k] += g.counts[k]; }); dist += g.body.x / c.pixelsPerMeter;
   }
   return { rate: Object.fromEntries(TYPES.map(k => [k, 100 * sp[k] / enc[k]])), enc, dist: dist / plays };
@@ -57,6 +60,7 @@ function fingerprint(H) {
   return crypto.createHash('sha256').update(lines.join('\n')).digest('hex');
 }
 const now = load(false), old = load(true), c = now.CONFIG;
+const legacyNow = load(false, true), legacyOld = load(true, true);
 assert.equal(c.boostSpecialChance, undefined); assert.equal(c.bounceSpecialChance, undefined);
 assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.angleSpecialChance, 0.10);
 assert.equal(JSON.stringify(c.castPartnerAdjacentFactor), JSON.stringify({ BOOST: 0.15, BOUNCE: 0.27 }));
@@ -72,10 +76,15 @@ assert.equal(JSON.stringify(c.specials.BOUNCE), JSON.stringify({ trigger: 'adjac
     const none = mk(() => { draws++; return 0; }); draws = 0; hit(none, type, 'BRAKE'); assert.equal(draws, 0); assert.equal(none.special, null, 'adjacency still required');
   }
 }
-const PLAYS = 1000, before = rates(old, PLAYS), after = rates(now, PLAYS);
+const PLAYS = 1000, before = rates(legacyOld, PLAYS), after = rates(legacyNow, PLAYS);
 assert(before.rate.BOOST > 30 && before.rate.BOOST < 40 && before.rate.BOUNCE > 34 && before.rate.BOUNCE < 44, 'old placement ~36%');
 for (const t of ['BOOST', 'BOUNCE']) assert(after.rate[t] > 13 && after.rate[t] < 22, `${t} ${after.rate[t]}`);
 // Other characters: rules untouched; placement shifts their neighbours a little (allow 4 pp).
 for (const t of TYPES.filter(t => t !== 'BOOST' && t !== 'BOUNCE')) assert(Math.abs(after.rate[t] - before.rate[t]) <= 4, `${t} ${before.rate[t].toFixed(2)} -> ${after.rate[t].toFixed(2)}`);
 const fmt = r => Object.fromEntries(TYPES.map(t => [t, +r.rate[t].toFixed(2)]));
-console.log(JSON.stringify({ specialRate: 'PASS', plays: PLAYS, before: fmt(before), after: fmt(after), avgDistanceM: [+before.dist.toFixed(1), +after.dist.toFixed(1)] }));
+const elasticBefore = rates(old, PLAYS), elasticAfter = rates(now, PLAYS);
+assert(elasticAfter.rate.BOOST < elasticBefore.rate.BOOST && elasticAfter.rate.BOUNCE < elasticBefore.rate.BOUNCE, 'adjacent-placement weighting reduces the current rates');
+assert(Number.isFinite(elasticAfter.dist), 'current elastic-contact simulation produces finite distance');
+const currentFingerprint = fingerprint(now);
+assert.equal(currentFingerprint, fingerprint(load(false)), 'current elastic-contact fingerprint is deterministic');
+console.log(JSON.stringify({ specialRate: 'PASS', plays: PLAYS, historicalBefore: fmt(before), historicalAfter: fmt(after), elasticBefore: fmt(elasticBefore), elasticAfter: fmt(elasticAfter), elasticAvgDistanceM: [+elasticBefore.dist.toFixed(1), +elasticAfter.dist.toFixed(1)], currentFingerprint }));

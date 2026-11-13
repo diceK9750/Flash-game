@@ -52,9 +52,9 @@ for (const type of ['BOOST', 'BOUNCE', 'BRAKE']) {
   Object.assign(game.body, { x: 600, y: 10, vx: 500, vy: -100 });
   game.contactObjects({ x: 400, y: 10 }); // one segment crosses the whole box
   assert(game.objects[0].used); assert.equal(game.contact.label, type);
-  if (type === 'BOOST') assert.equal(game.body.vx, 500 + c.boostImpulse * Math.cos(Math.PI / 4));
-  if (type === 'BOUNCE') { assert.equal(game.body.vy, -100 + c.boostImpulse * c.bounceImpulseRatio * Math.sin(Math.PI / 3)); assert.equal(game.body.grounded, false); }
-  if (type === 'BRAKE') assert.equal(game.body.vx, 500 * c.brakeRetention);
+  if (type === 'BOOST') { assert.equal(game.body.vx, 500 + c.boostImpulse * Math.cos(Math.PI / 4)); assert.equal(game.body.vy, 100 + c.boostImpulse * Math.sin(Math.PI / 4)); }
+  if (type === 'BOUNCE') { assert.equal(game.body.vy, 100 + c.boostImpulse * c.bounceImpulseRatio * Math.sin(Math.PI / 3)); assert.equal(game.body.grounded, false); }
+  if (type === 'BRAKE') { assert.equal(game.body.vx, 500 * c.brakeRetention); assert.equal(game.body.vy, 100 * c.brakeRetention); }
   const velocity = [game.body.vx, game.body.vy];
   game.contactObjects({ x: 400, y: 10 }); assert.deepEqual([game.body.vx, game.body.vy], velocity);
   assert.equal(game.touches({ x: 500 }, { x: 600, y: 300 }), false);
@@ -80,7 +80,9 @@ for (let seed = 1; seed <= 80; seed++) {
   for (const fps of [30, 60, 120, 144]) {
     const game = launch(seed, 10 + (seed % 13) * 5, [0.3, 0.5, 0.75, 1][seed % 4]);
     let frames = 0;
-    while (game.state === 'FLYING' && frames < fps * 120) {
+    // Fully elastic character contacts can extend a run; still require natural
+    // termination within a finite bound and identical physics at each FPS.
+    while (game.state === 'FLYING' && frames < fps * 150) {
       game.update(1 / fps); frames++;
       assert(Number.isFinite(game.body.x)); assert(game.body.y >= 0);
       assert(c.launchX + game.body.x - game.cameraX < c.width);
@@ -98,7 +100,7 @@ for (let seed = 1; seed <= 80; seed++) {
 // Bounded active input, then release all controls: natural stopping must return.
 for (let seed = 1; seed <= 80; seed++) {
   const game = launch(seed); let frame = 0;
-  while (game.state === 'FLYING' && frame < 14400) {
+  while (game.state === 'FLYING' && frame < 18000) {
     if (frame < 1200 && frame % 90 === 0) game.aerial('UP');
     if (frame < 1200 && frame % 210 === 0) game.aerial('DOWN');
     game.update(c.physicsStep); frame++;

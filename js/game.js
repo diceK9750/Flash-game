@@ -229,22 +229,73 @@ Hop.Game = class {
   }
   // Sweep the player's centre against an expanded box. This detects crossings
   // even when a fast player traverses the whole object in one physics step.
-  touches(object, previous) {
-    const c = Hop.CONFIG, b = this.body, r = c.playerRadius;
+  contactFraction(object, previous, end) {
+    const c = Hop.CONFIG, r = c.playerRadius;
     let enter = 0, leave = 1;
     const axes = [
-      [previous.x, b.x - previous.x, object.x - c.objectWidth / 2 - r, object.x + c.objectWidth / 2 + r],
-      [previous.y + r, b.y - previous.y, -r, c.objectHeight + r]
+      [previous.x, end.x - previous.x, object.x - c.objectWidth / 2 - r, object.x + c.objectWidth / 2 + r],
+      [previous.y + r, end.y - previous.y, -r, c.objectHeight + r]
     ];
     for (const [start, delta, min, max] of axes) {
-      if (Math.abs(delta) < 1e-10) { if (start < min || start > max) return false; }
+      if (Math.abs(delta) < 1e-10) { if (start < min || start > max) return null; }
       else {
         const a = (min - start) / delta, z = (max - start) / delta;
         enter = Math.max(enter, Math.min(a, z)); leave = Math.min(leave, Math.max(a, z));
-        if (enter > leave) return false;
+        if (enter > leave) return null;
       }
     }
-    return true;
+    return enter;
+  }
+  touches(object, previous) { return this.contactFraction(object, previous, this.body) !== null; }
+  // Split a physics step only when its swept path meets a character. This
+  // locates the first character or floor event without changing the body;
+  // normal steps keep the original fixed-step integrator unchanged.
+  contactStepDuration(step) {
+    const start = this.body, c = Hop.CONFIG, margin = c.objectWidth / 2 + c.playerRadius;
+    // Type D can accelerate at a real ground impact within this step.
+    // Include that possible post-impact movement in the conservative bound.
+    const reachVx = this.merchant?.type === "D" ? Math.max(0, start.vx * Math.max(1, c.typeDMultiplier)) : start.vx;
+    const endX = start.x + reachVx * step, originalEndX = start.x + start.vx * step;
+    const left = Math.min(start.x, endX, originalEndX) - margin, right = Math.max(start.x, endX, originalEndX) + margin;
+    const inReach = object => !object.used && object.x >= left && object.x <= right;
+    if (!this.objects.some(inReach)) return step;
+    const candidates = this.objects.filter(inReach);
+    const predict = time => {
+      const probe = { ...start }, impact = Hop.Physics.step(probe, time);
+      return { impact, end: { x: probe.x, y: impact ? start.y + impact.vy * time : probe.y } };
+    };
+    const hasContact = prediction => candidates.some(object => this.contactFraction(object, start, prediction.end) !== null);
+    const full = predict(step);
+    const firstTime = predicate => {
+      let lo = 0, hi = step;
+      for (let i = 0; i < 32; i++) {
+        const mid = (lo + hi) / 2;
+        if (predicate(predict(mid))) hi = mid; else lo = mid;
+      }
+      return hi;
+    };
+    if (!hasContact(full)) {
+      if (full.impact && this.merchant?.type === "D") {
+        const groundTime = Math.min(step, firstTime(prediction => !!prediction.impact) + 1e-9);
+        const probe = { ...start }, impact = Hop.Physics.step(probe, groundTime);
+        if (impact) {
+          probe.vx = Math.max(0, Math.min(c.maxHorizontalSpeed, impact.vx * c.typeDMultiplier));
+          probe.vy = Math.min(c.maxVerticalSpeed, Math.max(c.typeDMinVertical, -impact.vy * c.typeDMultiplier));
+          probe.grounded = false; probe.stopped = false;
+          const afterGround = { ...probe };
+          Hop.Physics.step(probe, step - groundTime);
+          if (candidates.some(object => this.contactFraction(object, afterGround, probe) !== null)) return groundTime;
+        }
+      }
+      return step;
+    }
+    const contactTime = firstTime(hasContact);
+    if (full.impact) {
+      const groundTime = firstTime(prediction => !!prediction.impact);
+      // Ground wins a numerical tie, preserving the existing ground effect.
+      if (groundTime <= contactTime + 1e-9) return Math.min(step, groundTime + 1e-9);
+    }
+    return Math.min(step, contactTime + 1e-9);
   }
   contactObjects(previous) {
     const c = Hop.CONFIG, b = this.body;
@@ -253,7 +304,12 @@ Hop.Game = class {
       if (object.used || !this.touches(object, previous)) continue;
       object.used = true; // Single use per run, including a later re-entry.
       this.noteHit(object, previous);
+      // Treat the contact point as a horizontal, perfectly elastic surface.
+      // Only a descending player is approaching it; an upward velocity is
+      // already moving away. This is separate from an actual ground bounce.
+      if (b.vy < 0) { b.vy = -b.vy; b.grounded = false; }
       this.clearAerialDownLock();
+      this.updateAerialMode();
       this.counts[object.type]++;
       const entry = { type: object.type, label: object.type };
       this.history.push(entry);
@@ -643,7 +699,10 @@ Hop.Game = class {
     if (this.state === Hop.STATES.AIM_POWER) this.power = c.powerMin + (c.powerMax - c.powerMin) * sweep(c.powerPeriod);
     if (this.state !== Hop.STATES.FLYING) return;
     this.accumulator += dt;
-    while (this.accumulator + 1e-10 >= c.physicsStep) {
+    let remainder = 0;
+    while (this.accumulator + 1e-10 >= c.physicsStep || remainder > 1e-10) {
+      const slice = remainder > 1e-10 ? remainder : c.physicsStep;
+      remainder = 0;
       // Combo scene: only display timers (cut-in, success flash) run; physics, play timers, generation and
       // RNG are frozen until the scene ends or is skipped.
       // Launch cut-in: same freeze; only its own clock runs.
@@ -651,54 +710,67 @@ Hop.Game = class {
       // steps pin it to the current body so a paused scene never oscillates).
       this.renderPrevX = this.body.x; this.renderPrevY = this.body.y;
       if (this.launchCutin) {
-        this.launchCutin.elapsed += c.physicsStep; this.accumulator -= c.physicsStep;
+        this.launchCutin.elapsed += slice; this.accumulator -= slice;
         if (this.launchCutin.elapsed >= this.launchCutin.total - 1e-9) this.endLaunchCutin(false);
         continue;
       }
       if (this.combo) {
         const r = this.combo.rate || 1;
-        this.combo.elapsed += c.physicsStep * r; this.accumulator -= c.physicsStep;
-        this.flash = Math.max(0, this.flash - c.physicsStep * r);
-        if (this.specialCutin) { this.specialCutin.remaining -= c.physicsStep * r; if (this.specialCutin.remaining < 1e-9) this.specialCutin = null; }
+        this.combo.elapsed += slice * r; this.accumulator -= slice;
+        this.flash = Math.max(0, this.flash - slice * r);
+        if (this.specialCutin) { this.specialCutin.remaining -= slice * r; if (this.specialCutin.remaining < 1e-9) this.specialCutin = null; }
         if (this.combo.elapsed >= this.combo.total - 1e-9) this.endCombo(false);
         continue;
       }
+      // Generate before probing the path, as a newly placed character can be
+      // the first event of this step. SPECIAL and floating keep their old path.
+      if (!this.special) this.generateObjects();
+      const stepDuration = this.special ? Math.min(slice, Math.max(0, this.special.remaining))
+        : this.merchant?.type === "C" ? slice : this.contactStepDuration(slice);
+      remainder = slice - stepDuration;
       const playTimersPaused = this.special || this.specialMessage || this.merchantVisual || this.merchant?.type === "C";
       if (this.guardSpecial.active && !playTimersPaused) {
-        this.guardSpecial.remaining = Math.max(0, this.guardSpecial.remaining - c.physicsStep);
+        this.guardSpecial.remaining = Math.max(0, this.guardSpecial.remaining - stepDuration);
         if (this.guardSpecial.remaining < 1e-9) this.guardSpecial = { active: false, remaining: 0 };
       }
       if (!playTimersPaused) {
-        this.downCharge = Math.max(0, Math.min(1, this.downCharge + c.physicsStep / c.aerialDownRechargeTime));
+        this.downCharge = Math.max(0, Math.min(1, this.downCharge + stepDuration / c.aerialDownRechargeTime));
         if (1 - this.downCharge < 1e-9) this.downCharge = 1;
       }
-      this.flash = Math.max(0, this.flash - c.physicsStep); this.specialTrail = Math.max(0, this.specialTrail - c.physicsStep);
+      this.flash = Math.max(0, this.flash - stepDuration); this.specialTrail = Math.max(0, this.specialTrail - stepDuration);
       for (const key of ["effect", "contact", "specialMessage", "merchantVisual", "successVisual", "specialCutin", "comboAfter"]) {
-        if (this[key]) { this[key].remaining -= c.physicsStep; if (this[key].remaining < 1e-9) this[key] = null; }
+        if (this[key]) { this[key].remaining -= stepDuration; if (this[key].remaining < 1e-9) this[key] = null; }
       }
       // A short contact pause gives exactly one decision window. Normal effects
       // are deferred, so STOPPER's penalty is never applied before success.
       if (this.special) {
-        this.special.remaining -= c.physicsStep;
-        this.accumulator -= c.physicsStep;
-        if (this.special.remaining <= 1e-9) this.resolveSpecial(false);
+        this.special.remaining -= stepDuration;
+        this.accumulator -= stepDuration;
+        if (this.special.remaining <= 1e-9) {
+          this.resolveSpecial(false);
+          if (this.state !== Hop.STATES.FLYING) break;
+        }
         continue;
       }
-      this.generateObjects();
       const previous = { x: this.body.x, y: this.body.y, vx: this.body.vx, vy: this.body.vy };
       if (this.merchant?.type === "C") {
         // Type C tempo (cycle 32): same path, typeCTempo float sub-steps per physics step (objects generated per sub-step).
-        this.floatStep(c.physicsStep);
-        for (let k = 1; k < (c.typeCTempo || 1) && this.merchant?.type === "C"; k++) { this.noteDistance(); this.generateObjects(); this.floatStep(c.physicsStep); }
+        this.floatStep(stepDuration);
+        for (let k = 1; k < (c.typeCTempo || 1) && this.merchant?.type === "C"; k++) { this.noteDistance(); this.generateObjects(); this.floatStep(stepDuration); }
       }
       else {
-        const impact = Hop.Physics.step(this.body, c.physicsStep);
+        const graceBefore = this.preImpactArmed;
+        const impact = Hop.Physics.step(this.body, stepDuration);
         if (impact) this.groundImpact(impact);
         else this.applyAerialDownLock();
         this.contactObjects(previous);
-        if (this.preImpactArmed && --this.preImpactArmed.steps <= 0) this.preImpactArmed = null;
+        if (this.preImpactArmed && (stepDuration === c.physicsStep || this.preImpactArmed === graceBefore)) {
+          this.preImpactArmed.steps -= stepDuration / c.physicsStep;
+          if (this.preImpactArmed.steps <= 1e-9) this.preImpactArmed = null;
+        }
       }
-      this.accumulator -= c.physicsStep;
+      // Process any unconsumed portion of this fixed step before taking the next.
+      this.accumulator -= stepDuration;
       this.noteDistance();
       this.maxHeight = Math.max(this.maxHeight, this.body.y);
       this.maxSpeed = Math.max(this.maxSpeed, Math.hypot(this.body.vx, this.body.vy));

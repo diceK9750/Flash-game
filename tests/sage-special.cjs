@@ -7,16 +7,18 @@
 // is unchanged. sageCondition "none" reproduces the warrior-fix game exactly (fixture + fingerprint bd3ce787...).
 // Main 3d13336's 1000-play rates are stored in fixtures/sage-main-rates-1000.json (same seeded player as below).
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
+const legacyContactReflectionOff = require('./fixtures/legacy-contact-reflection-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-function load(mode, patch = s => s) {
+function load(mode, patch = s => s, legacy = false) {
   const els = new Map();
   const stub = () => new Proxy({ calls: [] }, { get: (o, k) => k in o ? o[k] : (...a) => { o.calls.push(k); return k === 'measureText' ? { width: 10 } : undefined; }, set: (o, k, v) => (o[k] = v, true) });
   const element = id => { if (!els.has(id)) els.set(id, { setAttribute() {}, textContent: '', hidden: false, style: {}, addEventListener() {}, getContext: stub }); return els.get(id); };
   const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {} }; scope.window = scope; vm.createContext(scope);
   for (const name of ['config', 'physics', 'game', 'sprites', 'graphics']) {
     let src = adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name);
+    if (legacy) src = legacyContactReflectionOff(src, name);
     if (name === 'config' && mode !== undefined) { assert(/sageCondition: "foresight",/.test(src)); src = src.replace(/sageCondition: "foresight",/, `sageCondition: "${mode}",`); }
     if (name === 'config') src = src.replace(/typeCTempo: \d+,/, 'typeCTempo: 1,'); // historical wall-frame fingerprint: x1 Type C ride (cycle 32; x4 proven distance-identical in merchant-c-tempo.cjs)
     if (name === 'config') src = patch(src);
@@ -43,6 +45,7 @@ function rates(H, plays) {
       if (g.special) { age += 1 / 60; if (age >= 0.25) { g.act(); age = 0; } continue; }
       age = 0; if (g.airborne() && pr() < 0.02) g.act();
     }
+    assert.equal(g.state, 'RESULT', `seed ${seed} must finish before the 600 s limit`);
     TYPES.forEach(k => { enc[k] += g.counts[k]; }); dist += g.body.x / c.pixelsPerMeter;
   }
   return { rate: Object.fromEntries(TYPES.map(k => [k, 100 * sp[k] / enc[k]])), enc, dist: dist / plays };
@@ -76,6 +79,7 @@ function fingerprint(H) {
   return crypto.createHash('sha256').update(lines.join('\n')).digest('hex');
 }
 const now = load(), old = load('none'), c = now.CONFIG;
+const legacyNow = load(undefined, undefined, true), legacyOld = load('none', undefined, true);
 assert.equal(c.sageCondition, 'foresight'); assert.equal(c.sageForesightRange, 460);
 assert(!('guardSpecialChance' in c), 'flat sage draw removed');
 for (const k of ['sageCalmMaxSpeed', 'sageQuietTime']) assert(!(k in c), `unused candidate ${k} removed`);
@@ -83,10 +87,11 @@ assert.equal(c.dashSpecialChance, 0.35); assert.equal(c.merchantChance, 0.20, 'm
 assert.equal(JSON.stringify(c.specials.GUARD), JSON.stringify({ trigger: 'guard', name: '聖護結界' }));
 assert.equal(c.guardSpecialDuration, 10.0, 'same effect per activation'); assert.equal(c.angleSpecialChance, 0.10);
 // Warrior-fix behaviour reproduced exactly with the sage condition off.
-assert.deepEqual(animSim(old), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-warrior.json'), 'utf8')));
-assert.equal(fingerprint(old), 'bd3ce7876ece75a432333172e6940557398cff0bc32ab6428f852ca1fd86dcdd');
+assert.deepEqual(animSim(legacyOld), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-warrior.json'), 'utf8')));
+assert.equal(fingerprint(legacyOld), 'bd3ce7876ece75a432333172e6940557398cff0bc32ab6428f852ca1fd86dcdd');
 // New baseline (2026-10-13d foresight; was the 3d13336 guardSpecialChance run).
-assert.deepEqual(animSim(now), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8')));
+assert.deepEqual(animSim(legacyNow), JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8')));
+assert.deepEqual(animSim(now), animSim(load()), 'elastic-contact results are reproducible in a fresh VM');
 // Unit: condition true / false.
 {
   const R = c.sageForesightRange;
@@ -145,7 +150,7 @@ assert.deepEqual(animSim(now), JSON.parse(fs.readFileSync(path.join(__dirname, '
   assert.equal(alphas(true, 0.1), alphas(true, 1.3)); assert.notEqual(alphas(false, 0.1), alphas(false, 0.6));
 }
 const main = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'sage-main-rates-1000.json'), 'utf8'));
-const PLAYS = 1000, before = { rate: Object.fromEntries(TYPES.map(k => [k, 100 * main.sp[k] / main.enc[k]])), enc: main.enc, dist: main.avgDistanceM }, after = rates(now, PLAYS);
+const PLAYS = 1000, before = { rate: Object.fromEntries(TYPES.map(k => [k, 100 * main.sp[k] / main.enc[k]])), enc: main.enc, dist: main.avgDistanceM }, after = rates(legacyNow, PLAYS);
 assert.equal(main.plays, PLAYS);
 assert(after.rate.GUARD >= 10 && after.rate.GUARD <= 17, `sage ${after.rate.GUARD.toFixed(2)}`);
 for (const t of TYPES.filter(t => t !== 'GUARD')) {
@@ -153,4 +158,7 @@ for (const t of TYPES.filter(t => t !== 'GUARD')) {
   assert(Math.abs(after.rate[t] - before.rate[t]) <= 3 * se, `${t} vs main ${before.rate[t].toFixed(2)} -> ${after.rate[t].toFixed(2)} (3se ${(3 * se).toFixed(2)})`);
 }
 const fmt = r => Object.fromEntries(TYPES.map(t => [t, +r.rate[t].toFixed(2)]));
-console.log(JSON.stringify({ sageSpecial: 'PASS', plays: PLAYS, main: fmt(before), foresight: fmt(after), avgDistanceM: [+before.dist.toFixed(1), +after.dist.toFixed(1)], newFingerprint: fingerprint(now) }));
+const elastic = rates(now, PLAYS);
+assert(elastic.enc.GUARD > 0 && Number.isFinite(elastic.rate.GUARD) && Number.isFinite(elastic.dist), 'current elastic-contact rates are finite');
+assert.deepEqual(rates(now, 100), rates(load(), 100), 'elastic-contact rate sampling is reproducible');
+console.log(JSON.stringify({ sageSpecial: 'PASS', plays: PLAYS, historicalMain: fmt(before), historicalForesight: fmt(after), elasticForesight: fmt(elastic), elasticAvgDistanceM: +elastic.dist.toFixed(1) }));

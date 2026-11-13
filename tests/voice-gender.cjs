@@ -4,7 +4,7 @@ const { checkVoiceGender, loadCast } = require("../scripts/voice_gender.cjs");
 const root = path.resolve(__dirname, "..");
 
 const result = checkVoiceGender(root);
-assert.equal(result.rows.length, 20, "all 20 voice entries checked");
+assert.equal(result.rows.length, 13, "all 13 retained voice entries checked");
 if (result.warnings.length) {
   console.log(`voice-gender WARNING: ${result.warnings.length} unverified entries whose current voice does not match the cast gender:`);
   for (const w of result.warnings) console.log("  - " + w);

@@ -1,16 +1,18 @@
 // SPECIAL presentation smoothing (2026-10-15, display only): continuous cut-in envelopes, eased band exit,
 // continuous (non-stepped) combo shake, blended combo camera at the fighter eruption, label pop / fade,
 // pose cross-fades, combo smear, sub-step scene clock. Checks:
-//  1) game results for every DEBUG kind + normal play (watch / skip / short / plain) identical to the f87b758
-//     baseline (tests/fixtures/special-smooth-baseline-f87b758.json): distances, heights, labels, SPECIAL counts,
+//  1) game results for every DEBUG kind + normal play (watch / skip / short / plain) identical to the
+//     elastic-contact baseline: distances, heights, labels, SPECIAL counts,
 //     number of steps until RESULT (game-time freeze unchanged) and a trajectory fingerprint;
 //  2) easing continuity: no per-frame (1/60 s) jump above a threshold in the cut-in / camera / shake / labels;
 //  3) uniform scale only; 4) skip and reduced motion unchanged; 5) full smooth draw of every SPECIAL never throws.
-// Run: node tests/special-smooth.cjs   (regenerate the fixture: node tests/special-smooth.cjs --baseline <old js dir>)
-const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
+// Run: node tests/special-smooth.cjs (create the new fixture once with --baseline <js dir>).
+// The historical f87b758 fixture and the pre-contact-position elastic fixture remain intact.
+// Fixed-step contact-position baseline: game.js SHA-256
+// 0587839ff22c17a91221fe3af99eebef4b7aac09322f5edb89e576f90ddecfaf.
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-const FIXTURE = path.join(__dirname, 'fixtures', 'special-smooth-baseline-f87b758.json');
+const FIXTURE = path.join(__dirname, 'fixtures', 'special-smooth-baseline-elastic-ccd-20261113.json');
 const calls = [];
 const ctxProxy = () => new Proxy({}, { get: (o, k) => k in o ? o[k] : k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) :
   k === 'measureText' ? () => ({ width: 100 }) : k === 'scale' ? (x, y) => calls.push(['scale', x, y]) : () => {}, set: (o, k, v) => (o[k] = v, true) });
@@ -20,7 +22,9 @@ function load(jsDir) {
   const store = {};
   const scope = { document: { getElementById: element, addEventListener() {} }, requestAnimationFrame() {}, localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } } };
   scope.window = scope; vm.createContext(scope);
-  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(adjacentGateOff(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), name).replace(/typeCTempo: \d+,/, 'typeCTempo: 1,'), scope, { filename: name }); // baseline counts the x1 Type C ride (cycle 32)
+  // Use the shipped placement and merchant settings. The historical baseline used
+  // older DEBUG placement, which can repeatedly feed BOOST SPECIAL under elastic contacts.
+  for (const name of ['config', 'physics', 'game', 'sprites', 'graphics', 'ui', 'audio', 'voice', 'input']) vm.runInContext(fs.readFileSync(path.join(jsDir, name + '.js'), 'utf8'), scope, { filename: name });
   scope.Hop.Graphics.smooth = false;
   return scope.Hop;
 }
@@ -43,11 +47,12 @@ function play(Hop, { seed, kind, angle, power }, mode, draw = null) {
     if (draw) draw(g);
     if (steps % 30 === 0) fp = (Math.imul(fp ^ Math.round(g.body.x * 10), 16777619) ^ Math.round(g.body.y * 10)) >>> 0;
   }
+  assert.equal(g.state, 'RESULT', `natural stop ${kind}/${seed}/${mode}`);
   return { state: g.state, x: Math.round(g.body.x * 1000) / 1000, d: g.finalDistance, h: g.maxHeight, labels: g.history.map(x => x.label).join(','), specials: g.specialSuccesses, steps, fp, combos };
 }
 if (process.argv[2] === '--baseline') {
-  const Old = load(path.resolve(process.argv[3]));
-  fs.writeFileSync(FIXTURE, JSON.stringify(CASES.flatMap(k => MODES.map(mode => ({ ...k, mode, ...play(Old, k, mode) }))), null, 0).replace(/\},\{/g, '},\n{') + '\n');
+  const Current = load(path.resolve(process.argv[3]));
+  fs.writeFileSync(FIXTURE, JSON.stringify(CASES.flatMap(k => MODES.map(mode => ({ ...k, mode, ...play(Current, k, mode) }))), null, 0).replace(/\},\{/g, '},\n{') + '\n', { flag: 'wx' });
   console.log('wrote', FIXTURE); process.exit(0);
 }
 const Hop = load(path.join(root, 'js')), c = Hop.CONFIG, G = Hop.Graphics;

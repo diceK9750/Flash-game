@@ -1,5 +1,6 @@
 // Run with: node tests/debug-kinds.cjs — DEBUG kinds (menu / URL / per-check setups). Test-only.
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
+const legacyContactReflectionOff = require('./fixtures/legacy-contact-reflection-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { scope, element, document, random } = require('./phase2.cjs');
@@ -258,12 +259,17 @@ test('OFF restores normal spawning (boundaries, weighted random, no DEBUG flags)
   ui.update(); assert(element('debug-status').hidden);
 });
 
-test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEBUG-kinds code (4c3aec7)', () => {
+test('normal play: preserve historical fingerprint in an isolated legacy VM and verify current seeded determinism', () => {
   // 160 seeded plays with mixed SPECIAL taps / skips / AERIAL; finals, contacts, SPECIAL / merchant counts and the
   // number of random() draws must match the fingerprint taken from main 4c3aec7 before this change.
-  function play(seed) {
+  const legacyScope = {}; legacyScope.window = legacyScope; vm.createContext(legacyScope);
+  for (const name of ['config', 'physics', 'game']) {
+    const src = adjacentGateOff(fs.readFileSync(path.join(root, 'js', name + '.js'), 'utf8'), name);
+    vm.runInContext(legacyContactReflectionOff(src, name), legacyScope, { filename: `legacy-${name}` });
+  }
+  function play(seed, GameClass) {
     let draws = 0; const base = random(seed * 31 + 7);
-    const g = new Game(() => { draws++; return base(); });
+    const g = new GameClass(() => { draws++; return base(); });
     g.act(); g.angle = 15 + (seed * 7) % 55; g.act(); g.power = 0.4 + (seed % 7) * 0.1; g.act();
     // q: play clock without the Type C ride, so the scripted taps land at the same game moments (cycle 32).
     let f = 0, q = 0;
@@ -274,9 +280,11 @@ test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEB
       g.update(c.physicsStep); f++; if (g.merchant?.type !== 'C') q++;
     }
     assert(g.objects.every(o => !o.debugSetup && !o.debugForce && !o.debugBoundary)); assert.equal(g.debugKind, null);
+    assert.equal(g.state, 'RESULT', `seed ${seed} must stop naturally`);
     return [g.state, g.finalDistance.toFixed(3), g.maxHeight.toFixed(3), g.maxSpeed.toFixed(3), g.body.bounces, g.history.map(e => e.label).join(','), g.specialCount, g.specialSuccesses, JSON.stringify(g.merchantStats), draws, f].join('|');
   }
-  const lines = []; for (let seed = 1; seed <= 160; seed++) lines.push(play(seed));
+  const collect = GameClass => Array.from({ length: 160 }, (_, i) => play(i + 1, GameClass));
+  const lines = collect(legacyScope.Hop.Game);
   // Updated 2026-10-13d for the sage 先見の結界 condition (only change; replaces the 2026-10-13c guardSpecialChance draw,
   // whose fingerprint was 6 / 61 / 1f0364eb...). The warrior-fix fingerprint (5 / 60 / bd3ce787...) is still reproduced
   // exactly with sageCondition "none" in tests/sage-special.cjs (and 3 / 56 / 8cfecc1b... with the warrior draw also 0
@@ -289,6 +297,8 @@ test('normal play is unchanged: fixed-seed fingerprint recorded from the pre-DEB
   // Updated 2026-10-17 (cycle 32, Type C ride typeCTempo x4): taps keyed to q; with q every field except f of the 2
   // Type C plays is byte-identical between the x1 ride (pre-change main) and the x4 ride; only their frame count f shrinks.
   assert.equal(crypto.createHash('sha256').update(lines.join('\n')).digest('hex'), '1ff04e963951e771e1f352cba8a839c17de01293ab768212b0d8796e35ab8017');
+  const current = collect(Game), repeated = collect(Game);
+  assert.deepEqual(current, repeated, 'current elastic-contact results and random draws are deterministic');
 });
 
 test('reducedMotion still respected in DEBUG kinds (combo short version)', () => {

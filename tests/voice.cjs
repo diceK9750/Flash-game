@@ -83,7 +83,7 @@ async function settle() { await new Promise(resolve => setImmediate(resolve)); }
       entry.humanReviewed = true; entry.sourceProvenance = 'mock test fixture';
     }
     const counts = { registry: 0, audio: 0 }, h = harness({ fetchImpl: routeFetch({ registry, counts }) });
-    h.voice.unlock(); await settle(); assert.equal(h.voice.buffers.size, 20); assert.equal(counts.audio, 20);
+    h.voice.unlock(); await settle(); assert.equal(h.voice.buffers.size, 13); assert.equal(counts.audio, 13);
     h.voice.play('hero_launch', false, 'AIM_POWER_TO_FLYING'); h.voice.play('hero_launch', false, 'AIM_POWER_TO_FLYING');
     assert.equal(h.sources.length, 1, 'duplicate launch event does not restart its one-shot');
     h.voice.play('hero_launch', false, 'FLYING_TO_RESULT'); assert.equal(h.sources.length, 1, 'event mismatch is rejected');
@@ -92,7 +92,19 @@ async function settle() { await new Promise(resolve => setImmediate(resolve)); }
     h.voice.play('special_boost', false, 'SPECIAL_BOOST'); assert.equal(h.sources.length, 2); assert.equal(h.sources[0].stopped, 1);
     h.sources[0].onended(); assert.equal(h.voice.active, h.sources[1], 'old onended cannot clear the interrupting voice');
     h.voice.play('hero_launch', false, 'AIM_POWER_TO_FLYING'); assert.equal(h.sources.length, 2, 'lower priority cannot cut higher priority');
-    h.voice.play('combo_witch_call', false, 'COMBO_WITCH_START'); assert.equal(h.sources.length, 3); assert.equal(h.sources[1].stopped, 1);
+    // Removed IDs cannot fetch, play, interrupt the active voice, or affect the game.
+    for (const [id, event] of [
+      ['special_bounce', 'SPECIAL_BOUNCE'], ['special_dash', 'SPECIAL_DASH'], ['special_angle', 'SPECIAL_ANGLE'],
+      ['special_merchant_a', 'MERCHANT_SUCCESS_A'], ['combo_witch_call', 'COMBO_WITCH_START'],
+      ['combo_fighter_upper', 'COMBO_FIGHTER_FINISH'], ['combo_fighter_short', 'COMBO_FIGHTER_REDUCED_MOTION']
+    ]) {
+      assert.equal(registry.assets[id], undefined, `${id} is not registered`);
+      assert.doesNotThrow(() => h.voice.play(id, false, event));
+      assert.equal(h.sources.length, 2, `${id} must be silent`);
+      assert.equal(h.voice.active, h.sources[1], `${id} must not interrupt active voice`);
+      assert.equal(counts.audio, 13, `${id} must not fetch`);
+    }
+    h.voice.play('combo_fighter_call', false, 'COMBO_FIGHTER_START'); assert.equal(h.sources.length, 3); assert.equal(h.sources[1].stopped, 1);
     h.voice.play('combo_witch_blast', false, 'COMBO_WITCH_FINISH'); assert.equal(h.sources.length, 4); assert.equal(h.sources[2].stopped, 1);
     h.voice.play('hero_stop', false, 'FLYING_TO_RESULT'); assert.equal(h.sources.length, 5); assert.equal(h.sources[3].stopped, 1);
     h.voice.play('hero_stop', false, 'FLYING_TO_RESULT'); assert.equal(h.sources.length, 5, 'same result line is not restarted');

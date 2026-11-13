@@ -1,5 +1,7 @@
 # 異世界Truck Crash!! キャラクターボイス実装・納品ドキュメント
 
+> この文書の配役表・機能説明・手順は当初の記録です。現在の正本は `docs/voice-intake.md` と `assets/audio/voices/voice-registry.json` です。性別不一致の未確認音声7件は削除済みで、現在は13組（確認済み2件・未確認11件）です。下記の古い再生成・ロールバック手順は実行しないでください。
+
 ## 1. 概要
 本作「異世界Truck Crash!!」に、Google Gemini TTS仕様に準拠した日本語キャラクターボイス機能を追加しました。
 既存のWeb Audio合成SEと完全に調和し、操作感やテンポを損なわないよう、優先度制御・重複防止・SE自動ダッキング・掛け合い同期・iOS Safariアンロック・読込失敗時フォールバックを実装しています。
@@ -8,11 +10,11 @@
 
 ## 2. キャラクター音声仕様・Gemini Prebuilt Voice対応表
 
-> **注意（2026-10-12 G2 追記）**: 現在の 20 本の音声は `scripts/generate_voices.py` による**合成の仮置き**で、Gemini TTS では生成されていません。表の Gemini Voice 名は当初の配役ラベルにすぎません。出所は未確認（`voice-registry.json` の `authenticityStatus: "unverified"`）。
+> **当初の記録（2026-10-12 G2）**: 当時の20本は `scripts/generate_voices.py` による合成の仮置きで、表の Gemini Voice 名は当初の配役ラベルにすぎません。現在は上記のとおり2件がユーザー作成・聴感確認済みであり、未確認7件は削除されています。
 > 「仕様の性別」は `js/graphics.js` の `Hop.CAST`（勇者・盗賊・遊び人＝男、魔法使い・武闘家・戦士・賢者・僧侶・商人＝女）。「現在の仮置き音声の性別」は registry の `voiceGender`。配役意図（下表の旧「性別」欄）が男性/女性ならそれを採用し、中性ならピッチ推定（中央 F0 が 165Hz 未満＝男）で判定した。不一致は `tests/voice-gender.cjs` と `scripts/accept_voice_assets.cjs` が警告し、`reviewed` になった項目は一致しないと FAIL になる。差し替え音声は仕様の性別で作ること。
 
 
-| キャラクター | 仕様の性別 | 現在の仮置き音声の性別（判定方法） | 特徴 | 元の配役ラベル（Gemini Voice 名・実際は未使用） | 演技スタイル / 音声パラメータ | 台詞テキスト | 日本語読み |
+| キャラクター | 仕様の性別 | 当初の仮置き音声の性別（判定方法） | 特徴 | 元の配役ラベル（Gemini Voice 名・実際は未使用） | 演技スタイル / 音声パラメータ | 台詞テキスト | 日本語読み |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **勇者** (Launch) | 男 | 男（配役意図, 中央F0 173Hz） | 熱血 | `Puck` | 元気な発射シャウト (f0: 160Hz) | うおおおっ、ぶっ飛ぶぜー！ | うおおおっ、ぶっとぶぜー！ |
 | **勇者** (Flight) | 男 | 男（配役意図, 中央F0 189Hz） | 熱血 | `Puck` | 飛行・空中気合 (f0: 175Hz) | まだまだ行くぞー！ | まだまだいくぞー！ |
@@ -39,8 +41,8 @@
 
 ## 3. ファイル構成および役割
 
-- `assets/audio/voices/dist/*.mp3` : ブラウザ配信用軽量MP3音源（20ファイル、96kbps）
-- `assets/audio/voices/original/*.wav` : 高音質マスターWAV音源（20ファイル、24kHz 16bit PCM）
+- `assets/audio/voices/dist/*.mp3` : ブラウザ配信用軽量MP3音源（現在13ファイル）
+- `assets/audio/voices/original/*.wav` : 高音質マスターWAV音源（現在13ファイル）
 - `assets/audio/voices/manifest.json` : 音声メタデータ一覧定義
 - `assets/audio/voices/inspection_report.json` : 音響品質機械検査レポート
 - `js/audio.js` : ボイス優先度管理、ダッキング、重複防止、iOS Safariアンロック、フォールバック実装

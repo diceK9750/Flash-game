@@ -83,15 +83,19 @@ try {
     assert.equal(stopped.length, stopsBeforeRetry + 1);
   }
 
-  // Human-review gates all 20 connected ids; the event and rationale for hero_flight are explicit.
+  // Removed placeholders stay absent; hooks above remain harmless no-op calls when an ID has no registry entry.
+  for (const id of ['special_bounce', 'special_dash', 'special_angle', 'special_merchant_a', 'combo_witch_call', 'combo_fighter_upper', 'combo_fighter_short']) {
+    assert.equal(registry.assets[id], undefined, `${id} must remain removed`);
+  }
+  // Human-review gates all retained connected ids; the event and rationale for hero_flight are explicit.
   const connected = Object.entries(registry.assets).filter(([, entry]) => entry.connectionStatus === 'connected').map(([id]) => id).sort();
-  assert.equal(connected.length, 20); assert.equal(registry.assets.hero_flight.connectionStatus, 'connected');
+  assert.equal(connected.length, 13); assert.equal(registry.assets.hero_flight.connectionStatus, 'connected');
   assert.equal(registry.assets.hero_flight.gameEvent, 'AERIAL_SUCCESS_FIRST_PER_RUN');
   assert(registry.assets.hero_flight.reason.includes('first successful AERIAL UP or DOWN'));
   const reviewedIds = Object.entries(registry.assets).filter(([, entry]) => entry.humanReviewed).map(([id]) => id).sort();
   assert.deepEqual(reviewedIds, ['hero_launch', 'hero_stop'], 'only the two user-reviewed hero lines are reviewed');
   assert(Object.entries(registry.assets).every(([id, entry]) => reviewedIds.includes(id) ? entry.authenticityStatus === 'reviewed' && entry.sourceProvenance.trim() : !entry.humanReviewed && entry.sourceProvenance === null));
-  console.log('Voice event wiring PASS: 7 SPECIAL, 4 merchant, 6 combo variants, launch/first-AERIAL/result, skip/retry, event dedupe, 20 connected; only hero_launch/hero_stop reviewed, the other 18 remain unverified.');
+  console.log('Voice event wiring PASS: SPECIAL/merchant/combo hooks, launch/first-AERIAL/result, skip/retry, event dedupe, 13 retained IDs; only hero_launch/hero_stop reviewed, the other 11 remain unverified.');
 } finally {
   scope.Hop.Voice = originalVoice; scope.Hop.Audio.play = originalPlay;
   scope.Hop.Audio.playCombo = originalCombo; scope.Hop.Audio.stopCombo = originalStopCombo;

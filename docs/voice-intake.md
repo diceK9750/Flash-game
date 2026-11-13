@@ -2,9 +2,9 @@
 
 ## 現状
 
-`assets/audio/voices/original/` と `dist/` に既存のWAV/MP3が20組あります。ファイル形式・波形・MP3フレームの技術検査には通りますが、この検査も既存のmanifestや生成スクリプトの記述も、音声の出所やGemini生成、本物の台詞であることを証明しません。素材は保全し、出所と聴感を確認するまで未確認として扱います。
+`assets/audio/voices/original/` と `dist/` にはWAV/MP3が13組あります。性別不一致の警告があった未確認素材7組は削除しました。残る13組のうち、`hero_launch` と `hero_stop` はユーザーが聴感を確認済みで、その他11組は未確認の仮素材です。ファイル形式・波形・MP3フレームの技術検査は、音声の出所や聴感を証明しません。
 
-`assets/audio/voices/voice-registry.json` は台詞IDとゲームイベントの対応表です。20件すべてを特定イベントに接続しました。`hero_flight` は新たな物理イベントを追加せず、既存のAERIAL UP/DOWN成功エフェクトの最初の1回に接続し、1プレイ1回に制限しています。発射台詞より低く、SPECIAL/合体技より低い優先度です。各項目の `humanReviewed` は `false`、`sourceProvenance` は `null` のままです。出所と聴感を確認し、対象レコードを更新してトップレベル `authenticityStatus` を `reviewed` にするまで、任意ボイス経路は素材を読み込まず再生もしません。技術検査だけでこの確認欄を変更してはいけません。
+`assets/audio/voices/voice-registry.json` は残る13件の台詞IDとゲームイベントの対応表です。`hero_flight` は新たな物理イベントを追加せず、既存のAERIAL UP/DOWN成功エフェクトの最初の1回に接続し、1プレイ1回に制限しています。発射台詞より低く、SPECIAL/合体技より低い優先度です。トップレベルは `authenticityStatus: "per-entry"` で、項目ごとに審査します。確認済みの `hero_launch` と `hero_stop` のみ読み込み・再生対象で、未確認11件は `humanReviewed: false`、`sourceProvenance: null` のため読み込まず再生もしません。技術検査だけで確認欄を変更してはいけません。
 
 ## 技術検査
 

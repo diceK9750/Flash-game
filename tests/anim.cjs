@@ -1,6 +1,6 @@
 // Character motion (Hop.Anim, display only): determinism, scale bounds (5-head proportions kept: whole-sprite
 // squash / stretch within +-8%), reduced motion, and zero physics change (fixed-seed runs drawn every frame
-// must match the pre-animation baseline recorded at main 746b9e9).
+// must match the elastic-contact baseline under the historical compatibility settings).
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
@@ -46,21 +46,22 @@ for (let i = 0; i < 6; i++) { const d = A.dust({}, i, 6, 0.2, 1); assert.deepEqu
 // Uniform-or-bounded: squash keeps sx * sy close to 1 (volume-ish) and never scales a part separately (one transform).
 assert.equal(A.clampScale(0.5), 0.92); assert.equal(A.clampScale(2), 1.08);
 // Physics unchanged by drawing: same seeds, Graphics.draw every frame (normal + reduced motion), vs the baseline.
-// Baseline: anim-physics-baseline-sage.json (re-recorded 2026-10-13d for the sage 先見の結界 condition; was the 2026-10-13c
-// guardSpecialChance run); -warrior.json is reproduced with sageCondition "none" (tests/sage-special.cjs).
-// anim-physics-baseline.json is still reproduced exactly with dashSpecialChance 0 (tests/warrior-special.cjs).
+// The elastic-contact fixture uses adjacent-gate-off.cjs and is not a baseline for
+// ordinary current play. The previous sage / warrior fixtures remain historical records.
 function sim(draw) {
   const out = [];
   for (let seed = 1; seed <= 24; seed++) {
     let s = seed; const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
     const g = new Hop.Game(rnd); g.act(); g.angle = 20 + seed * 2; g.act(); g.power = 0.5 + (seed % 5) / 10; g.act();
     const visual = { launchAt: 0, contactAt: -Infinity, reducedMotion: seed % 3 === 0, readyTargets: [] };
-    for (let i = 0; i < 20000 && g.state === 'FLYING'; i++) { g.update(1 / 60); if (seed % 2 && i % 37 === 0) g.act(); if (draw) Hop.Graphics.draw(ctx, g, visual); }
+    for (let i = 0; i < 20000 && g.state === 'FLYING'; i++) { g.update(1 / 60); if (g.state === 'FLYING' && seed % 2 && i % 37 === 0) g.act(); if (draw) Hop.Graphics.draw(ctx, g, visual); }
+    assert.equal(g.state, 'RESULT', `seed ${seed} must stop naturally within 20000 frames`);
     out.push([g.state, g.finalDistance, g.body.x, g.body.bounces, g.specialSuccesses]);
   }
   return out;
 }
-const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8'));
+const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-elastic-timed.json'), 'utf8'));
+assert.equal(baseline.length, 24); assert(baseline.every(row => row[0] === 'RESULT'), 'fixture contains only naturally completed runs');
 assert.deepEqual(sim(true), baseline); assert.deepEqual(sim(false), baseline);
 console.log(`anim.cjs OK (${checks} pose checks, ${baseline.length} fixed-seed runs identical to baseline)`);
 // Kill switch: identity poses.

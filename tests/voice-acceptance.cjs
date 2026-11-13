@@ -11,11 +11,18 @@ const run = (...args) => spawnSync(process.execPath, [tool, ...args], { encoding
   const result = run();
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const report = JSON.parse(result.stdout);
-  assert.equal(report.files, 20); assert.equal(report.technicalStatus, 'PASS');
+  assert.equal(report.files, 13); assert.equal(report.technicalStatus, 'PASS');
   assert.equal(report.authenticity, 'UNVERIFIED');
   assert(report.results.every(item => item.technicalStatus === 'PASS' && item.authenticity === 'UNVERIFIED'));
   const sourceManifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/voices/manifest.json'), 'utf8'));
   const registry = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/voices/voice-registry.json'), 'utf8'));
+  for (const id of ['special_bounce', 'special_dash', 'special_angle', 'special_merchant_a', 'combo_witch_call', 'combo_fighter_upper', 'combo_fighter_short']) {
+    assert.equal(registry.assets[id], undefined, `${id} is not registered`);
+    assert(!sourceManifest.some(item => item.key === id), `${id} is not in the manifest`);
+    for (const [dir, ext] of [['original', 'wav'], ['dist', 'mp3']]) {
+      assert(!fs.existsSync(path.join(root, 'assets/audio/voices', dir, `${id}.${ext}`)), `${id}.${ext} was removed`);
+    }
+  }
   assert.equal(registry.authenticityStatus, 'per-entry', 'registry-wide review is never granted; per-entry gate');
   assert.deepEqual(Object.keys(registry.assets).sort(), sourceManifest.map(item => item.key).sort());
   const REVIEWED = new Set(['hero_launch', 'hero_stop']);
@@ -53,4 +60,4 @@ try {
   result = run(wavPath); assert.notEqual(result.status, 0, 'truncated WAV must fail closed');
 } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 
-console.log('Voice acceptance PASS: 20 WAV/MP3 pairs, PCM metrics, MP3 framing, truncation rejection, only hero_launch/hero_stop reviewed (per-entry), the other 18 unverified.');
+console.log('Voice acceptance PASS: 13 WAV/MP3 pairs, PCM metrics, MP3 framing, truncation rejection, only hero_launch/hero_stop reviewed (per-entry), the other 11 unverified.');

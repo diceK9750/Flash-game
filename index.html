@@ -93,10 +93,11 @@
     </section>
     <details class="rules"><summary>遊び方・仲間の効果・SPECIAL条件</summary>
       <p>画面をタップ / 左クリック（キーボードはSpace / Enter）するだけ。角度→パワーを決定して発射。上昇中はDOWN、下降中はUP（3回）。UPは落下を止めてから45°へ800px/s加算（魔法使いのBOOSTと同じ強さ）。DOWNは今の飛行角を水平線で折り返した反射角でダイブし、地面かキャラに触れるまでその角度を維持（浅い上昇は最低30°）。DOWNは使用後0%になり、通常飛行1.5秒で100%へ充電して再使用。SPECIAL受付・成功失敗表示・浮遊中は充電停止。SPECIALは1秒以内にタップ。成功時は決め顔ドアップのカットインと、SPECIALごとの専用SEあり。RESULTでは FINAL DISTANCE / 最終飛距離・PEAK HEIGHT / 最高高度・PEAK SPEED / 最高速度と BEST DISTANCE / 自己ベストを表示し、更新した項目は NEW RECORD! · 飛距離／高さ／速度 で示します（自己ベストはこのブラウザに保存）。飛行中の HUD は現在高度・現在速度、停止後は PEAK 表示。RESULTも画面タップでRETRY。</p>
+      <p>キャラに接触すると、下降中は水平速度を保ったまま垂直速度が完全に上向きへ反射し、その後に各効果が適用されます。上昇中・水平移動中は反転しません。通常GUARD・GUARD SPECIALはこの反射自体を防ぎません。実際の地面では従来のバウンドを行います。</p>
       <p>魔法使い（BOOST）：45°へ800px/s加算 / 武闘家（BOUNCE）：60°へ880px/s加算 / 盗賊（BRAKE）：速度全体を半減 / 遊び人（ANGLE）：速さを保ち90°−角度の絶対値へ変更 / 戦士（DASH）：25°へ880px/s加算 / 賢者（GUARD）：次の1接触まで結界 / 僧侶（STOPPER）：強制停止</p>
       <p id="special-rules"></p>
-      <p>BRAKE SPECIAL（影すり抜け）成功は速度・角度を維持。ANGLE SPECIAL（水平曲芸）成功は速度を保ち水平へ。GUARD SPECIAL（聖護結界）成功はSTOPPER専用防御10秒。通常GUARDは次の接触で消滅し、BOOST・BOUNCE・DASH・STOPPERを防ぎます（BRAKE・ANGLEは防ぎません）。</p>
-      <p>接触判定は通常SPECIAL → 通常GUARD → GUARD SPECIAL → 通常効果。GUARD SPECIALは受付・成功失敗表示・浮遊中に残り時間が止まり、再GUARD接触でも時間は更新せず通常GUARDだけ追加します。</p>
+      <p>BRAKE SPECIAL（影すり抜け）成功は反射後の速度・角度を維持。ANGLE SPECIAL（水平曲芸）成功は速度を保ち水平へ。速度を上書きするSPECIAL成功時は従来どおりの速度になります。GUARD SPECIAL（聖護結界）成功はSTOPPER専用防御10秒。通常GUARDは次の接触で消滅し、BOOST・BOUNCE・DASH・STOPPERを防ぎます（BRAKE・ANGLEは防ぎません）。</p>
+      <p>反射後の接触判定は通常SPECIAL → GUARD SPECIAL → 通常GUARD → 通常効果。GUARD SPECIALは受付・成功失敗表示・浮遊中に残り時間が止まり、再GUARD接触でも時間は更新せず通常GUARDだけ追加します。</p>
       <p>ごくまれに謎の商人が現れる…？</p>
       <details><summary>開発用：DEBUGメニュー（Dキー / DEBUGボタン）</summary>
         <p>Dキーか画面上のDEBUGボタンでメニューを開き、番号キー（隠しキャラは Q W E R）かクリックで確認したい項目を選びます。Esc・もう一度D・背景クリックで閉じます（開いている間はゲームの時間が止まります）。発射前に選ぶと、確認用のキャラが勇者のすぐ前に立ち、発射直後の最初の接触で確認できます。URLの <code>?debug=種類</code> でも直接開けます。メニュー上の選択中項目はハイライトされます。</p>

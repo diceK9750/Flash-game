@@ -1,6 +1,6 @@
 // Character motion (display only): per-character hit / SPECIAL reactions, overhead look-up, idle fidgets (display
 // RNG), hero effect poses / hit flavour / skid / RESULT tiers, truck after-impact hop. Physics, distances and the
-// game RNG call count must equal main 40feb39 (fixtures/anim-physics-baseline-sage.json, unchanged since 2f4d0af).
+// game RNG call count must match the elastic-contact fixture under historical compatibility settings.
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
@@ -21,14 +21,17 @@ function sim(draw) {
     const r = rndOf(seed); let n = 0; const g = new Hop.Game(() => (n++, r()));
     g.act(); g.angle = 20 + seed * 2; g.act(); g.power = 0.5 + (seed % 5) / 10; g.act();
     const visual = { launchAt: 0, contactAt: -Infinity, reducedMotion: seed % 3 === 0, readyTargets: [] };
-    for (let i = 0; i < 20000 && g.state === 'FLYING'; i++) { g.update(1 / 60); if (seed % 2 && i % 37 === 0) g.act(); if (draw) G.draw(ctx, g, visual); }
+    for (let i = 0; i < 20000 && g.state === 'FLYING'; i++) { g.update(1 / 60); if (g.state === 'FLYING' && seed % 2 && i % 37 === 0) g.act(); if (draw) G.draw(ctx, g, visual); }
+    assert.equal(g.state, 'RESULT', `seed ${seed} must stop naturally within 20000 frames`);
     out.push([g.state, g.finalDistance, g.body.x, g.body.bounces, g.specialSuccesses]); calls.push(n);
   }
   G.smooth = false; return { out, calls };
 }
-const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8'));
+// This fixture uses adjacent-gate-off.cjs; it does not represent ordinary current-play rates.
+const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-elastic-timed.json'), 'utf8'));
+assert.equal(baseline.length, 24); assert(baseline.every(row => row[0] === 'RESULT'), 'fixture contains only naturally completed runs');
 const drawn = sim(true), plain = sim(false);
-assert.deepEqual(drawn.out, baseline, 'distances == main 40feb39 baseline'); assert.deepEqual(plain.out, baseline);
+assert.deepEqual(drawn.out, baseline, 'drawing preserves the elastic-contact baseline'); assert.deepEqual(plain.out, baseline);
 assert.deepEqual(drawn.calls, plain.calls, 'game RNG call count unchanged by drawing');
 // 2. Scale bounds (uniform-ish, within +-8%) and determinism over every new motion.
 const TYPES = A.CAST_ORDER, p = {}, q = {}, inB = o => o.sx >= 0.92 - 1e-12 && o.sx <= 1.08 + 1e-12 && o.sy >= 0.92 - 1e-12 && o.sy <= 1.08 + 1e-12;

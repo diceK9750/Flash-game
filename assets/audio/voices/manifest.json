@@ -66,38 +66,6 @@
     "mp3_bytes": 14157
   },
   {
-    "key": "special_bounce",
-    "character": "武闘家",
-    "gemini_voice": "Orus",
-    "category": "SPECIAL_BOUNCE",
-    "text": "巨神昇天拳",
-    "reading": "きょしんしょうてんけん",
-    "style": "powerful martial arts shout",
-    "duration_s": 1.25,
-    "peak_db": -1.72,
-    "rms_db": -14.29,
-    "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/special_bounce.wav",
-    "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/special_bounce.mp3",
-    "wav_bytes": 60044,
-    "mp3_bytes": 16173
-  },
-  {
-    "key": "special_dash",
-    "character": "戦士",
-    "gemini_voice": "Charon",
-    "category": "SPECIAL_DASH",
-    "text": "戦陣突破",
-    "reading": "せんじんとっぱ",
-    "style": "disciplined warrior battle cry",
-    "duration_s": 1.05,
-    "peak_db": -1.72,
-    "rms_db": -14.49,
-    "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/special_dash.wav",
-    "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/special_dash.mp3",
-    "wav_bytes": 50444,
-    "mp3_bytes": 13581
-  },
-  {
     "key": "special_stopper",
     "character": "僧侶",
     "gemini_voice": "Kore",
@@ -130,22 +98,6 @@
     "mp3_bytes": 12429
   },
   {
-    "key": "special_angle",
-    "character": "遊び人",
-    "gemini_voice": "Sadachbia",
-    "category": "SPECIAL_ANGLE",
-    "text": "水平曲芸",
-    "reading": "すいへいきょくげい",
-    "style": "comical acrobatic banter",
-    "duration_s": 1.0,
-    "peak_db": -1.72,
-    "rms_db": -14.02,
-    "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/special_angle.wav",
-    "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/special_angle.mp3",
-    "wav_bytes": 48044,
-    "mp3_bytes": 13005
-  },
-  {
     "key": "special_guard",
     "character": "賢者",
     "gemini_voice": "Sadaltager",
@@ -160,22 +112,6 @@
     "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/special_guard.mp3",
     "wav_bytes": 55242,
     "mp3_bytes": 14733
-  },
-  {
-    "key": "special_merchant_a",
-    "character": "商人（秘薬）",
-    "gemini_voice": "Achird",
-    "category": "SPECIAL_MERCHANT_A",
-    "text": "倍化の秘薬",
-    "reading": "ばいかのひやく",
-    "style": "shrewd alchemical merchant whisper",
-    "duration_s": 1.05,
-    "peak_db": -1.72,
-    "rms_db": -14.79,
-    "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/special_merchant_a.wav",
-    "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/special_merchant_a.mp3",
-    "wav_bytes": 50444,
-    "mp3_bytes": 13581
   },
   {
     "key": "special_merchant_b",
@@ -226,22 +162,6 @@
     "mp3_bytes": 12429
   },
   {
-    "key": "combo_witch_call",
-    "character": "武闘家",
-    "gemini_voice": "Orus",
-    "category": "COMBO_WITCH",
-    "text": "合わせるぞ！",
-    "reading": "あわせるぞ！",
-    "style": "urgent team-up call",
-    "duration_s": 0.65,
-    "peak_db": -1.72,
-    "rms_db": -14.34,
-    "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/combo_witch_call.wav",
-    "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/combo_witch_call.mp3",
-    "wav_bytes": 31244,
-    "mp3_bytes": 8973
-  },
-  {
     "key": "combo_witch_blast",
     "character": "魔法使い",
     "gemini_voice": "Aoede",
@@ -274,22 +194,6 @@
     "mp3_bytes": 8973
   },
   {
-    "key": "combo_fighter_upper",
-    "character": "武闘家",
-    "gemini_voice": "Orus",
-    "category": "COMBO_FIGHTER",
-    "text": "唸れ我が拳！昇天撃破ァ！",
-    "reading": "うなれわがこぶし！しょうてんげきはぁ！",
-    "style": "explosive giant uppercut yell",
-    "duration_s": 1.6,
-    "peak_db": -1.72,
-    "rms_db": -13.97,
-    "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/combo_fighter_upper.wav",
-    "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/combo_fighter_upper.mp3",
-    "wav_bytes": 76844,
-    "mp3_bytes": 20205
-  },
-  {
     "key": "combo_witch_short",
     "character": "魔法使い",
     "gemini_voice": "Aoede",
@@ -302,22 +206,6 @@
     "rms_db": -13.37,
     "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/combo_witch_short.wav",
     "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/combo_witch_short.mp3",
-    "wav_bytes": 36044,
-    "mp3_bytes": 10125
-  },
-  {
-    "key": "combo_fighter_short",
-    "character": "武闘家",
-    "gemini_voice": "Orus",
-    "category": "COMBO_FIGHTER_SHORT",
-    "text": "昇天撃破ァ！",
-    "reading": "しょうてんげきはぁ！",
-    "style": "instant decisive uppercut roar",
-    "duration_s": 0.75,
-    "peak_db": -1.72,
-    "rms_db": -14.17,
-    "wav_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/original/combo_fighter_short.wav",
-    "mp3_path": "/working_dir/c_620b05c3cf9faeb9/assets/audio/voices/dist/combo_fighter_short.mp3",
     "wav_bytes": 36044,
     "mp3_bytes": 10125
   }

@@ -19,10 +19,10 @@ for (const type of Object.keys(c.objectWeights)) {
   const game = launch(); game.random=()=>0.9; contact(game, type);
   assert.equal(game.history.length, 1); assert.equal(game.counts[type], 1);
   assert.equal(game.special, null);
-  if (type === 'BOOST') assert.equal(game.body.vx, 500+c.boostImpulse*Math.cos(Math.PI/4));
-  if (type === 'BOUNCE') assert.equal(game.body.vy, -100+c.boostImpulse*c.bounceImpulseRatio*Math.sin(Math.PI/3));
-  if (type === 'BRAKE') assert.equal(game.body.vx, 250);
-  if (type === 'DASH') { assert.equal(game.body.vx, 500+(c.boostImpulse*c.dashImpulseRatio)*Math.cos(25*Math.PI/180)); assert.equal(game.body.vy,-100+(c.boostImpulse*c.dashImpulseRatio)*Math.sin(25*Math.PI/180)); }
+  if (type === 'BOOST') { assert.equal(game.body.vx, 500+c.boostImpulse*Math.cos(Math.PI/4)); assert.equal(game.body.vy, 100+c.boostImpulse*Math.sin(Math.PI/4)); }
+  if (type === 'BOUNCE') assert.equal(game.body.vy, 100+c.boostImpulse*c.bounceImpulseRatio*Math.sin(Math.PI/3));
+  if (type === 'BRAKE') { assert.equal(game.body.vx, 250); assert.equal(game.body.vy, 50); }
+  if (type === 'DASH') { assert.equal(game.body.vx, 500+(c.boostImpulse*c.dashImpulseRatio)*Math.cos(25*Math.PI/180)); assert.equal(game.body.vy,100+(c.boostImpulse*c.dashImpulseRatio)*Math.sin(25*Math.PI/180)); }
   if (type === 'STOPPER') assert.equal(game.body.vx, 0); if(type==='STOPPER') assert(game.body.stopped);
   if (type === 'GUARD') { assert.equal(game.normalGuard, 1); contact(game, 'GUARD'); assert(game.special); game.resolveSpecial(false); assert.equal(game.normalGuard, 1); }
   if (type === 'ANGLE') {
@@ -35,7 +35,7 @@ for (const type of Object.keys(c.objectWeights)) {
 }
 for (const harmful of ['BOOST', 'BOUNCE', 'DASH', 'STOPPER']) {
   const game = launch(); contact(game, 'GUARD'); contact(game, harmful, 1000, -100);
-  assert.equal(game.normalGuard, 0); assert.equal(game.body.vx, 1000); assert.equal(game.body.vy, -100);
+  assert.equal(game.normalGuard, 0); assert.equal(game.body.vx, 1000); assert.equal(game.body.vy, 100); // guard blocks the effect, not the contact reflection
   assert.equal(game.special, null); assert.equal(game.specialCount, 0);
   assert(game.history.at(-1).label.includes('GUARDED'));
 }

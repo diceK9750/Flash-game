@@ -1,11 +1,16 @@
 // Fighter SPECIAL 巨神昇天拳 (2026-10-13 upper): witch buff -> crouch -> drop out of the bottom of the screen ->
 // hidden rumble (ゴゴゴ…) -> erupts from below as a uniformly scaled giant, fist first -> uppercut -> launch.
-// Display only: distances identical to the 0cb33fb baseline (tests/fixtures/fighter-upper-baseline-0cb33fb.json).
-// Run with: node tests/fighter-upper.cjs   (regenerate the fixture: node tests/fighter-upper.cjs --baseline <old js dir>)
+// Display only: distances, contacts and SPECIAL results match the fixed-seed
+// elastic-character-contact baseline in every presentation mode, with the same
+// legacy placement / merchant overrides this test has always used. The historical
+// 0cb33fb fixture is retained separately and is not overwritten.
+// Fixed-step contact-position baseline: game.js SHA-256
+// 0587839ff22c17a91221fe3af99eebef4b7aac09322f5edb89e576f90ddecfaf.
+// Run: node tests/fighter-upper.cjs (create the new fixture once with --baseline <js dir>).
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-const FIXTURE = path.join(__dirname, 'fixtures', 'fighter-upper-baseline-0cb33fb.json');
+const FIXTURE = path.join(__dirname, 'fixtures', 'fighter-upper-baseline-elastic-ccd-20261113.json');
 function load(jsDir) {
   const elements = new Map();
   const element = id => { if (!elements.has(id)) elements.set(id, { setAttribute(k, v) { this[k] = v; }, textContent: '', hidden: false, style: {}, dataset: {}, classList: { toggle() {} }, addEventListener() {},
@@ -38,8 +43,8 @@ function play(Hop, { seed, kind, angle, power }, mode = 'watch') {
   return { d: g.finalDistance, h: g.maxHeight, labels: g.history.map(x => x.label).join(','), specials: g.specialSuccesses, fighter };
 }
 if (process.argv[2] === '--baseline') {
-  const Old = load(path.resolve(process.argv[3]));
-  fs.writeFileSync(FIXTURE, JSON.stringify(CASES.map(k => ({ ...k, ...play(Old, k, 'plain') })), null, 1) + '\n');
+  const Current = load(path.resolve(process.argv[3]));
+  fs.writeFileSync(FIXTURE, JSON.stringify(CASES.map(k => ({ ...k, ...play(Current, k, 'plain') })), null, 1) + '\n', { flag: 'wx' });
   console.log('wrote', FIXTURE); process.exit(0);
 }
 const Hop = load(path.join(root, 'js')), c = Hop.CONFIG, G = Hop.Graphics, Sp = Hop.Sprites, A = Hop.Audio;
@@ -189,7 +194,7 @@ assert(F.rise - F.gone >= 0.35, 'hidden beat (pause / anticipation) at least 0.3
   checks++;
 }
 
-// 8) Identical distances / contacts to the 0cb33fb baseline over fixed seeds (watch, skip, short, off, tempo).
+// 8) Identical distances / contacts to the elastic-contact baseline over fixed seeds (watch, skip, short, off, tempo).
 {
   const base = JSON.parse(fs.readFileSync(FIXTURE, 'utf8')); let fighter = 0;
   assert.equal(base.length, CASES.length);

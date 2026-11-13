@@ -37,7 +37,7 @@ test('STOPPER SPECIAL initial vector remains strongest of four after acceleratio
 test('BRAKE ready from successful automatic DOWN, no wall-clock expiry',()=>{
  const g=isolated();high(g);g.body.vy=500;g.act();assert(g.specialArmed.brake);assert.equal(g.downCharge,0);
  advance(g,3);assert(g.specialArmed.brake);hit(g,'BRAKE');assert.equal(g.special.type,'BRAKE');assert(!g.specialArmed.brake);
- g.act();near(g.body.vx,500);near(g.body.vy,-100);assert.equal(g.upRemaining,3);
+ g.act();near(g.body.vx,500);near(g.body.vy,100);assert.equal(g.upRemaining,3);
 });
 for(const cancel of ['BOOST','BOUNCE','ANGLE','DASH','GUARD','STOPPER','GROUND','UP'])test('BRAKE ready canceled by '+cancel,()=>{
  const g=isolated();g.specialArmed.brake=true;
@@ -46,7 +46,7 @@ for(const cancel of ['BOOST','BOUNCE','ANGLE','DASH','GUARD','STOPPER','GROUND',
 });
 test('BRAKE miss vector half, not consumed by failed DOWN charge',()=>{
  const g=isolated();g.body.y=100;g.body.vy=100;g.downCharge=0.5;g.act();assert(!g.specialArmed.brake);
- g.specialArmed.brake=true;hit(g,'BRAKE');g.resolveSpecial(false);near(g.body.vx,250);near(g.body.vy,-50);
+ g.specialArmed.brake=true;hit(g,'BRAKE');g.resolveSpecial(false);near(g.body.vx,250);near(g.body.vy,50);
 });
 test('ANGLE deterministic draw exactly once per contact; success and miss',()=>{
  for(const [roll,expected] of [[0,true],[0.099999,true],[0.1,false],[0.9,false]]){
@@ -58,8 +58,8 @@ test('ANGLE deterministic draw exactly once per contact; success and miss',()=>{
 });
 for(const type of ['BOOST','BOUNCE','DASH','STOPPER','BRAKE','ANGLE'])test('normalGuard next contact '+type,()=>{
  const g=isolated();hit(g,'GUARD');hit(g,type);assert.equal(g.normalGuard,0);assert.equal(g.special,null);
- if(['BOOST','BOUNCE','DASH','STOPPER'].includes(type)){near(g.body.vx,500);near(g.body.vy,-100);assert(!g.body.stopped);}
- if(type==='BRAKE'){near(g.body.vx,250);near(g.body.vy,-50);}
+ if(['BOOST','BOUNCE','DASH','STOPPER'].includes(type)){near(g.body.vx,500);near(g.body.vy,100);assert(!g.body.stopped);}
+ if(type==='BRAKE'){near(g.body.vx,250);near(g.body.vy,50);}
  if(type==='ANGLE'){near(g.body.vx,100);near(g.body.vy,500);}
 });
 test('GUARD special double contact, no precondition time limit, success replaces normal',()=>{

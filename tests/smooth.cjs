@@ -1,6 +1,6 @@
 // Smooth display (Hop.Smooth + Graphics.smooth): render interpolation, spring camera, eased tilt, pose / sprite
 // cross-fades and the extra ambient motion are display only. Fixed-seed distances must equal the physics baseline
-// of main 2f4d0af (fixtures/anim-physics-baseline-sage.json); easing is continuous; the camera spring does not
+// of the elastic-contact fixture under historical compatibility settings; easing is continuous; the camera spring does not
 // overshoot; pose transitions blend; interpolation stays between physics steps.
 const adjacentGateOff = require('./fixtures/adjacent-gate-off.cjs');
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), assert = require('node:assert/strict');
@@ -17,23 +17,26 @@ const { Hop, ctx } = load(), S = Hop.Smooth, G = Hop.Graphics, c = Hop.CONFIG;
 assert.equal(G.smooth, false, 'smooth display is opt-in (main.js); geometry tests keep the raw camera');
 assert(/Hop\.Graphics\.smooth = true/.test(fs.readFileSync(path.join(root, 'js', 'main.js'), 'utf8')), 'main.js enables it in the browser game');
 const rndOf = seed => { let s = seed; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); };
-// 1. Physics identical: baseline seeds, smooth draw every frame (jittered dt), vs the 2f4d0af fixture and vs no draw.
+// 1. Physics identical: baseline seeds, smooth draw every frame (jittered dt), vs the fixture and vs no draw.
 function sim(draw, jitter) {
   G.smooth = draw; const out = [], traj = [];
   for (let seed = 1; seed <= 24; seed++) {
     const g = new Hop.Game(rndOf(seed)); g.act(); g.angle = 20 + seed * 2; g.act(); g.power = 0.5 + (seed % 5) / 10; g.act();
     const visual = { launchAt: 0, contactAt: -Infinity, reducedMotion: seed % 3 === 0, readyTargets: [] }, jr = rndOf(seed + 99);
     for (let i = 0; i < 20000 && g.state === 'FLYING'; i++) {
-      g.update(jitter ? 1 / 60 + (jr() - 0.5) * 0.006 : 1 / 60); if (seed % 2 && i % 37 === 0) g.act();
+      g.update(jitter ? 1 / 60 + (jr() - 0.5) * 0.006 : 1 / 60); if (g.state === 'FLYING' && seed % 2 && i % 37 === 0) g.act();
       if (draw) G.draw(ctx, g, visual);
       if (seed === 5) traj.push(g.body.x, g.body.y);
     }
+    assert.equal(g.state, 'RESULT', `seed ${seed} must stop naturally within 20000 frames`);
     out.push([g.state, g.finalDistance, g.body.x, g.body.bounces, g.specialSuccesses]);
   }
   G.smooth = false; return { out, traj };
 }
-const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-sage.json'), 'utf8'));
-assert.deepEqual(sim(true, false).out, baseline, 'smooth draw: distances == main 2f4d0af baseline');
+// adjacent-gate-off.cjs deliberately keeps older balance settings; this is not ordinary current play.
+const baseline = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'anim-physics-baseline-elastic-timed.json'), 'utf8'));
+assert.equal(baseline.length, 24); assert(baseline.every(row => row[0] === 'RESULT'), 'fixture contains only naturally completed runs');
+assert.deepEqual(sim(true, false).out, baseline, 'smooth draw preserves the elastic-contact baseline');
 const a = sim(true, true), b = sim(false, true);
 assert.deepEqual(a.out, b.out); assert.deepEqual(a.traj, b.traj); // per-update trajectory identical too
 // 2. Interpolation: displayed position lies on the segment between the previous and current physics step,
@@ -108,4 +111,4 @@ for (const w of [S.CAM_W, S.CAM_WY]) for (const dt of [1 / 144, 1 / 60, 1 / 30, 
   const p = Hop.Anim.cast({}, 'BOOST', 1, false, Infinity, false, 1); assert(p.sx >= 0.92 && p.sx <= 1.08 && p.sy >= 0.92 && p.sy <= 1.08);
   assert.deepEqual(Hop.Anim.cast({}, 'BOOST', 1, false, Infinity, true, 1), Hop.Anim.cast({}, 'BOOST', 1, false, Infinity, true, 0), 'reduced motion ignores near');
 }
-console.log('smooth.cjs OK (physics == 2f4d0af baseline with smooth draw, interpolation bounded, easing continuous, spring no overshoot, pose blend, tilt eased, reactions bounded)');
+console.log('smooth.cjs OK (elastic-contact baseline with smooth draw, interpolation bounded, easing continuous, spring no overshoot, pose blend, tilt eased, reactions bounded)');

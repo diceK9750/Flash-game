@@ -83,7 +83,7 @@ cases++;
 { const g = flying({ vx: 500, vy: 500, y: 800 }); assert.equal(g.aerial('DOWN'), true); assert.equal(g.downCharge, 0);
   for (let i = 0; i < Math.round(1.5 * 120); i++) g.update(c.physicsStep);
   near(g.downCharge, 1, 'recharged', 1e-3); cases++; }
-// BRAKE SPECIAL still keeps pre-contact velocity after a locked dive into BRAKE.
+// BRAKE SPECIAL keeps the post-elastic-contact velocity after a locked dive into BRAKE.
 { const g = flying({ vx: 700, vy: 350, x: 50, y: 140 });
   assert.equal(g.aerial('DOWN'), true); assert(g.specialArmed.brake);
   g.objects = [{ type: 'BRAKE', x: 220, used: false }];

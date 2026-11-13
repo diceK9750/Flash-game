@@ -64,36 +64,6 @@
     {
       "channels": 1,
       "sample_rate": 24000,
-      "duration_s": 1.25,
-      "peak_db": -1.72,
-      "rms_db": -14.29,
-      "silence_ratio": 0.108,
-      "clipping_samples": 0,
-      "dc_offset": -0.0,
-      "status": "PASS",
-      "issues": [],
-      "key": "special_bounce",
-      "character": "武闘家",
-      "text": "巨神昇天拳"
-    },
-    {
-      "channels": 1,
-      "sample_rate": 24000,
-      "duration_s": 1.05,
-      "peak_db": -1.72,
-      "rms_db": -14.5,
-      "silence_ratio": 0.161,
-      "clipping_samples": 0,
-      "dc_offset": 0.0,
-      "status": "PASS",
-      "issues": [],
-      "key": "special_dash",
-      "character": "戦士",
-      "text": "戦陣突破"
-    },
-    {
-      "channels": 1,
-      "sample_rate": 24000,
       "duration_s": 1.2,
       "peak_db": -1.72,
       "rms_db": -13.38,
@@ -124,21 +94,6 @@
     {
       "channels": 1,
       "sample_rate": 24000,
-      "duration_s": 1.0,
-      "peak_db": -1.72,
-      "rms_db": -14.02,
-      "silence_ratio": 0.13,
-      "clipping_samples": 0,
-      "dc_offset": -0.0,
-      "status": "PASS",
-      "issues": [],
-      "key": "special_angle",
-      "character": "遊び人",
-      "text": "水平曲芸"
-    },
-    {
-      "channels": 1,
-      "sample_rate": 24000,
       "duration_s": 1.15,
       "peak_db": -1.72,
       "rms_db": -13.59,
@@ -150,21 +105,6 @@
       "key": "special_guard",
       "character": "賢者",
       "text": "聖護結界"
-    },
-    {
-      "channels": 1,
-      "sample_rate": 24000,
-      "duration_s": 1.05,
-      "peak_db": -1.72,
-      "rms_db": -14.79,
-      "silence_ratio": 0.267,
-      "clipping_samples": 0,
-      "dc_offset": 0.0,
-      "status": "PASS",
-      "issues": [],
-      "key": "special_merchant_a",
-      "character": "商人（秘薬）",
-      "text": "倍化の秘薬"
     },
     {
       "channels": 1,
@@ -214,21 +154,6 @@
     {
       "channels": 1,
       "sample_rate": 24000,
-      "duration_s": 0.65,
-      "peak_db": -1.72,
-      "rms_db": -14.34,
-      "silence_ratio": 0.096,
-      "clipping_samples": 0,
-      "dc_offset": -0.0,
-      "status": "PASS",
-      "issues": [],
-      "key": "combo_witch_call",
-      "character": "武闘家",
-      "text": "合わせるぞ！"
-    },
-    {
-      "channels": 1,
-      "sample_rate": 24000,
       "duration_s": 1.8,
       "peak_db": -1.72,
       "rms_db": -13.18,
@@ -259,21 +184,6 @@
     {
       "channels": 1,
       "sample_rate": 24000,
-      "duration_s": 1.6,
-      "peak_db": -1.72,
-      "rms_db": -13.97,
-      "silence_ratio": 0.069,
-      "clipping_samples": 0,
-      "dc_offset": 0.0,
-      "status": "PASS",
-      "issues": [],
-      "key": "combo_fighter_upper",
-      "character": "武闘家",
-      "text": "唸れ我が拳！昇天撃破ァ！"
-    },
-    {
-      "channels": 1,
-      "sample_rate": 24000,
       "duration_s": 0.75,
       "peak_db": -1.72,
       "rms_db": -13.37,
@@ -285,21 +195,6 @@
       "key": "combo_witch_short",
       "character": "魔法使い",
       "text": "吹き飛びなさい！"
-    },
-    {
-      "channels": 1,
-      "sample_rate": 24000,
-      "duration_s": 0.75,
-      "peak_db": -1.72,
-      "rms_db": -14.17,
-      "silence_ratio": 0.082,
-      "clipping_samples": 0,
-      "dc_offset": 0.0,
-      "status": "PASS",
-      "issues": [],
-      "key": "combo_fighter_short",
-      "character": "武闘家",
-      "text": "昇天撃破ァ！"
     }
   ]
 }

@@ -16,15 +16,19 @@
 
 ## 通常接触
 
+キャラクターへの接触時は、その地点を地面とみなして完全弾性反射します。下降中は垂直速度の向きだけを上向きに反転し、水平速度は維持します。上昇中・水平移動中の速度は反転しません。その後にSPECIAL・GUARD・通常効果を判定します。通常GUARDやGUARD SPECIALは、この接触時の反射自体を防ぎません。実際の地面でのバウンドは別で、従来の反発係数と水平減速を使います。
+
 | 種類 | 効果 |
 | --- | --- |
-| BOOST | 現在速度へ800px/s・45°のベクトルを加算 |
+| BOOST | 反射後の速度へ800px/s・45°のベクトルを加算 |
 | BOUNCE | 880px/s・60°を加算（BOOSTの1.10倍） |
 | DASH | 880px/s・25°を加算（BOOSTの1.10倍） |
 | BRAKE | vx・vyとも50%。方向を維持 |
 | ANGLE | 速度量を完全維持し、90°−abs(現在角)の前方上向きへ。下降30°も上向き60°になる |
 | GUARD | normalGuard ×1を付与 |
 | STOPPER | 強制停止。防御・SPECIAL・Type B復活を優先 |
+
+以下に記載された過去の発生率・飛距離の測定値は、各測定当時の仕様による履歴であり、接触時の完全弾性反射を追加した後の値ではありません。
 
 ## 正式SPECIAL条件
 
@@ -36,7 +40,7 @@
 | BOUNCE / 巨神昇天拳 | BOUNCE→BOOSTの先頭に接触 | 1700 px/s・60° |
 | DASH / 戦陣突破 | DASH後、BOOST・BOUNCE・STOPPERに触れず再DASH。準備がないときは接触時に `dashSpecialChance`（35%）の抽選 | 2000 px/s・25° |
 | STOPPER / 聖光反転 | BOOST・BOUNCE・DASH後、地面バウンド・GUARD接触なしでSTOPPER | 2300 px/s・35° |
-| BRAKE / 影すり抜け | AERIAL DOWN成功後、地面・他キャラ・UPなしでBRAKE | 接触前の速度・角度を完全維持 |
+| BRAKE / 影すり抜け | AERIAL DOWN成功後、地面・他キャラ・UPなしでBRAKE | 接触時の反射後の速度・角度を維持 |
 | ANGLE / 水平曲芸 | 接触時10%抽選（Gameのrandomを使用） | 速度量を維持して0°へ |
 | GUARD / 聖護結界 | normalGuard所持で次の相手がGUARD。または「先見の結界」：賢者に触れた瞬間、その先 `sageForesightRange`（460px）以内にまだ触れていない僧侶か盗賊がいる（抽選なし。聖護結界中・商人SPECIALになる接触では発動しない）。条件を満たす賢者には淡い金色の線と「先見」マークが出る | 10秒間STOPPERを何回でも防ぐ |
 
@@ -46,7 +50,7 @@
 
 賢者のSPECIAL条件（2026-10-13d「先見の結界」）：上の一律13%抽選（`guardSpecialChance`）をやめ、賢者らしい条件に置き換えました。賢者に触れた瞬間、賢者より先 `sageForesightRange`（460px）以内に**まだ触れていない僧侶（STOPPER）か盗賊（BRAKE）**がいれば聖護結界が発動します（乱数を使わない決定的な判定。GUARD所持の従来条件もそのまま。聖護結界中・商人SPECIALになる接触では発動しません。効果は同じ10秒）。画面内で条件を満たす賢者には、対象の僧侶／盗賊へ淡い金色の点線の弧と、賢者の柔らかな光・「先見」マークを表示します（表示のみ。視差効果を減らす設定では明滅なしの静止表示）。シード固定3000プレイで賢者 13.6%→14.1%、平均飛距離 3027.6 m→3012.8 m、ほかのキャラは誤差の範囲（main 3d13336比）。`sageCondition: "none"` で従来（ウォリアー修正時）の結果を完全に再現し、新しい基準は `anim-physics-baseline-sage.json`（再記録）・debug-kindsの指紋 7f377a47…、mainの1000プレイ率は `tests/fixtures/sage-main-rates-1000.json`（`tests/sage-special.cjs`）。
 
-ペアSPECIAL成功時は相手も使用済みになります。失敗時は接触元の通常効果だけ適用し、相手を残します。DASH準備は地面・BRAKE・ANGLE・GUARDでは解除されず、SPECIAL受付開始・成功・失敗で解除されます。STOPPER準備はBRAKE・ANGLEでは解除されず、地面バウンド・GUARD・STOPPERで解除されます。旧仕様の速度・飛距離しきい値は使用しません。
+接触時の反射はSPECIAL受付前に適用されます。SPECIAL成功時の速度上書きやその他の効果は従来どおりです。ペアSPECIAL成功時は相手も使用済みになります。失敗時は接触元の通常効果だけ適用し、相手を残します。DASH準備は地面・BRAKE・ANGLE・GUARDでは解除されず、SPECIAL受付開始・成功・失敗で解除されます。STOPPER準備はBRAKE・ANGLEでは解除されず、地面バウンド・GUARD・STOPPERで解除されます。旧仕様の速度・飛距離しきい値は使用しません。
 
 BRAKE準備に時間制限はありません。地面バウンド、BRAKE以外への接触、UP成功、BRAKE受付開始、RETRYで解除します。BRAKE失敗は通常50%減速、ANGLE失敗は通常の相補角への変更です。
 
